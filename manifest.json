@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "GMaps Lead Scraper",
+  "version": "1.0.0",
+  "description": "Scrape Google Maps business listings locally.",
+  "permissions": ["storage", "activeTab", "tabs"],
+  "host_permissions": ["https://www.google.com/maps/*"],
+  "action": {
+    "default_popup": "index.html"
+  },
+  "background": {
+    "service_worker": "src/background/main.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.google.com/maps/*"],
+      "js": ["src/content/scraper.ts"]
+    }
+  ]
+}
