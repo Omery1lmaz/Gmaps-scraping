@@ -1,0 +1,4 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "model": "groq/openai/gpt-oss-120b",
+}

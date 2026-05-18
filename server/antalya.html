@@ -1,0 +1,1488 @@
+<div class="mw-content-ltr mw-parser-output" lang="tr" dir="ltr">
+    <style data-mw-deduplicate="TemplateStyles:r37112563">
+        .mw-parser-output th.mbox-text,
+        .mw-parser-output td.mbox-text {
+            border: none;
+            padding: 0.25em 0.9em;
+            width: 100%
+        }
+
+        .mw-parser-output td.mbox-image {
+            border: none;
+            padding: 2px 0 2px 0.9em;
+            text-align: center
+        }
+
+        .mw-parser-output td.mbox-imageright {
+            border: none;
+            padding: 2px 0.9em 2px 0;
+            text-align: center
+        }
+
+        .mw-parser-output td.mbox-empty-cell {
+            border: none;
+            padding: 0;
+            width: 1px
+        }
+
+        .mw-parser-output table.ambox {
+            margin: 0 10%;
+            border: 1px solid var(--border-color-base, #a2a9b1);
+            border-left: 10px solid var(--border-color-progressive, #36c);
+            background-color: var(--background-color-interactive-subtle, #fbfbfb);
+            box-sizing: border-box
+        }
+
+        .mw-parser-output table.ambox+table.ambox {
+            margin-top: -1px
+        }
+
+        .mw-parser-output .ambox th.mbox-text,
+        .mw-parser-output .ambox td.mbox-text {
+            padding: 0.25em 0.5em
+        }
+
+        .mw-parser-output .ambox td.mbox-image {
+            padding: 2px 0 2px 0.5em
+        }
+
+        .mw-parser-output .ambox td.mbox-imageright {
+            padding: 2px 0.5em 2px 0
+        }
+
+        .mw-parser-output table.ambox-notice {
+            border-left: 10px solid var(--border-color-progressive, #36c)
+        }
+
+        .mw-parser-output table.ambox-speedy {
+            border-left: 10px solid var(--border-color-destructive, #b32424);
+            background-color: var(--background-color-destructive-subtle, #fee7e6)
+        }
+
+        .mw-parser-output table.ambox-delete {
+            border-left: 10px solid var(--border-color-destructive, #b32424)
+        }
+
+        .mw-parser-output table.ambox-content {
+            border-left: 10px solid var(--border-color-warning, #f28500)
+        }
+
+        .mw-parser-output table.ambox-style {
+            border-left: 10px solid var(--border-color-content-removed, #fc3)
+        }
+
+        .mw-parser-output table.ambox-move {
+            border-left: 10px solid var(--border-color-progressive--active, #9932cc)
+        }
+
+        .mw-parser-output table.ambox-protection {
+            border-left: 10px solid var(--border-color-base, #a2a9b1)
+        }
+
+        .mw-parser-output table.imbox {
+            margin: 4px 10%;
+            border-collapse: collapse;
+            border: 3px solid var(--border-color-progressive, #36c);
+            background-color: var(--background-color-interactive-subtle, #fbfbfb);
+            box-sizing: border-box
+        }
+
+        .mw-parser-output .imbox .mbox-text .imbox {
+            margin: 0 -0.5em;
+            display: block
+        }
+
+        .mw-parser-output .mbox-inside .imbox {
+            margin: 4px
+        }
+
+        .mw-parser-output table.imbox-notice {
+            border: 3px solid var(--border-color-progressive, #36c)
+        }
+
+        .mw-parser-output table.imbox-speedy {
+            border: 3px solid var(--border-color-destructive, #b32424);
+            background-color: var(--background-color-destructive-subtle, #fee7e6)
+        }
+
+        .mw-parser-output table.imbox-delete {
+            border: 3px solid var(--border-color-destructive, #b32424)
+        }
+
+        .mw-parser-output table.imbox-content {
+            border: 3px solid var(--border-color-warning, #f28500)
+        }
+
+        .mw-parser-output table.imbox-style {
+            border: 3px solid var(--border-color-content-removed, #fc3)
+        }
+
+        .mw-parser-output table.imbox-move {
+            border: 3px solid var(--border-color-progressive--active, #9932cc)
+        }
+
+        .mw-parser-output table.imbox-protection {
+            border: 3px solid var(--border-color-base, #a2a9b1)
+        }
+
+        .mw-parser-output table.imbox-license {
+            border: 3px solid var(--border-color-base, #88a);
+            background-color: var(--background-color-interactive-subtle, #f7f8ff)
+        }
+
+        .mw-parser-output table.imbox-featured {
+            border: 3px solid var(--border-color-content-removed, #cba135)
+        }
+
+        .mw-parser-output table.cmbox {
+            margin: 3px 10%;
+            border-collapse: collapse;
+            border: 1px solid var(--border-color-base, #a2a9b1);
+            background-color: var(--background-color-progressive-subtle--hover, #dfe8ff);
+            box-sizing: border-box
+        }
+
+        .mw-parser-output table.cmbox-notice {
+            background-color: var(--background-color-progressive-subtle--hover, #dfe8ff)
+        }
+
+        .mw-parser-output table.cmbox-speedy {
+            margin-top: 4px;
+            margin-bottom: 4px;
+            border: 4px solid var(--border-color-destructive, #b32424);
+            background-color: var(--background-color-error-subtle--hover, #ffdbdb)
+        }
+
+        .mw-parser-output table.cmbox-delete {
+            background-color: var(--background-color-error-subtle--hover, #ffdbdb)
+        }
+
+        .mw-parser-output table.cmbox-content {
+            background-color: var(--background-color-destructive-subtle, #ffe7ce)
+        }
+
+        .mw-parser-output table.cmbox-style {
+            background-color: var(--background-color-destructive-subtle--hover, #fff9db)
+        }
+
+        .mw-parser-output table.cmbox-move {
+            background-color: var(--background-color-progressive-subtle--hover, #e4d8ff)
+        }
+
+        .mw-parser-output table.cmbox-protection {
+            background-color: var(--background-color-destructive-subtle, #efefe1)
+        }
+
+        .mw-parser-output table.ombox {
+            margin: 4px 10%;
+            border-collapse: collapse;
+            border: 1px solid var(--border-color-base, #a2a9b1);
+            background-color: var(--background-color-neutral-subtle, #f8f9fa);
+            box-sizing: border-box
+        }
+
+        .mw-parser-output table.ombox-notice {
+            border: 1px solid var(--border-color-base, #a2a9b1)
+        }
+
+        .mw-parser-output table.ombox-speedy {
+            border: 2px solid var(--border-color-destructive, #b32424);
+            background-color: var(--background-color-destructive-subtle, #fee7e6)
+        }
+
+        .mw-parser-output table.ombox-delete {
+            border: 2px solid var(--border-color-destructive, #b32424)
+        }
+
+        .mw-parser-output table.ombox-content {
+            border: 1px solid var(--border-color-warning, #f28500)
+        }
+
+        .mw-parser-output table.ombox-style {
+            border: 1px solid var(--border-color-content-removed, #fc3)
+        }
+
+        .mw-parser-output table.ombox-move {
+            border: 1px solid var(--border-color-progressive--active, #9932cc)
+        }
+
+        .mw-parser-output table.ombox-protection {
+            border: 2px solid var(--border-color-base, #a2a9b1)
+        }
+
+        .mw-parser-output table.tmbox {
+            margin: 4px 10%;
+            border-collapse: collapse;
+            border: 1px solid var(--border-color-base, #c0c090);
+            background-color: var(--background-color-warning-subtle, #f8eaba);
+            min-width: 80%;
+            box-sizing: border-box
+        }
+
+        .mw-parser-output .tmbox.mbox-small {
+            min-width: 0
+        }
+
+        .mw-parser-output .mediawiki .mbox-inside .tmbox {
+            margin: 2px 0;
+            width: 100%
+        }
+
+        .mw-parser-output .mbox-inside .tmbox.mbox-small {
+            line-height: 1.5em;
+            font-size: 100%
+        }
+
+        .mw-parser-output table.tmbox-speedy {
+            border: 2px solid var(--border-color-destructive, #b32424);
+            background-color: var(--background-color-destructive-subtle, #fee7e6)
+        }
+
+        .mw-parser-output table.tmbox-delete {
+            border: 2px solid var(--border-color-destructive, #b32424)
+        }
+
+        .mw-parser-output table.tmbox-content {
+            border: 2px solid var(--border-color-warning, #f28500)
+        }
+
+        .mw-parser-output table.tmbox-style {
+            border: 2px solid var(--border-color-content-removed, #fc3)
+        }
+
+        .mw-parser-output table.tmbox-move {
+            border: 2px solid var(--border-color-progressive--active, #9932cc)
+        }
+
+        .mw-parser-output table.tmbox-protection,
+        .mw-parser-output table.tmbox-notice {
+            border: 1px solid var(--border-color-base, #a2a9b1)
+        }
+
+        .mw-parser-output table.fmbox {
+            clear: both;
+            margin: 0.2em 0;
+            width: 100%;
+            border: 1px solid var(--border-color-base, #a2a9b1);
+            background-color: var(--background-color-neutral-subtle, #f8f9fa);
+            box-sizing: border-box
+        }
+
+        .mw-parser-output table.fmbox-system {
+            background-color: var(--background-color-neutral-subtle, #f8f9fa)
+        }
+
+        .mw-parser-output table.fmbox-warning {
+            border: 1px solid var(--border-color-destructive, #bb7070);
+            background-color: var(--background-color-destructive-subtle--hover, #ffdbdb)
+        }
+
+        .mw-parser-output table.fmbox-editnotice {
+            background-color: transparent
+        }
+    </style>
+    <table class="box-Öksüz plainlinks metadata ambox ambox-style ambox-Orphan" role="presentation">
+        <tbody>
+            <tr>
+                <td class="mbox-image">
+                    <div style="width:52px"><span typeof="mw:File"><a
+                                href="//tr.wikipedia.org/wiki/Dosya:Wiki_letter_w.svg" class="mw-file-description"><img
+                                    src="//upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Wiki_letter_w.svg/40px-Wiki_letter_w.svg.png"
+                                    decoding="async" width="40" height="40" class="mw-file-element"
+                                    srcset="//upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Wiki_letter_w.svg/120px-Wiki_letter_w.svg.png 2x"
+                                    data-file-width="44" data-file-height="44"></a></span></div>
+                </td>
+                <td class="mbox-text">
+                    <div class="mbox-text-span">Bu madde, <b><a href="//tr.wikipedia.org/wiki/Vikipedi:%C3%96ks%C3%BCz"
+                                title="Vikipedi:Öksüz">öksüz maddedir</a>; zira herhangi bir maddeden bu maddeye
+                            verilmiş bir <a class="external text"
+                                data-mw-original-href="//tr.wikipedia.org/w/index.php?title=%C3%96zel:Whatlinkshere&amp;target=Antalya%27n%C4%B1n_mahalleleri&amp;namespace=0"
+                                href="https://tr.wikipedia.org/w/index.php?title=%C3%96zel:Whatlinkshere&amp;target=Antalya%27n%C4%B1n_mahalleleri&amp;namespace=0">bağlantı</a>
+                            yoktur</b>.<span class="hide-when-compact"> Lütfen <a class="external text"
+                                href="https://tr.wikipedia.org/w/index.php?title=Special%3ASearch&amp;redirs=1&amp;search=Antalya%26%2339%3Bn%C4%B1n+mahalleleri&amp;fulltext=Search&amp;ns0=1&amp;title=Special%3ASearch&amp;advanced=1&amp;fulltext=Antalya%26%2339%3Bn%C4%B1n+mahalleleri">ilgili
+                                maddelerden</a> bu sayfaya <a
+                                href="//tr.wikipedia.org/wiki/Yard%C4%B1m:Ba%C4%9Flant%C4%B1"
+                                title="Yardım:Bağlantı">bağlantı vermeye</a> çalışın.</span> <small
+                            class="date-container"><i>(<span class="date">Nisan 2022</span>)</i></small></div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r37112563">
+    <table class="box-Güncelle plainlinks metadata ambox ambox-content Mikutu-Güncelle" role="presentation">
+        <tbody>
+            <tr>
+                <td class="mbox-image">
+                    <div style="width:52px"><span typeof="mw:File"><a
+                                href="//tr.wikipedia.org/wiki/Dosya:Ambox_outdated_content2.svg"
+                                class="mw-file-description"><img
+                                    src="//upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Ambox_outdated_content2.svg/60px-Ambox_outdated_content2.svg.png"
+                                    decoding="async" width="42" height="42" class="mw-file-element"
+                                    srcset="//upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Ambox_outdated_content2.svg/120px-Ambox_outdated_content2.svg.png 2x"
+                                    data-file-width="775" data-file-height="775"></a></span></div>
+                </td>
+                <td class="mbox-text">
+                    <div class="mbox-text-span">Bu maddenin daha doğru ve güvenilir bilgi sunması için
+                        <b>güncellenmesi</b> gerekmektedir.<br><small>Daha fazla bilgi için <a
+                                href="//tr.wikipedia.org/wiki/Tart%C4%B1%C5%9Fma:Antalya%27n%C4%B1n_mahalleleri"
+                                title="Tartışma:Antalya'nın mahalleleri">tartışma sayfasına</a> bakınız.</small> <small
+                            class="date-container"><i>(<span class="date">Haziran 2021</span>)</i></small><small
+                            class="hide-when-compact"><i> (<a
+                                    href="//tr.wikipedia.org/wiki/Yard%C4%B1m:Bak%C4%B1m_%C5%9Fablonunu_kald%C4%B1rmak"
+                                    title="Yardım:Bakım şablonunu kaldırmak">Bu şablonun nasıl ve ne zaman kaldırılması
+                                    gerektiğini öğrenin</a>)</i></small></div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <p><a href="//tr.wikipedia.org/wiki/Antalya_(il)" title="Antalya (il)">Antalya</a> ilinde 915 mahalle vardır.
+        Bunlar:
+    </p>
+    <meta property="mw:PageProp/toc">
+    <div class="mw-heading mw-heading2">
+        <h2 id="Akseki">Akseki</h2><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=1"
+                title="Değiştirilen bölüm: Akseki" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=1"
+                title="Bölümün kaynak kodunu değiştir: Akseki"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Akseki.svg"
+            class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Antalya_location_Akseki.svg/250px-Antalya_location_Akseki.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Antalya_location_Akseki.svg/500px-Antalya_location_Akseki.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Ak%C5%9Fahap" title="Akşahap">Akşahap</a> |
+        <a href="//tr.wikipedia.org/wiki/Ala%C3%A7e%C5%9Fme" title="Alaçeşme">Alaçeşme</a> |
+        <a href="//tr.wikipedia.org/wiki/A%C5%9Fa%C4%9F%C4%B1a%C5%9F%C4%B1klar" title="Aşağıaşıklar">Aşağıaşıklar</a> |
+        <a href="//tr.wikipedia.org/wiki/Bademli,_Akseki" title="Bademli, Akseki">Bademli</a> |
+        <a href="//tr.wikipedia.org/wiki/Belenalan,_Akseki" title="Belenalan, Akseki">Belenalan</a> |
+        <a href="//tr.wikipedia.org/wiki/Bo%C4%9Faz,_Akseki" title="Boğaz, Akseki">Boğaz</a> |
+        <a href="//tr.wikipedia.org/wiki/Bucakalan" title="Bucakalan">Bucakalan</a> |
+        <a href="//tr.wikipedia.org/wiki/Bucakk%C4%B1%C5%9Fla,_Akseki" title="Bucakkışla, Akseki">Bucakkışla</a> |
+        <a href="//tr.wikipedia.org/wiki/B%C3%BCy%C3%BCkalan,_Akseki" title="Büyükalan, Akseki">Büyükalan</a> |
+        <a href="//tr.wikipedia.org/wiki/Ceceler,_Akseki" title="Ceceler, Akseki">Ceceler</a> |
+        <a href="//tr.wikipedia.org/wiki/Cemerler" title="Cemerler">Cemerler</a> |
+        <a href="//tr.wikipedia.org/wiki/Cendeve" title="Cendeve">Cendeve</a> |
+        <a href="//tr.wikipedia.org/wiki/Cevizli,_Akseki" title="Cevizli, Akseki">Cevizli</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87alt%C4%B1l%C4%B1%C3%A7ukur" title="Çaltılıçukur">Çaltılıçukur</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87anakp%C4%B1nar,_Akseki" title="Çanakpınar, Akseki">Çanakpınar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87%C4%B1nardibi,_Akseki" title="Çınardibi, Akseki">Çınardibi</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87imik%C3%B6y" title="Çimiköy">Çimiköy</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ukurk%C3%B6y,_Akseki" title="Çukurköy, Akseki">Çukurköy</a> |
+        <a href="//tr.wikipedia.org/wiki/De%C4%9Firmenlik,_Akseki" title="Değirmenlik, Akseki">Değirmenlik</a> |
+        <a href="//tr.wikipedia.org/wiki/Demirciler,_Akseki" title="Demirciler, Akseki">Demirciler</a> |
+        <a href="//tr.wikipedia.org/wiki/Dikmen,_Akseki" title="Dikmen, Akseki">Dikmen</a> |
+        <a href="//tr.wikipedia.org/wiki/Dutluca,_Akseki" title="Dutluca, Akseki">Dutluca</a> |
+        <a href="//tr.wikipedia.org/wiki/Emira%C5%9F%C4%B1klar" title="Emiraşıklar">Emiraşıklar</a> |
+        <a href="//tr.wikipedia.org/wiki/Erenyaka" title="Erenyaka">Erenyaka</a> |
+        <a href="//tr.wikipedia.org/wiki/Fak%C4%B1lar,_Akseki" title="Fakılar, Akseki">Fakılar</a> |
+        <a href="//tr.wikipedia.org/wiki/Geri%C5%9F,_Akseki" title="Geriş, Akseki">Geriş</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BC%C3%A7l%C3%BCk%C3%B6y" title="Güçlüköy">Güçlüköy</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCm%C3%BC%C5%9Fdamla,_Akseki" title="Gümüşdamla, Akseki">Gümüşdamla</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCneykaya,_Akseki" title="Güneykaya, Akseki">Güneykaya</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCnyaka,_Akseki" title="Günyaka, Akseki">Günyaka</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCzelsu,_Akseki" title="Güzelsu, Akseki">Güzelsu</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1ilyas,_Akseki" title="Hacıilyas, Akseki">Hacıilyas</a> |
+        <a href="//tr.wikipedia.org/wiki/Hocak%C3%B6y,_Akseki" title="Hocaköy, Akseki">Hocaköy</a> |
+        <a href="//tr.wikipedia.org/wiki/H%C3%BCsamettink%C3%B6y" title="Hüsamettinköy">Hüsamettinköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Karak%C4%B1%C5%9Fla,_Akseki" title="Karakışla, Akseki">Karakışla</a> |
+        <a href="//tr.wikipedia.org/wiki/Kepez,_Akseki" title="Kepez, Akseki">Kepez</a> |
+        <a href="//tr.wikipedia.org/wiki/Kepezbeleni" title="Kepezbeleni">Kepezbeleni</a> |
+        <a href="//tr.wikipedia.org/wiki/Kuyucak,_Akseki" title="Kuyucak, Akseki">Kuyucak</a> |
+        <a href="//tr.wikipedia.org/wiki/Mahmutlu,_Akseki" title="Mahmutlu, Akseki">Mahmutlu</a> |
+        <a href="//tr.wikipedia.org/wiki/Mente%C5%9Fbey" title="Menteşbey">Menteşbey</a> |
+        <a href="//tr.wikipedia.org/wiki/Minareli" title="Minareli">Minareli</a> |
+        <a href="//tr.wikipedia.org/wiki/P%C4%B1narba%C5%9F%C4%B1,_Akseki" title="Pınarbaşı, Akseki">Pınarbaşı</a> |
+        <a href="//tr.wikipedia.org/wiki/Sad%C4%B1klar,_Akseki" title="Sadıklar, Akseki">Sadıklar</a> |
+        <a href="//tr.wikipedia.org/wiki/Salihler,_Akseki" title="Salihler, Akseki">Salihler</a> |
+        <a href="//tr.wikipedia.org/wiki/Sar%C4%B1hac%C4%B1lar,_Akseki" title="Sarıhacılar, Akseki">Sarıhacılar</a> |
+        <a href="//tr.wikipedia.org/wiki/Sar%C4%B1haliller" title="Sarıhaliller">Sarıhaliller</a> |
+        <a href="//tr.wikipedia.org/wiki/Sinanhoca" title="Sinanhoca">Sinanhoca</a> |
+        <a href="//tr.wikipedia.org/wiki/Susuz%C5%9Fahap" title="Susuzşahap">Susuzşahap</a> |
+        <a href="//tr.wikipedia.org/wiki/S%C3%BCleymaniye,_Akseki" title="Süleymaniye, Akseki">Süleymaniye</a> |
+        <a href="//tr.wikipedia.org/wiki/Ta%C5%9Fl%C4%B1ca,_Akseki" title="Taşlıca, Akseki">Taşlıca</a> |
+        <a href="//tr.wikipedia.org/wiki/Yarpuz,_Akseki" title="Yarpuz, Akseki">Yarpuz</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Aksu">Aksu</h2><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=2"
+                title="Değiştirilen bölüm: Aksu" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=2"
+                title="Bölümün kaynak kodunu değiştir: Aksu"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Aksu.svg"
+            class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Antalya_location_Aksu.svg/250px-Antalya_location_Aksu.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Antalya_location_Aksu.svg/500px-Antalya_location_Aksu.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Alayl%C4%B1,_Aksu" title="Alaylı, Aksu">Alaylı</a> |
+        <a href="//tr.wikipedia.org/wiki/Alt%C4%B1nta%C5%9F,_Aksu" title="Altıntaş, Aksu">Altıntaş</a> |
+        <a href="//tr.wikipedia.org/wiki/Atat%C3%BCrk,_Aksu" title="Atatürk, Aksu">Atatürk</a> |
+        <a href="//tr.wikipedia.org/wiki/Barbaros,_Aksu" title="Barbaros, Aksu">Barbaros</a> |
+        <a href="//tr.wikipedia.org/wiki/Boztepe,_Aksu" title="Boztepe, Aksu">Boztepe</a> |
+        <a href="//tr.wikipedia.org/wiki/Cihadiye,_Aksu" title="Cihadiye, Aksu">Cihadiye</a> |
+        <a href="//tr.wikipedia.org/wiki/Cumhuriyet,_Aksu" title="Cumhuriyet, Aksu">Cumhuriyet</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87alkaya,_Aksu" title="Çalkaya, Aksu">Çalkaya</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87amk%C3%B6y,_Aksu" title="Çamköy, Aksu">Çamköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Dumanlar,_Aksu" title="Dumanlar, Aksu">Dumanlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Fatih,_Aksu" title="Fatih, Aksu">Fatih</a> |
+        <a href="//tr.wikipedia.org/wiki/Fettahl%C4%B1,_Aksu" title="Fettahlı, Aksu">Fettahlı</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6kdere,_Aksu" title="Gökdere, Aksu">Gökdere</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCloluk,_Aksu" title="Güloluk, Aksu">Güloluk</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCzelyurt,_Aksu" title="Güzelyurt, Aksu">Güzelyurt</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1aliler,_Aksu" title="Hacıaliler, Aksu">Hacıaliler</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0hsaniye,_Aksu" title="İhsaniye, Aksu">İhsaniye</a> |
+        <a href="//tr.wikipedia.org/wiki/Kara%C3%A7all%C4%B1" title="Karaçallı">Karaçallı</a> |
+        <a href="//tr.wikipedia.org/wiki/Kara%C3%B6z,_Aksu" title="Karaöz, Aksu">Karaöz</a> |
+        <a href="//tr.wikipedia.org/wiki/Kayadibi,_Aksu" title="Kayadibi, Aksu">Kayadibi</a> |
+        <a href="//tr.wikipedia.org/wiki/Kemera%C4%9Fz%C4%B1,_Aksu" title="Kemerağzı, Aksu">Kemerağzı</a> |
+        <a href="//tr.wikipedia.org/wiki/Konak,_Aksu" title="Konak, Aksu">Konak</a> |
+        <a href="//tr.wikipedia.org/wiki/Kumk%C3%B6y,_Aksu" title="Kumköy, Aksu">Kumköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Kundu" title="Kundu">Kundu</a> |
+        <a href="//tr.wikipedia.org/wiki/Kur%C5%9Funlu,_Aksu" title="Kurşunlu, Aksu">Kurşunlu</a> |
+        <a href="//tr.wikipedia.org/wiki/Macun,_Aksu" title="Macun, Aksu">Macun</a> |
+        <a href="//tr.wikipedia.org/wiki/Mand%C4%B1rlar" title="Mandırlar">Mandırlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Murtuna" title="Murtuna">Murtuna</a> |
+        <a href="//tr.wikipedia.org/wiki/P%C4%B1narl%C4%B1,_Aksu" title="Pınarlı, Aksu">Pınarlı</a> |
+        <a href="//tr.wikipedia.org/wiki/So%C4%9Fucaksu" title="Soğucaksu">Soğucaksu</a> |
+        <a href="//tr.wikipedia.org/wiki/Solak,_Aksu" title="Solak, Aksu">Solak</a> |
+        <a href="//tr.wikipedia.org/wiki/Topall%C4%B1,_Aksu" title="Topallı, Aksu">Topallı</a> |
+        <a href="//tr.wikipedia.org/wiki/Yenidumanlar" title="Yenidumanlar">Yenidumanlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Filkaraman" title="Yeşilkaraman">Yeşilkaraman</a> |
+        <a href="//tr.wikipedia.org/wiki/Yurtp%C4%B1nar,_Aksu" title="Yurtpınar, Aksu">Yurtpınar</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Alanya">Alanya</h2><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=3"
+                title="Değiştirilen bölüm: Alanya" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=3"
+                title="Bölümün kaynak kodunu değiştir: Alanya"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Alanya.svg"
+            class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/8/88/Antalya_location_Alanya.svg/250px-Antalya_location_Alanya.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/8/88/Antalya_location_Alanya.svg/500px-Antalya_location_Alanya.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Ak%C3%A7at%C4%B1,_Alanya" title="Akçatı, Alanya">Akçatı</a> |
+        <a href="//tr.wikipedia.org/wiki/Akdam,_Alanya" title="Akdam, Alanya">Akdam</a> |
+        <a href="//tr.wikipedia.org/wiki/Alacami,_Alanya" title="Alacami, Alanya">Alacami</a> |
+        <a href="//tr.wikipedia.org/wiki/Alara_(mahalle)" title="Alara (mahalle)">Alara</a> |
+        <a href="//tr.wikipedia.org/wiki/Aliefendi" title="Aliefendi">Aliefendi</a> |
+        <a href="//tr.wikipedia.org/wiki/Asmaca,_Alanya" title="Asmaca, Alanya">Asmaca</a> |
+        <a href="//tr.wikipedia.org/wiki/Avsallar" title="Avsallar">Avsallar</a> |
+        <a href="//tr.wikipedia.org/wiki/Badema%C4%9Fac%C4%B1,_Alanya" title="Bademağacı, Alanya">Bademağacı</a> |
+        <a href="//tr.wikipedia.org/wiki/Bas%C4%B1rl%C4%B1" title="Basırlı">Basırlı</a> |
+        <a href="//tr.wikipedia.org/wiki/Ba%C5%9Fk%C3%B6y,_Alanya" title="Başköy, Alanya">Başköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Bay%C4%B1rkoza%C4%9Fac%C4%B1" title="Bayırkozağacı">Bayırkozağacı</a> |
+        <a href="//tr.wikipedia.org/wiki/Bay%C4%B1rk%C3%B6y,_Alanya" title="Bayırköy, Alanya">Bayırköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Bekta%C5%9F,_Alanya" title="Bektaş, Alanya">Bektaş</a> |
+        <a href="//tr.wikipedia.org/wiki/Beldibi,_Alanya" title="Beldibi, Alanya">Beldibi</a> |
+        <a href="//tr.wikipedia.org/wiki/Beyreli,_Alanya" title="Beyreli, Alanya">Beyreli</a> |
+        <a href="//tr.wikipedia.org/wiki/B%C4%B1%C3%A7ak%C3%A7%C4%B1,_Alanya" title="Bıçakçı, Alanya">Bıçakçı</a> |
+        <a href="//tr.wikipedia.org/wiki/Bucakk%C3%B6y,_Alanya" title="Bucakköy, Alanya">Bucakköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Bur%C3%A7aklar" title="Burçaklar">Burçaklar</a> |
+        <a href="//tr.wikipedia.org/wiki/B%C3%BCy%C3%BCkhasbah%C3%A7e" title="Büyükhasbahçe">Büyükhasbahçe</a> |
+        <a href="//tr.wikipedia.org/wiki/B%C3%BCy%C3%BCkp%C4%B1nar,_Alanya" title="Büyükpınar, Alanya">Büyükpınar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87akallar,_Alanya" title="Çakallar, Alanya">Çakallar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87aml%C4%B1ca,_Alanya" title="Çamlıca, Alanya">Çamlıca</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ar%C5%9F%C4%B1,_Alanya" title="Çarşı, Alanya">Çarşı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87%C4%B1plakl%C4%B1,_Alanya" title="Çıplaklı, Alanya">Çıplaklı</a> |
+        <a href="//tr.wikipedia.org/wiki/Cikcilli" title="Cikcilli">Cikcilli</a> |
+        <a href="//tr.wikipedia.org/wiki/Cumhuriyet,_Alanya" title="Cumhuriyet, Alanya">Cumhuriyet</a> |
+        <a href="//tr.wikipedia.org/wiki/De%C4%9Firmendere,_Alanya" title="Değirmendere, Alanya">Değirmendere</a> |
+        <a href="//tr.wikipedia.org/wiki/Demirta%C5%9F,_Alanya" title="Demirtaş, Alanya">Demirtaş</a> |
+        <a href="//tr.wikipedia.org/wiki/Derek%C3%B6y,_Alanya" title="Dereköy, Alanya">Dereköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Dinek,_Alanya" title="Dinek, Alanya">Dinek</a> |
+        <a href="//tr.wikipedia.org/wiki/Elikesik" title="Elikesik">Elikesik</a> |
+        <a href="//tr.wikipedia.org/wiki/Emi%C5%9Fbeleni" title="Emişbeleni">Emişbeleni</a> |
+        <a href="//tr.wikipedia.org/wiki/Fak%C4%B1rcal%C4%B1" title="Fakırcalı">Fakırcalı</a> |
+        <a href="//tr.wikipedia.org/wiki/F%C4%B1%C4%9Fla" title="Fığla">Fığla</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6z%C3%BCb%C3%BCy%C3%BCk,_Alanya" title="Gözübüyük, Alanya">Gözübüyük</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6z%C3%BCk%C3%BC%C3%A7%C3%BCkl%C3%BC" title="Gözüküçüklü">Gözüküçüklü</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCllerp%C4%B1nar%C4%B1" title="Güllerpınarı">Güllerpınarı</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCm%C3%BC%C5%9Fg%C3%B6ze,_Alanya" title="Gümüşgöze, Alanya">Gümüşgöze</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCm%C3%BC%C5%9Fkavak,_Alanya" title="Gümüşkavak, Alanya">Gümüşkavak</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCneyk%C3%B6y,_Alanya" title="Güneyköy, Alanya">Güneyköy</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCzelba%C4%9F,_Alanya" title="Güzelbağ, Alanya">Güzelbağ</a> |
+        <a href="//tr.wikipedia.org/wiki/Hacet,_Alanya" title="Hacet, Alanya">Hacet</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1kerimler" title="Hacıkerimler">Hacıkerimler</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1mehmetli,_Alanya" title="Hacımehmetli, Alanya">Hacımehmetli</a> |
+        <a href="//tr.wikipedia.org/wiki/Hisari%C3%A7i,_Alanya" title="Hisariçi, Alanya">Hisariçi</a> |
+        <a href="//tr.wikipedia.org/wiki/Hocalar,_Alanya" title="Hocalar, Alanya">Hocalar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0maml%C4%B1,_Alanya" title="İmamlı, Alanya">İmamlı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0ncekum" title="İncekum">İncekum</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0shakl%C4%B1,_Alanya" title="İshaklı, Alanya">İshaklı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0spatl%C4%B1" title="İspatlı">İspatlı</a> |
+        <a href="//tr.wikipedia.org/wiki/Kad%C4%B1pa%C5%9Fa" title="Kadıpaşa">Kadıpaşa</a> |
+        <a href="//tr.wikipedia.org/wiki/Karakocal%C4%B1,_Alanya" title="Karakocalı, Alanya">Karakocalı</a> |
+        <a href="//tr.wikipedia.org/wiki/Karamanlar,_Alanya" title="Karamanlar, Alanya">Karamanlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Karap%C4%B1nar,_Alanya" title="Karapınar, Alanya">Karapınar</a> |
+        <a href="//tr.wikipedia.org/wiki/Karg%C4%B1cak,_Alanya" title="Kargıcak, Alanya">Kargıcak</a> |
+        <a href="//tr.wikipedia.org/wiki/Kayaba%C5%9F%C4%B1,_Alanya" title="Kayabaşı, Alanya">Kayabaşı</a> |
+        <a href="//tr.wikipedia.org/wiki/Kestel,_Alanya" title="Kestel, Alanya">Kestel</a> |
+        <a href="//tr.wikipedia.org/wiki/Ke%C5%9Fefli" title="Keşefli">Keşefli</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1z%C4%B1lca%C5%9Fehir" title="Kızılcaşehir">Kızılcaşehir</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1zlarp%C4%B1nar%C4%B1" title="Kızlarpınarı">Kızlarpınarı</a> |
+        <a href="//tr.wikipedia.org/wiki/Kocao%C4%9Flanl%C4%B1" title="Kocaoğlanlı">Kocaoğlanlı</a> |
+        <a href="//tr.wikipedia.org/wiki/Konakl%C4%B1,_Alanya" title="Konaklı, Alanya">Konaklı</a> |
+        <a href="//tr.wikipedia.org/wiki/Kuzyaka,_Alanya" title="Kuzyaka, Alanya">Kuzyaka</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C3%BC%C3%A7%C3%BCkhasbah%C3%A7e" title="Küçükhasbahçe">Küçükhasbahçe</a> |
+        <a href="//tr.wikipedia.org/wiki/Mahmutlar,_Alanya" title="Mahmutlar, Alanya">Mahmutlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Mahmutseydi" title="Mahmutseydi">Mahmutseydi</a> |
+        <a href="//tr.wikipedia.org/wiki/Oba,_Alanya" title="Oba, Alanya">Oba</a> |
+        <a href="//tr.wikipedia.org/wiki/Obaalacami" title="Obaalacami">Obaalacami</a> |
+        <a href="//tr.wikipedia.org/wiki/Okurcalar" title="Okurcalar">Okurcalar</a> |
+        <a href="//tr.wikipedia.org/wiki/Orhank%C3%B6y" title="Orhanköy">Orhanköy</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%96tek%C3%B6y" title="Öteköy">Öteköy</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%96zvadi" title="Özvadi">Özvadi</a> |
+        <a href="//tr.wikipedia.org/wiki/Pa%C5%9Fak%C3%B6y,_Alanya" title="Paşaköy, Alanya">Paşaköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Payallar" title="Payallar">Payallar</a> |
+        <a href="//tr.wikipedia.org/wiki/Saburlar" title="Saburlar">Saburlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Sapadere_(mahalle)" title="Sapadere (mahalle)">Sapadere</a> |
+        <a href="//tr.wikipedia.org/wiki/Saray,_Alanya" title="Saray, Alanya">Saray</a> |
+        <a href="//tr.wikipedia.org/wiki/Seki,_Alanya" title="Seki, Alanya">Seki</a> |
+        <a href="//tr.wikipedia.org/wiki/So%C4%9Fukp%C4%B1nar,_Alanya" title="Soğukpınar, Alanya">Soğukpınar</a> |
+        <a href="//tr.wikipedia.org/wiki/Sug%C3%B6z%C3%BC,_Alanya" title="Sugözü, Alanya">Sugözü</a> |
+        <a href="//tr.wikipedia.org/wiki/S%C3%BCleymanlar,_Alanya" title="Süleymanlar, Alanya">Süleymanlar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C5%9Eekerhane" title="Şekerhane">Şekerhane</a> |
+        <a href="//tr.wikipedia.org/wiki/%C5%9Eeyhler,_Alanya" title="Şeyhler, Alanya">Şeyhler</a> |
+        <a href="//tr.wikipedia.org/wiki/Ta%C5%9Fba%C5%9F%C4%B1,_Alanya" title="Taşbaşı, Alanya">Taşbaşı</a> |
+        <a href="//tr.wikipedia.org/wiki/Tepe,_Alanya" title="Tepe, Alanya">Tepe</a> |
+        <a href="//tr.wikipedia.org/wiki/T%C4%B1r%C4%B1lar" title="Tırılar">Tırılar</a> |
+        <a href="//tr.wikipedia.org/wiki/Tophane,_Alanya" title="Tophane, Alanya">Tophane</a> |
+        <a href="//tr.wikipedia.org/wiki/Toslak" title="Toslak">Toslak</a> |
+        <a href="//tr.wikipedia.org/wiki/Tosmur" title="Tosmur">Tosmur</a> |
+        <a href="//tr.wikipedia.org/wiki/T%C3%BCrkler,_Alanya" title="Türkler, Alanya">Türkler</a> |
+        <a href="//tr.wikipedia.org/wiki/T%C3%BCrkta%C5%9F" title="Türktaş">Türktaş</a> |
+        <a href="//tr.wikipedia.org/wiki/U%C4%9Frak,_Alanya" title="Uğrak, Alanya">Uğrak</a> |
+        <a href="//tr.wikipedia.org/wiki/U%C4%9Furlu,_Alanya" title="Uğurlu, Alanya">Uğurlu</a> |
+        <a href="//tr.wikipedia.org/wiki/Uzun%C3%B6z,_Alanya" title="Uzunöz, Alanya">Uzunöz</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%9Cz%C3%BCml%C3%BC,_Alanya" title="Üzümlü, Alanya">Üzümlü</a> |
+        <a href="//tr.wikipedia.org/wiki/Yal%C3%A7%C4%B1,_Alanya" class="mw-redirect" title="Yalçı, Alanya">Yalçı</a> |
+        <a href="//tr.wikipedia.org/wiki/Yas%C4%B1rali" title="Yasırali">Yasırali</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaylakonak,_Alanya" title="Yaylakonak, Alanya">Yaylakonak</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaylal%C4%B1,_Alanya" title="Yaylalı, Alanya">Yaylalı</a> |
+        <a href="//tr.wikipedia.org/wiki/Yenice,_Alanya" title="Yenice, Alanya">Yenice</a> |
+        <a href="//tr.wikipedia.org/wiki/Yenik%C3%B6y,_Alanya" title="Yeniköy, Alanya">Yeniköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Fil%C3%B6z,_Alanya" title="Yeşilöz, Alanya">Yeşilöz</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Demre">Demre</h2><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=4"
+                title="Değiştirilen bölüm: Demre" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=4"
+                title="Bölümün kaynak kodunu değiştir: Demre"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Demre.svg"
+            class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Antalya_location_Demre.svg/250px-Antalya_location_Demre.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Antalya_location_Demre.svg/500px-Antalya_location_Demre.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Alakent,_Demre" title="Alakent, Demre">Alakent</a> |
+        <a href="//tr.wikipedia.org/wiki/Bel%C3%B6ren,_Demre" title="Belören, Demre">Belören</a> |
+        <a href="//tr.wikipedia.org/wiki/Beymelek_(mahalle)" title="Beymelek (mahalle)">Beymelek</a> |
+        <a href="//tr.wikipedia.org/wiki/B%C3%BCy%C3%BCkkum" title="Büyükkum">Büyükkum</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87a%C4%9Fman" title="Çağman">Çağman</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87evreli,_Demre" title="Çevreli, Demre">Çevreli</a> |
+        <a href="//tr.wikipedia.org/wiki/Davazlar" title="Davazlar">Davazlar</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6kyaz%C4%B1,_Demre" title="Gökyazı, Demre">Gökyazı</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCrses,_Demre" title="Gürses, Demre">Gürses</a> |
+        <a href="//tr.wikipedia.org/wiki/Kale%C3%BC%C3%A7a%C4%9F%C4%B1z" title="Kaleüçağız">Kaleüçağız</a> |
+        <a href="//tr.wikipedia.org/wiki/Kapakl%C4%B1,_Demre" title="Kapaklı, Demre">Kapaklı</a> |
+        <a href="//tr.wikipedia.org/wiki/Karabucak,_Demre" title="Karabucak, Demre">Karabucak</a> |
+        <a href="//tr.wikipedia.org/wiki/Kayaalt%C4%B1,_Demre" title="Kayaaltı, Demre">Kayaaltı</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C3%B6%C5%9Fkerler" title="Köşkerler">Köşkerler</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C3%BC%C3%A7%C3%BCkkum" title="Küçükkum">Küçükkum</a> |
+        <a href="//tr.wikipedia.org/wiki/Yavu,_Demre" title="Yavu, Demre">Yavu</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaylakaya" title="Yaylakaya">Yaylakaya</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Döşemealtı"><span id="D.C3.B6.C5.9Femealt.C4.B1"></span>Döşemealtı</h2><span
+            class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=5"
+                title="Değiştirilen bölüm: Döşemealtı"
+                class="mw-editsection-visualeditor"><span>değiştir</span></a><span class="mw-editsection-divider"> |
+            </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=5"
+                title="Bölümün kaynak kodunu değiştir: Döşemealtı"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a
+            href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_D%C3%B6%C5%9Femealt%C4%B1.svg"
+            class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Antalya_location_D%C3%B6%C5%9Femealt%C4%B1.svg/250px-Antalya_location_D%C3%B6%C5%9Femealt%C4%B1.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Antalya_location_D%C3%B6%C5%9Femealt%C4%B1.svg/500px-Antalya_location_D%C3%B6%C5%9Femealt%C4%B1.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Ah%C4%B1rta%C5%9F" title="Ahırtaş">Ahırtaş</a> |
+        <a href="//tr.wikipedia.org/wiki/Akko%C3%A7,_D%C3%B6%C5%9Femealt%C4%B1" title="Akkoç, Döşemealtı">Akkoç</a> |
+        <a href="//tr.wikipedia.org/wiki/Alt%C4%B1nkale" title="Altınkale">Altınkale</a> |
+        <a href="//tr.wikipedia.org/wiki/A%C5%9Fa%C4%9F%C4%B1oba,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Aşağıoba, Döşemealtı">Aşağıoba</a> |
+        <a href="//tr.wikipedia.org/wiki/Ayanlar,_D%C3%B6%C5%9Femealt%C4%B1" title="Ayanlar, Döşemealtı">Ayanlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Ayd%C4%B1nlar,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Aydınlar, Döşemealtı">Aydınlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Badema%C4%9Fac%C4%B1,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Bademağacı, Döşemealtı">Bademağacı</a> |
+        <a href="//tr.wikipedia.org/wiki/Bah%C3%A7eyaka,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Bahçeyaka, Döşemealtı">Bahçeyaka</a> |
+        <a href="//tr.wikipedia.org/wiki/B%C4%B1y%C4%B1kl%C4%B1,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Bıyıklı, Döşemealtı">Bıyıklı</a> |
+        <a href="//tr.wikipedia.org/wiki/Camili,_D%C3%B6%C5%9Femealt%C4%B1" title="Camili, Döşemealtı">Camili</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87%C4%B1%C4%9Fl%C4%B1k,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Çığlık, Döşemealtı">Çığlık</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87%C4%B1plakl%C4%B1,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Çıplaklı, Döşemealtı">Çıplaklı</a> |
+        <a href="//tr.wikipedia.org/wiki/Da%C4%9Fbeli" title="Dağbeli">Dağbeli</a> |
+        <a href="//tr.wikipedia.org/wiki/Dereli,_D%C3%B6%C5%9Femealt%C4%B1" title="Dereli, Döşemealtı">Dereli</a> |
+        <a href="//tr.wikipedia.org/wiki/D%C3%BCzler%C3%A7am%C4%B1" title="Düzlerçamı">Düzlerçamı</a> |
+        <a href="//tr.wikipedia.org/wiki/Ek%C5%9Fili" title="Ekşili">Ekşili</a> |
+        <a href="//tr.wikipedia.org/wiki/Il%C4%B1cak%C3%B6y,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Ilıcaköy, Döşemealtı">Ilıcaköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Karaman,_D%C3%B6%C5%9Femealt%C4%B1" title="Karaman, Döşemealtı">Karaman</a> |
+        <a href="//tr.wikipedia.org/wiki/Karata%C5%9F,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Karataş, Döşemealtı">Karataş</a> |
+        <a href="//tr.wikipedia.org/wiki/Karaveliler,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Karaveliler, Döşemealtı">Karaveliler</a> |
+        <a href="//tr.wikipedia.org/wiki/Kev%C5%9Firler" title="Kevşirler">Kevşirler</a> |
+        <a href="//tr.wikipedia.org/wiki/Killik,_D%C3%B6%C5%9Femealt%C4%B1" title="Killik, Döşemealtı">Killik</a> |
+        <a href="//tr.wikipedia.org/wiki/Kovanl%C4%B1k,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Kovanlık, Döşemealtı">Kovanlık</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C3%B6m%C3%BCrc%C3%BCler,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Kömürcüler, Döşemealtı">Kömürcüler</a> |
+        <a href="//tr.wikipedia.org/wiki/Nebiler,_D%C3%B6%C5%9Femealt%C4%B1" title="Nebiler, Döşemealtı">Nebiler</a> |
+        <a href="//tr.wikipedia.org/wiki/Orta,_D%C3%B6%C5%9Femealt%C4%B1" title="Orta, Döşemealtı">Orta</a> |
+        <a href="//tr.wikipedia.org/wiki/Selimiye,_D%C3%B6%C5%9Femealt%C4%B1" title="Selimiye, Döşemealtı">Selimiye</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/Tomalar" title="Tomalar">Tomalar</a> |
+        <a href="//tr.wikipedia.org/wiki/Ya%C4%9Fca,_D%C3%B6%C5%9Femealt%C4%B1" title="Yağca, Döşemealtı">Yağca</a> |
+        <a href="//tr.wikipedia.org/wiki/Yal%C4%B1nl%C4%B1,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Yalınlı, Döşemealtı">Yalınlı</a> |
+        <a href="//tr.wikipedia.org/wiki/Yenik%C3%B6y,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Yeniköy, Döşemealtı">Yeniköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Filbay%C4%B1r,_D%C3%B6%C5%9Femealt%C4%B1"
+            title="Yeşilbayır, Döşemealtı">Yeşilbayır</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Elmalı"><span id="Elmal.C4.B1"></span>Elmalı</h2><span class="mw-editsection"><span
+                class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=6"
+                title="Değiştirilen bölüm: Elmalı" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=6"
+                title="Bölümün kaynak kodunu değiştir: Elmalı"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a
+            href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Elmal%C4%B1.svg" class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/7/73/Antalya_location_Elmal%C4%B1.svg/250px-Antalya_location_Elmal%C4%B1.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/7/73/Antalya_location_Elmal%C4%B1.svg/500px-Antalya_location_Elmal%C4%B1.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Af%C5%9Far,_Elmal%C4%B1" title="Afşar, Elmalı">Afşar</a> |
+        <a href="//tr.wikipedia.org/wiki/Ahatl%C4%B1,_Elmal%C4%B1" title="Ahatlı, Elmalı">Ahatlı</a> |
+        <a href="//tr.wikipedia.org/wiki/Ak%C3%A7aeni%C5%9F" title="Akçaeniş">Akçaeniş</a> |
+        <a href="//tr.wikipedia.org/wiki/Ak%C3%A7ay,_Elmal%C4%B1" title="Akçay, Elmalı">Akçay</a> |
+        <a href="//tr.wikipedia.org/wiki/Armutlu,_Elmal%C4%B1" title="Armutlu, Elmalı">Armutlu</a> |
+        <a href="//tr.wikipedia.org/wiki/Bay%C4%B1nd%C4%B1r,_Elmal%C4%B1" title="Bayındır, Elmalı">Bayındır</a> |
+        <a href="//tr.wikipedia.org/wiki/Bayralar" title="Bayralar">Bayralar</a> |
+        <a href="//tr.wikipedia.org/wiki/Beyler,_Elmal%C4%B1" title="Beyler, Elmalı">Beyler</a> |
+        <a href="//tr.wikipedia.org/wiki/Bozh%C3%BCy%C3%BCk,_Elmal%C4%B1" title="Bozhüyük, Elmalı">Bozhüyük</a> |
+        <a href="//tr.wikipedia.org/wiki/B%C3%BCy%C3%BCks%C3%B6%C4%9Fle" title="Büyüksöğle">Büyüksöğle</a> |
+        <a href="//tr.wikipedia.org/wiki/Camiatik,_Elmal%C4%B1" title="Camiatik, Elmalı">Camiatik</a> |
+        <a href="//tr.wikipedia.org/wiki/Camicedit,_Elmal%C4%B1" title="Camicedit, Elmalı">Camicedit</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ayba%C5%9F%C4%B1,_Elmal%C4%B1" title="Çaybaşı, Elmalı">Çaybaşı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87obanisa,_Elmal%C4%B1" title="Çobanisa, Elmalı">Çobanisa</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ukurelma,_Elmal%C4%B1" title="Çukurelma, Elmalı">Çukurelma</a> |
+        <a href="//tr.wikipedia.org/wiki/Derek%C3%B6y,_Elmal%C4%B1" title="Dereköy, Elmalı">Dereköy</a> |
+        <a href="//tr.wikipedia.org/wiki/D%C3%BCdenk%C3%B6y,_Elmal%C4%B1" title="Düdenköy, Elmalı">Düdenköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Eskihisar,_Elmal%C4%B1" title="Eskihisar, Elmalı">Eskihisar</a> |
+        <a href="//tr.wikipedia.org/wiki/Eymir,_Elmal%C4%B1" title="Eymir, Elmalı">Eymir</a> |
+        <a href="//tr.wikipedia.org/wiki/Ge%C3%A7itk%C3%B6y,_Elmal%C4%B1" title="Geçitköy, Elmalı">Geçitköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Ge%C3%A7men" title="Geçmen">Geçmen</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6kp%C4%B1nar,_Elmal%C4%B1" title="Gökpınar, Elmalı">Gökpınar</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6ltarla,_Elmal%C4%B1" title="Göltarla, Elmalı">Göltarla</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCm%C3%BC%C5%9Fyaka,_Elmal%C4%B1" title="Gümüşyaka, Elmalı">Gümüşyaka</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCndo%C4%9Fan,_Elmal%C4%B1" title="Gündoğan, Elmalı">Gündoğan</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1musalar,_Elmal%C4%B1" title="Hacımusalar, Elmalı">Hacımusalar</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1yusuflar,_Elmal%C4%B1" title="Hacıyusuflar, Elmalı">Hacıyusuflar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0lya%C4%9F%C4%B1" title="İlyağı">İlyağı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0mircik,_Elmal%C4%B1" title="İmircik, Elmalı">İmircik</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0plikpazar%C4%B1" title="İplikpazarı">İplikpazarı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0slamlar,_Elmal%C4%B1" title="İslamlar, Elmalı">İslamlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Kapmescit" title="Kapmescit">Kapmescit</a> |
+        <a href="//tr.wikipedia.org/wiki/Karak%C3%B6y,_Elmal%C4%B1" title="Karaköy, Elmalı">Karaköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Karam%C4%B1k,_Elmal%C4%B1" title="Karamık, Elmalı">Karamık</a> |
+        <a href="//tr.wikipedia.org/wiki/Karya%C4%9Fd%C4%B1,_Elmal%C4%B1" title="Karyağdı, Elmalı">Karyağdı</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1%C5%9Flak%C3%B6y,_Elmal%C4%B1" title="Kışlaköy, Elmalı">Kışlaköy</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1z%C4%B1lca,_Elmal%C4%B1" title="Kızılca, Elmalı">Kızılca</a> |
+        <a href="//tr.wikipedia.org/wiki/Kocap%C4%B1nar,_Elmal%C4%B1" title="Kocapınar, Elmalı">Kocapınar</a> |
+        <a href="//tr.wikipedia.org/wiki/Kuzk%C3%B6y,_Elmal%C4%B1" title="Kuzköy, Elmalı">Kuzköy</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C3%BC%C3%A7%C3%BCks%C3%B6%C4%9Fle" title="Küçüksöğle">Küçüksöğle</a> |
+        <a href="//tr.wikipedia.org/wiki/Macun,_Elmal%C4%B1" title="Macun, Elmalı">Macun</a> |
+        <a href="//tr.wikipedia.org/wiki/Mursal,_Elmal%C4%B1" title="Mursal, Elmalı">Mursal</a> |
+        <a href="//tr.wikipedia.org/wiki/M%C3%BCren" title="Müren">Müren</a> |
+        <a href="//tr.wikipedia.org/wiki/Ovac%C4%B1k,_Elmal%C4%B1" title="Ovacık, Elmalı">Ovacık</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%96zdemir,_Elmal%C4%B1" title="Özdemir, Elmalı">Özdemir</a> |
+        <a href="//tr.wikipedia.org/wiki/Pirhasanlar" title="Pirhasanlar">Pirhasanlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Salur,_Elmal%C4%B1" title="Salur, Elmalı">Salur</a> |
+        <a href="//tr.wikipedia.org/wiki/Sar%C4%B1lar,_Elmal%C4%B1" title="Sarılar, Elmalı">Sarılar</a> |
+        <a href="//tr.wikipedia.org/wiki/Tahtamescit" title="Tahtamescit">Tahtamescit</a> |
+        <a href="//tr.wikipedia.org/wiki/Tavullar" title="Tavullar">Tavullar</a> |
+        <a href="//tr.wikipedia.org/wiki/Tekkek%C3%B6y,_Elmal%C4%B1" title="Tekkeköy, Elmalı">Tekkeköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Toklular,_Elmal%C4%B1" title="Toklular, Elmalı">Toklular</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaka%C3%A7iftlikk%C3%B6y%C3%BC" title="Yakaçiftlikköyü">Yakaçiftlikköyü</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaln%C4%B1zdam,_Elmal%C4%B1" title="Yalnızdam, Elmalı">Yalnızdam</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaprakl%C4%B1,_Elmal%C4%B1" title="Yapraklı, Elmalı">Yapraklı</a> |
+        <a href="//tr.wikipedia.org/wiki/Yeni,_Elmal%C4%B1" title="Yeni, Elmalı">Yeni</a> |
+        <a href="//tr.wikipedia.org/wiki/Y%C4%B1lmazl%C4%B1" title="Yılmazlı">Yılmazlı</a> |
+        <a href="//tr.wikipedia.org/wiki/Y%C3%B6renler" title="Yörenler">Yörenler</a> |
+        <a href="//tr.wikipedia.org/wiki/Yuva,_Elmal%C4%B1" title="Yuva, Elmalı">Yuva</a> |
+        <a href="//tr.wikipedia.org/wiki/Z%C3%BCmr%C3%BCtova,_Elmal%C4%B1" title="Zümrütova, Elmalı">Zümrütova</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Finike">Finike</h2><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=7"
+                title="Değiştirilen bölüm: Finike" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=7"
+                title="Bölümün kaynak kodunu değiştir: Finike"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Finike.svg"
+            class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/8/82/Antalya_location_Finike.svg/250px-Antalya_location_Finike.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/8/82/Antalya_location_Finike.svg/500px-Antalya_location_Finike.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Ak%C3%A7aalan,_Finike" title="Akçaalan, Finike">Akçaalan</a> |
+        <a href="//tr.wikipedia.org/wiki/Alacada%C4%9F_(mahalle)" title="Alacadağ (mahalle)">Alacadağ</a> |
+        <a href="//tr.wikipedia.org/wiki/Arif_(mahalle)" title="Arif (mahalle)">Arif</a> |
+        <a href="//tr.wikipedia.org/wiki/Asar%C3%B6n%C3%BC" title="Asarönü">Asarönü</a> |
+        <a href="//tr.wikipedia.org/wiki/Bolda%C4%9F" title="Boldağ">Boldağ</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87aml%C4%B1bel,_Finike" title="Çamlıbel, Finike">Çamlıbel</a> |
+        <a href="//tr.wikipedia.org/wiki/Da%C4%9Fba%C4%9F" title="Dağbağ">Dağbağ</a> |
+        <a href="//tr.wikipedia.org/wiki/Ernez" title="Ernez">Ernez</a> |
+        <a href="//tr.wikipedia.org/wiki/Eski,_Finike" title="Eski, Finike">Eski</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6kb%C3%BCk" title="Gökbük">Gökbük</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6k%C3%A7eyaka,_Finike" title="Gökçeyaka, Finike">Gökçeyaka</a> |
+        <a href="//tr.wikipedia.org/wiki/Hasyurt" title="Hasyurt">Hasyurt</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0skele,_Finike" title="İskele, Finike">İskele</a> |
+        <a href="//tr.wikipedia.org/wiki/Kale,_Finike" title="Kale, Finike">Kale</a> |
+        <a href="//tr.wikipedia.org/wiki/Kar%C5%9F%C4%B1yaka,_Finike" title="Karşıyaka, Finike">Karşıyaka</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1z%C4%B1lca,_Finike" title="Kızılca, Finike">Kızılca</a> |
+        <a href="//tr.wikipedia.org/wiki/Kum,_Finike" title="Kum, Finike">Kum</a> |
+        <a href="//tr.wikipedia.org/wiki/Sahilkent,_Finike" title="Sahilkent, Finike">Sahilkent</a> |
+        <a href="//tr.wikipedia.org/wiki/Sakl%C4%B1su" title="Saklısu">Saklısu</a> |
+        <a href="//tr.wikipedia.org/wiki/Turun%C3%A7ova" title="Turunçova">Turunçova</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaln%C4%B1z,_Finike" title="Yalnız, Finike">Yalnız</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaz%C4%B1r,_Finike" title="Yazır, Finike">Yazır</a> |
+        <a href="//tr.wikipedia.org/wiki/Yeni,_Finike" title="Yeni, Finike">Yeni</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Filk%C3%B6y,_Finike" title="Yeşilköy, Finike">Yeşilköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Filyurt,_Finike" title="Yeşilyurt, Finike">Yeşilyurt</a> |
+        <a href="//tr.wikipedia.org/wiki/Yuval%C4%B1,_Finike" title="Yuvalı, Finike">Yuvalı</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Gazipaşa"><span id="Gazipa.C5.9Fa"></span>Gazipaşa</h2><span class="mw-editsection"><span
+                class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=8"
+                title="Değiştirilen bölüm: Gazipaşa" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=8"
+                title="Bölümün kaynak kodunu değiştir: Gazipaşa"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a
+            href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Gazipa%C5%9Fa.svg" class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Antalya_location_Gazipa%C5%9Fa.svg/250px-Antalya_location_Gazipa%C5%9Fa.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Antalya_location_Gazipa%C5%9Fa.svg/500px-Antalya_location_Gazipa%C5%9Fa.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Akoluk,_Gazipa%C5%9Fa" title="Akoluk, Gazipaşa">Akoluk</a> |
+        <a href="//tr.wikipedia.org/wiki/Ayd%C4%B1n,_Gazipa%C5%9Fa" title="Aydın, Gazipaşa">Aydın</a> |
+        <a href="//tr.wikipedia.org/wiki/Ayd%C4%B1nc%C4%B1k,_Gazipa%C5%9Fa" title="Aydıncık, Gazipaşa">Aydıncık</a> |
+        <a href="//tr.wikipedia.org/wiki/Bak%C4%B1lar" title="Bakılar">Bakılar</a> |
+        <a href="//tr.wikipedia.org/wiki/Beyobas%C4%B1,_Gazipa%C5%9Fa" title="Beyobası, Gazipaşa">Beyobası</a> |
+        <a href="//tr.wikipedia.org/wiki/Beyrebucak" title="Beyrebucak">Beyrebucak</a> |
+        <a href="//tr.wikipedia.org/wiki/Cumhuriyet,_Gazipa%C5%9Fa" title="Cumhuriyet, Gazipaşa">Cumhuriyet</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87akmak,_Gazipa%C5%9Fa" title="Çakmak, Gazipaşa">Çakmak</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87al%C4%B1p%C4%B1nar" title="Çalıpınar">Çalıpınar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87aml%C4%B1ca,_Gazipa%C5%9Fa" title="Çamlıca, Gazipaşa">Çamlıca</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87%C4%B1%C4%9Fl%C4%B1k,_Gazipa%C5%9Fa" title="Çığlık, Gazipaşa">Çığlık</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ile,_Gazipa%C5%9Fa" title="Çile, Gazipaşa">Çile</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87imenba%C4%9F" title="Çimenbağ">Çimenbağ</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87obanlar,_Gazipa%C5%9Fa" title="Çobanlar, Gazipaşa">Çobanlar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87%C3%B6r%C3%BC%C5%9F,_Gazipa%C5%9Fa" title="Çörüş, Gazipaşa">Çörüş</a> |
+        <a href="//tr.wikipedia.org/wiki/Do%C4%9Fanca,_Gazipa%C5%9Fa" title="Doğanca, Gazipaşa">Doğanca</a> |
+        <a href="//tr.wikipedia.org/wiki/Ekmel_(mahalle)" title="Ekmel (mahalle)">Ekmel</a> |
+        <a href="//tr.wikipedia.org/wiki/Esenp%C4%B1nar,_Gazipa%C5%9Fa" title="Esenpınar, Gazipaşa">Esenpınar</a> |
+        <a href="//tr.wikipedia.org/wiki/Esentepe,_Gazipa%C5%9Fa" title="Esentepe, Gazipaşa">Esentepe</a> |
+        <a href="//tr.wikipedia.org/wiki/Gazi,_Gazipa%C5%9Fa" title="Gazi, Gazipaşa">Gazi</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6%C3%A7%C3%BCk,_Gazipa%C5%9Fa" title="Göçük, Gazipaşa">Göçük</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6k%C3%A7ebelen,_Gazipa%C5%9Fa"
+            title="Gökçebelen, Gazipaşa">Gökçebelen</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6k%C3%A7esaray,_Gazipa%C5%9Fa"
+            title="Gökçesaray, Gazipaşa">Gökçesaray</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCneyk%C3%B6y,_Gazipa%C5%9Fa" title="Güneyköy, Gazipaşa">Güneyköy</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCr%C3%A7am,_Gazipa%C5%9Fa" title="Gürçam, Gazipaşa">Gürçam</a> |
+        <a href="//tr.wikipedia.org/wiki/Hasdere" title="Hasdere">Hasdere</a> |
+        <a href="//tr.wikipedia.org/wiki/Il%C4%B1cak%C3%B6y,_Gazipa%C5%9Fa" title="Ilıcaköy, Gazipaşa">Ilıcaköy</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0nalk%C3%B6y" title="İnalköy">İnalköy</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0nce%C4%9Fiz,_Gazipa%C5%9Fa" title="İnceğiz, Gazipaşa">İnceğiz</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0stiklal,_Gazipa%C5%9Fa" title="İstiklal, Gazipaşa">İstiklal</a> |
+        <a href="//tr.wikipedia.org/wiki/Kahyalar,_Gazipa%C5%9Fa" title="Kahyalar, Gazipaşa">Kahyalar</a> |
+        <a href="//tr.wikipedia.org/wiki/Kara%C3%A7ukur,_Gazipa%C5%9Fa" title="Karaçukur, Gazipaşa">Karaçukur</a> |
+        <a href="//tr.wikipedia.org/wiki/Karalar,_Gazipa%C5%9Fa" title="Karalar, Gazipaşa">Karalar</a> |
+        <a href="//tr.wikipedia.org/wiki/Karatepe,_Gazipa%C5%9Fa" title="Karatepe, Gazipaşa">Karatepe</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1rahmetler,_Gazipa%C5%9Fa" title="Kırahmetler, Gazipaşa">Kırahmetler</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1z%C4%B1lg%C3%BCney,_Gazipa%C5%9Fa"
+            title="Kızılgüney, Gazipaşa">Kızılgüney</a> |
+        <a href="//tr.wikipedia.org/wiki/Koru,_Gazipa%C5%9Fa" title="Koru, Gazipaşa">Koru</a> |
+        <a href="//tr.wikipedia.org/wiki/Koruba%C5%9F%C4%B1,_Gazipa%C5%9Fa" title="Korubaşı, Gazipaşa">Korubaşı</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C3%BC%C3%A7%C3%BCkl%C3%BC,_Gazipa%C5%9Fa"
+            title="Küçüklü, Gazipaşa">Küçüklü</a> |
+        <a href="//tr.wikipedia.org/wiki/Macark%C3%B6y" title="Macarköy">Macarköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Muzkent" title="Muzkent">Muzkent</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%96znurtepe" title="Öznurtepe">Öznurtepe</a> |
+        <a href="//tr.wikipedia.org/wiki/Pazarc%C4%B1,_Gazipa%C5%9Fa" title="Pazarcı, Gazipaşa">Pazarcı</a> |
+        <a href="//tr.wikipedia.org/wiki/Sar%C4%B1a%C4%9Fa%C3%A7,_Gazipa%C5%9Fa" title="Sarıağaç, Gazipaşa">Sarıağaç</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/Sug%C3%B6z%C3%BC,_Gazipa%C5%9Fa" title="Sugözü, Gazipaşa">Sugözü</a> |
+        <a href="//tr.wikipedia.org/wiki/%C5%9Eahinler,_Gazipa%C5%9Fa" title="Şahinler, Gazipaşa">Şahinler</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%9C%C3%A7konak,_Gazipa%C5%9Fa" title="Üçkonak, Gazipaşa">Üçkonak</a> |
+        <a href="//tr.wikipedia.org/wiki/Yakac%C4%B1k,_Gazipa%C5%9Fa" title="Yakacık, Gazipaşa">Yakacık</a> |
+        <a href="//tr.wikipedia.org/wiki/Yeni,_Gazipa%C5%9Fa" title="Yeni, Gazipaşa">Yeni</a> |
+        <a href="//tr.wikipedia.org/wiki/Yenig%C3%BCney,_Gazipa%C5%9Fa" title="Yenigüney, Gazipaşa">Yenigüney</a> |
+        <a href="//tr.wikipedia.org/wiki/Yenik%C3%B6y,_Gazipa%C5%9Fa" title="Yeniköy, Gazipaşa">Yeniköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Filyurt,_Gazipa%C5%9Fa" title="Yeşilyurt, Gazipaşa">Yeşilyurt</a> |
+        <a href="//tr.wikipedia.org/wiki/Zeytinada" title="Zeytinada">Zeytinada</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Gündoğmuş"><span id="G.C3.BCndo.C4.9Fmu.C5.9F"></span>Gündoğmuş</h2><span class="mw-editsection"><span
+                class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=9"
+                title="Değiştirilen bölüm: Gündoğmuş" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=9"
+                title="Bölümün kaynak kodunu değiştir: Gündoğmuş"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a
+            href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_G%C3%BCndo%C4%9Fmu%C5%9F.svg"
+            class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/2/20/Antalya_location_G%C3%BCndo%C4%9Fmu%C5%9F.svg/250px-Antalya_location_G%C3%BCndo%C4%9Fmu%C5%9F.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/2/20/Antalya_location_G%C3%BCndo%C4%9Fmu%C5%9F.svg/500px-Antalya_location_G%C3%BCndo%C4%9Fmu%C5%9F.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Akyar%C4%B1,_G%C3%BCndo%C4%9Fmu%C5%9F" class="mw-redirect"
+            title="Akyarı, Gündoğmuş">Akyarı</a> |
+        <a href="//tr.wikipedia.org/wiki/Balkaya,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Balkaya, Gündoğmuş">Balkaya</a> |
+        <a href="//tr.wikipedia.org/w/index.php?title=Bay%C4%B1rkoza%C4%9Fac%C4%B1,_G%C3%BCndo%C4%9Fmu%C5%9F&amp;action=edit&amp;redlink=1"
+            class="new" title="Bayırkozağacı, Gündoğmuş (sayfa mevcut değil)">Bayırkozağacı</a> |
+        <a href="//tr.wikipedia.org/w/index.php?title=Bay%C4%B1rk%C3%B6y,_G%C3%BCndo%C4%9Fmu%C5%9F&amp;action=edit&amp;redlink=1"
+            class="new" title="Bayırköy, Gündoğmuş (sayfa mevcut değil)">Bayırköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Beden,_G%C3%BCndo%C4%9Fmu%C5%9F" class="mw-redirect"
+            title="Beden, Gündoğmuş">Beden</a> |
+        <a href="//tr.wikipedia.org/w/index.php?title=Bur%C3%A7aklar,_G%C3%BCndo%C4%9Fmu%C5%9F&amp;action=edit&amp;redlink=1"
+            class="new" title="Burçaklar, Gündoğmuş (sayfa mevcut değil)">Burçaklar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87alt%C4%B1,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Çaltı, Gündoğmuş">Çaltı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87aml%C4%B1alan,_G%C3%BCndo%C4%9Fmu%C5%9F"
+            title="Çamlıalan, Gündoğmuş">Çamlıalan</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ay%C4%B1r%C3%B6z%C3%BC,_G%C3%BCndo%C4%9Fmu%C5%9F"
+            title="Çayırözü, Gündoğmuş">Çayırözü</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87i%C3%A7ekoluk,_G%C3%BCndo%C4%9Fmu%C5%9F"
+            title="Çiçekoluk, Gündoğmuş">Çiçekoluk</a> |
+        <a href="//tr.wikipedia.org/wiki/Eskiba%C4%9F,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Eskibağ, Gündoğmuş">Eskibağ</a>
+        |
+        <a href="//tr.wikipedia.org/w/index.php?title=G%C3%B6z%C3%BCb%C3%BCy%C3%BCk,_G%C3%BCndo%C4%9Fmu%C5%9F&amp;action=edit&amp;redlink=1"
+            class="new" title="Gözübüyük, Gündoğmuş (sayfa mevcut değil)">Gözübüyük</a> |
+        <a href="//tr.wikipedia.org/w/index.php?title=G%C3%BCm%C3%BC%C5%9Fg%C3%B6ze,_G%C3%BCndo%C4%9Fmu%C5%9F&amp;action=edit&amp;redlink=1"
+            class="new" title="Gümüşgöze, Gündoğmuş (sayfa mevcut değil)">Gümüşgöze</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCneycik,_G%C3%BCndo%C4%9Fmu%C5%9F"
+            title="Güneycik, Gündoğmuş">Güneycik</a> |
+        <a href="//tr.wikipedia.org/w/index.php?title=G%C3%BCneyk%C3%B6y,_G%C3%BCndo%C4%9Fmu%C5%9F&amp;action=edit&amp;redlink=1"
+            class="new" title="Güneyköy, Gündoğmuş (sayfa mevcut değil)">Güneyköy</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCneyyaka,_G%C3%BCndo%C4%9Fmu%C5%9F"
+            title="Güneyyaka, Gündoğmuş">Güneyyaka</a> |
+        <a href="//tr.wikipedia.org/wiki/Kalecik,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Kalecik, Gündoğmuş">Kalecik</a> |
+        <a href="//tr.wikipedia.org/wiki/Karabul,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Karabul, Gündoğmuş">Karabul</a> |
+        <a href="//tr.wikipedia.org/wiki/Karadere,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Karadere, Gündoğmuş">Karadere</a> |
+        <a href="//tr.wikipedia.org/wiki/Karaisa,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Karaisa, Gündoğmuş">Karaisa</a> |
+        <a href="//tr.wikipedia.org/wiki/Karak%C3%B6y,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Karaköy, Gündoğmuş">Karaköy</a>
+        |
+        <a href="//tr.wikipedia.org/w/index.php?title=Karamanlar,_G%C3%BCndo%C4%9Fmu%C5%9F&amp;action=edit&amp;redlink=1"
+            class="new" title="Karamanlar, Gündoğmuş (sayfa mevcut değil)">Karamanlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Kayab%C3%BCk%C3%BC,_G%C3%BCndo%C4%9Fmu%C5%9F"
+            title="Kayabükü, Gündoğmuş">Kayabükü</a> |
+        <a href="//tr.wikipedia.org/wiki/Koza%C4%9Fac%C4%B1,_G%C3%BCndo%C4%9Fmu%C5%9F"
+            title="Kozağacı, Gündoğmuş">Kozağacı</a> |
+        <a href="//tr.wikipedia.org/wiki/Nara%C4%9Fac%C4%B1,_G%C3%BCndo%C4%9Fmu%C5%9F"
+            title="Narağacı, Gündoğmuş">Narağacı</a> |
+        <a href="//tr.wikipedia.org/wiki/Orhank%C3%B6y,_G%C3%BCndo%C4%9Fmu%C5%9F" class="mw-redirect"
+            title="Orhanköy, Gündoğmuş">Orhanköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Ortakonu%C5%9F,_G%C3%BCndo%C4%9Fmu%C5%9F"
+            title="Ortakonuş, Gündoğmuş">Ortakonuş</a> |
+        <a href="//tr.wikipedia.org/wiki/Pembelik,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Pembelik, Gündoğmuş">Pembelik</a> |
+        <a href="//tr.wikipedia.org/wiki/Serinyaka,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Serinyaka, Gündoğmuş">Serinyaka</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/Umutlu,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Umutlu, Gündoğmuş">Umutlu</a> |
+        <a href="//tr.wikipedia.org/w/index.php?title=Yenice,_G%C3%BCndo%C4%9Fmu%C5%9F&amp;action=edit&amp;redlink=1"
+            class="new" title="Yenice, Gündoğmuş (sayfa mevcut değil)">Yenice</a> |
+        <a href="//tr.wikipedia.org/wiki/Yenik%C3%B6y,_G%C3%BCndo%C4%9Fmu%C5%9F" title="Yeniköy, Gündoğmuş">Yeniköy</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="İbradı"><span id=".C4.B0brad.C4.B1"></span>İbradı</h2><span class="mw-editsection"><span
+                class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=10"
+                title="Değiştirilen bölüm: İbradı" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=10"
+                title="Bölümün kaynak kodunu değiştir: İbradı"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a
+            href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_%C4%B0bradi.svg" class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Antalya_location_%C4%B0bradi.svg/250px-Antalya_location_%C4%B0bradi.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Antalya_location_%C4%B0bradi.svg/500px-Antalya_location_%C4%B0bradi.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Ba%C5%9Flar,_%C4%B0brad%C4%B1" title="Başlar, İbradı">Başlar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%9Cr%C3%BCnl%C3%BC,_%C4%B0brad%C4%B1" title="Ürünlü, İbradı">Ürünlü</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%9Cz%C3%BCmdere,_%C4%B0brad%C4%B1" title="Üzümdere, İbradı">Üzümdere</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Kaş"><span id="Ka.C5.9F"></span>Kaş</h2><span class="mw-editsection"><span
+                class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=11"
+                title="Değiştirilen bölüm: Kaş" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=11"
+                title="Bölümün kaynak kodunu değiştir: Kaş"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a
+            href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Ka%C5%9F.svg" class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/9/99/Antalya_location_Ka%C5%9F.svg/250px-Antalya_location_Ka%C5%9F.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/9/99/Antalya_location_Ka%C5%9F.svg/500px-Antalya_location_Ka%C5%9F.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Agullu,_Ka%C5%9F" class="mw-redirect" title="Agullu, Kaş">Agullu</a> |
+        <a href="//tr.wikipedia.org/wiki/Ahatl%C4%B1,_Ka%C5%9F" title="Ahatlı, Kaş">Ahatlı</a> |
+        <a href="//tr.wikipedia.org/wiki/Aklar,_Ka%C5%9F" title="Aklar, Kaş">Aklar</a> |
+        <a href="//tr.wikipedia.org/wiki/Ak%C3%B6r%C3%BC,_Ka%C5%9F" title="Akörü, Kaş">Akörü</a> |
+        <a href="//tr.wikipedia.org/wiki/Bay%C4%B1nd%C4%B1r,_Ka%C5%9F" title="Bayındır, Kaş">Bayındır</a> |
+        <a href="//tr.wikipedia.org/wiki/Beldibi,_Ka%C5%9F" title="Beldibi, Kaş">Beldibi</a> |
+        <a href="//tr.wikipedia.org/wiki/Belenli,_Ka%C5%9F" title="Belenli, Kaş">Belenli</a> |
+        <a href="//tr.wikipedia.org/wiki/Belkonak,_Ka%C5%9F" title="Belkonak, Kaş">Belkonak</a> |
+        <a href="//tr.wikipedia.org/wiki/Bezirgan,_Ka%C5%9F" title="Bezirgan, Kaş">Bezirgan</a> |
+        <a href="//tr.wikipedia.org/wiki/Bo%C4%9Fazc%C4%B1k,_Ka%C5%9F" class="mw-redirect"
+            title="Boğazcık, Kaş">Boğazcık</a> |
+        <a href="//tr.wikipedia.org/wiki/Cemre,_Ka%C5%9F" title="Cemre, Kaş">Cemre</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87aml%C4%B1k%C3%B6y,_Ka%C5%9F" title="Çamlıköy, Kaş">Çamlıköy</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87aml%C4%B1ova,_Ka%C5%9F" title="Çamlıova, Kaş">Çamlıova</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ataloluk,_Ka%C5%9F" title="Çataloluk, Kaş">Çataloluk</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87avd%C4%B1r,_Ka%C5%9F" title="Çavdır, Kaş">Çavdır</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ayk%C3%B6y,_Ka%C5%9F" title="Çayköy, Kaş">Çayköy</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87erler,_Ka%C5%9F" title="Çerler, Kaş">Çerler</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87e%C5%9Fmek%C3%B6y,_Ka%C5%9F" title="Çeşmeköy, Kaş">Çeşmeköy</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ukurba%C4%9F,_Ka%C5%9F" title="Çukurbağ, Kaş">Çukurbağ</a> |
+        <a href="//tr.wikipedia.org/wiki/Derek%C3%B6y,_Ka%C5%9F" title="Dereköy, Kaş">Dereköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Dirgenler,_Ka%C5%9F" title="Dirgenler, Kaş">Dirgenler</a> |
+        <a href="//tr.wikipedia.org/wiki/Do%C4%9Fanta%C5%9F,_Ka%C5%9F" title="Doğantaş, Kaş">Doğantaş</a> |
+        <a href="//tr.wikipedia.org/wiki/Gelemi%C5%9F,_Ka%C5%9F" title="Gelemiş, Kaş">Gelemiş</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6k%C3%A7e%C3%B6ren,_Ka%C5%9F" title="Gökçeören, Kaş">Gökçeören</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6k%C3%A7eyaz%C4%B1,_Ka%C5%9F" title="Gökçeyazı, Kaş">Gökçeyazı</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCrsu,_Ka%C5%9F" title="Gürsu, Kaş">Gürsu</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1o%C4%9Flan,_Ka%C5%9F" title="Hacıoğlan, Kaş">Hacıoğlan</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0kizce,_Ka%C5%9F" title="İkizce, Kaş">İkizce</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0slamlar,_Ka%C5%9F" title="İslamlar, Kaş">İslamlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Karada%C4%9F,_Ka%C5%9F" title="Karadağ, Kaş">Karadağ</a> |
+        <a href="//tr.wikipedia.org/wiki/Kasaba,_Ka%C5%9F" title="Kasaba, Kaş">Kasaba</a> |
+        <a href="//tr.wikipedia.org/wiki/Kemerk%C3%B6y,_Ka%C5%9F" title="Kemerköy, Kaş">Kemerköy</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1z%C4%B1la%C4%9Fa%C3%A7,_Ka%C5%9F" title="Kızılağaç, Kaş">Kızılağaç</a> |
+        <a href="//tr.wikipedia.org/wiki/Ortaba%C4%9F,_Ka%C5%9F" title="Ortabağ, Kaş">Ortabağ</a> |
+        <a href="//tr.wikipedia.org/wiki/Palamutk%C3%B6y,_Ka%C5%9F" title="Palamutköy, Kaş">Palamutköy</a> |
+        <a href="//tr.wikipedia.org/wiki/P%C4%B1narba%C5%9F%C4%B1,_Ka%C5%9F" title="Pınarbaşı, Kaş">Pınarbaşı</a> |
+        <a href="//tr.wikipedia.org/wiki/Sahilk%C4%B1l%C4%B1%C3%A7l%C4%B1,_Ka%C5%9F" class="mw-redirect"
+            title="Sahilkılıçlı, Kaş">Sahilkılıçlı</a> |
+        <a href="//tr.wikipedia.org/wiki/Sar%C4%B1belen,_Ka%C5%9F" title="Sarıbelen, Kaş">Sarıbelen</a> |
+        <a href="//tr.wikipedia.org/wiki/Sar%C4%B1lar,_Ka%C5%9F" title="Sarılar, Kaş">Sarılar</a> |
+        <a href="//tr.wikipedia.org/wiki/Sinneli,_Ka%C5%9F" title="Sinneli, Kaş">Sinneli</a> |
+        <a href="//tr.wikipedia.org/wiki/S%C3%BCtle%C4%9Fen,_Ka%C5%9F" title="Sütleğen, Kaş">Sütleğen</a> |
+        <a href="//tr.wikipedia.org/wiki/U%C4%9Frar,_Ka%C5%9F" title="Uğrar, Kaş">Uğrar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%9Cz%C3%BCml%C3%BC,_Ka%C5%9F" title="Üzümlü, Kaş">Üzümlü</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaylak%C4%B1l%C4%B1%C3%A7l%C4%B1,_Ka%C5%9F" class="mw-redirect"
+            title="Yaylakılıçlı, Kaş">Yaylakılıçlı</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaylapalamut,_Ka%C5%9F" title="Yaylapalamut, Kaş">Yaylapalamut</a> |
+        <a href="//tr.wikipedia.org/wiki/Yenik%C3%B6y,_Ka%C5%9F" title="Yeniköy, Kaş">Yeniköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Filbarak,_Ka%C5%9F" title="Yeşilbarak, Kaş">Yeşilbarak</a> |
+        <a href="//tr.wikipedia.org/wiki/Yuvac%C4%B1k,_Ka%C5%9F" title="Yuvacık, Kaş">Yuvacık</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Kemer">Kemer</h2><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=12"
+                title="Değiştirilen bölüm: Kemer" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=12"
+                title="Bölümün kaynak kodunu değiştir: Kemer"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Kemer.svg"
+            class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/0/04/Antalya_location_Kemer.svg/250px-Antalya_location_Kemer.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/0/04/Antalya_location_Kemer.svg/500px-Antalya_location_Kemer.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Beycik,_Kemer" title="Beycik, Kemer">Beycik</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87%C4%B1ral%C4%B1,_Kemer" title="Çıralı, Kemer">Çıralı</a> |
+        <a href="//tr.wikipedia.org/wiki/Kuzdere,_Kemer" title="Kuzdere, Kemer">Kuzdere</a> |
+        <a href="//tr.wikipedia.org/wiki/Ovac%C4%B1k,_Kemer" title="Ovacık, Kemer">Ovacık</a> |
+        <a href="//tr.wikipedia.org/wiki/Ulup%C4%B1nar,_Kemer" title="Ulupınar, Kemer">Ulupınar</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Kepez">Kepez</h2><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=13"
+                title="Değiştirilen bölüm: Kepez" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=13"
+                title="Bölümün kaynak kodunu değiştir: Kepez"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Konyaaltı"><span id="Konyaalt.C4.B1"></span>Konyaaltı</h2><span class="mw-editsection"><span
+                class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=14"
+                title="Değiştirilen bölüm: Konyaaltı" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=14"
+                title="Bölümün kaynak kodunu değiştir: Konyaaltı"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Korkuteli">Korkuteli</h2><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=15"
+                title="Değiştirilen bölüm: Korkuteli" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=15"
+                title="Bölümün kaynak kodunu değiştir: Korkuteli"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a
+            href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Korkuteli.svg" class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Antalya_location_Korkuteli.svg/250px-Antalya_location_Korkuteli.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Antalya_location_Korkuteli.svg/500px-Antalya_location_Korkuteli.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Akyar,_Korkuteli" title="Akyar, Korkuteli">Akyar</a> |
+        <a href="//tr.wikipedia.org/wiki/Avdan,_Korkuteli" title="Avdan, Korkuteli">Avdan</a> |
+        <a href="//tr.wikipedia.org/wiki/Bah%C3%A7eyaka,_Korkuteli" title="Bahçeyaka, Korkuteli">Bahçeyaka</a> |
+        <a href="//tr.wikipedia.org/wiki/Ba%C5%9Fp%C4%B1nar,_Korkuteli" class="mw-redirect"
+            title="Başpınar, Korkuteli">Başpınar</a> |
+        <a href="//tr.wikipedia.org/wiki/Bayat,_Korkuteli" title="Bayat, Korkuteli">Bayat</a> |
+        <a href="//tr.wikipedia.org/wiki/Bayatbademleri,_Korkuteli" title="Bayatbademleri, Korkuteli">Bayatbademleri</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/Be%C4%9Fi%C5%9F,_Korkuteli" title="Beğiş, Korkuteli">Beğiş</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87aykenar%C4%B1,_Korkuteli" title="Çaykenarı, Korkuteli">Çaykenarı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87%C4%B1vgalar,_Korkuteli" title="Çıvgalar, Korkuteli">Çıvgalar</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ukurca,_Korkuteli" title="Çukurca, Korkuteli">Çukurca</a> |
+        <a href="//tr.wikipedia.org/wiki/Derek%C3%B6y,_Korkuteli" title="Dereköy, Korkuteli">Dereköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Esenyurt,_Korkuteli" title="Esenyurt, Korkuteli">Esenyurt</a> |
+        <a href="//tr.wikipedia.org/wiki/Garip%C3%A7e,_Korkuteli" class="mw-redirect"
+            title="Garipçe, Korkuteli">Garipçe</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6%C3%A7erler,_Korkuteli" title="Göçerler, Korkuteli">Göçerler</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCm%C3%BC%C5%9Fl%C3%BC,_Korkuteli" class="mw-redirect"
+            title="Gümüşlü, Korkuteli">Gümüşlü</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCzle,_Korkuteli" title="Güzle, Korkuteli">Güzle</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0mecik,_Korkuteli" title="İmecik, Korkuteli">İmecik</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0mrahor,_Korkuteli" title="İmrahor, Korkuteli">İmrahor</a> |
+        <a href="//tr.wikipedia.org/wiki/Karabay%C4%B1r,_Korkuteli" title="Karabayır, Korkuteli">Karabayır</a> |
+        <a href="//tr.wikipedia.org/wiki/Karakuyu,_Korkuteli" title="Karakuyu, Korkuteli">Karakuyu</a> |
+        <a href="//tr.wikipedia.org/wiki/Karata%C5%9F,_Korkuteli" title="Karataş, Korkuteli">Karataş</a> |
+        <a href="//tr.wikipedia.org/wiki/Kargal%C4%B1k,_Korkuteli" title="Kargalık, Korkuteli">Kargalık</a> |
+        <a href="//tr.wikipedia.org/wiki/Karg%C4%B1n,_Korkuteli" title="Kargın, Korkuteli">Kargın</a> |
+        <a href="//tr.wikipedia.org/wiki/Kayaba%C5%9F%C4%B1,_Korkuteli" class="mw-redirect"
+            title="Kayabaşı, Korkuteli">Kayabaşı</a> |
+        <a href="//tr.wikipedia.org/wiki/Kemera%C4%9Fz%C4%B1,_Korkuteli" title="Kemerağzı, Korkuteli">Kemerağzı</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1rkp%C4%B1nar,_Korkuteli" title="Kırkpınar, Korkuteli">Kırkpınar</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1z%C4%B1laliler,_Korkuteli"
+            title="Kızılaliler, Korkuteli">Kızılaliler</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1z%C4%B1lcada%C4%9F,_Korkuteli"
+            title="Kızılcadağ, Korkuteli">Kızılcadağ</a> |
+        <a href="//tr.wikipedia.org/wiki/Koza%C4%9Fac%C4%B1,_Korkuteli" title="Kozağacı, Korkuteli">Kozağacı</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C3%B6seler,_Korkuteli" title="Köseler, Korkuteli">Köseler</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C3%BC%C3%A7%C3%BCkl%C3%BC,_Korkuteli" title="Küçüklü, Korkuteli">Küçüklü</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/Leylekk%C3%B6y%C3%BC,_Korkuteli" title="Leylekköyü, Korkuteli">Leylekköyü</a> |
+        <a href="//tr.wikipedia.org/wiki/Mamatlar,_Korkuteli" title="Mamatlar, Korkuteli">Mamatlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Nebiler,_Korkuteli" title="Nebiler, Korkuteli">Nebiler</a> |
+        <a href="//tr.wikipedia.org/wiki/Osmankalfalar,_Korkuteli" title="Osmankalfalar, Korkuteli">Osmankalfalar</a> |
+        <a href="//tr.wikipedia.org/wiki/S%C3%B6b%C3%BCce,_Korkuteli" title="Söbüce, Korkuteli">Söbüce</a> |
+        <a href="//tr.wikipedia.org/wiki/S%C3%B6%C4%9F%C3%BCtc%C3%BCk,_Korkuteli"
+            title="Söğütcük, Korkuteli">Söğütcük</a> |
+        <a href="//tr.wikipedia.org/wiki/S%C3%B6%C4%9F%C3%BCtk%C3%B6y,_Korkuteli" class="mw-redirect"
+            title="Söğütköy, Korkuteli">Söğütköy</a> |
+        <a href="//tr.wikipedia.org/wiki/S%C3%BClekler,_Korkuteli" title="Sülekler, Korkuteli">Sülekler</a> |
+        <a href="//tr.wikipedia.org/wiki/Ta%C5%9Fkesi%C4%9Fi,_Korkuteli" title="Taşkesiği, Korkuteli">Taşkesiği</a> |
+        <a href="//tr.wikipedia.org/wiki/Tatk%C3%B6y,_Korkuteli" title="Tatköy, Korkuteli">Tatköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Ulucak,_Korkuteli" class="mw-redirect" title="Ulucak, Korkuteli">Ulucak</a> |
+        <a href="//tr.wikipedia.org/wiki/Yakak%C3%B6y,_Korkuteli" title="Yakaköy, Korkuteli">Yakaköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Yal%C4%B1nl%C4%B1gedi%C4%9Fi,_Korkuteli"
+            title="Yalınlıgediği, Korkuteli">Yalınlıgediği</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaz%C4%B1r,_Korkuteli" title="Yazır, Korkuteli">Yazır</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Filoba,_Korkuteli" title="Yeşiloba, Korkuteli">Yeşiloba</a> |
+        <a href="//tr.wikipedia.org/wiki/Yukar%C4%B1karaman,_Korkuteli" class="mw-redirect"
+            title="Yukarıkaraman, Korkuteli">Yukarıkaraman</a> |
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Kumluca">Kumluca</h2><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=16"
+                title="Değiştirilen bölüm: Kumluca" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=16"
+                title="Bölümün kaynak kodunu değiştir: Kumluca"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a
+            href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Kumluca.svg" class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Antalya_location_Kumluca.svg/250px-Antalya_location_Kumluca.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Antalya_location_Kumluca.svg/500px-Antalya_location_Kumluca.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Alt%C4%B1nyaka,_Kumluca" title="Altınyaka, Kumluca">Altınyaka</a> |
+        <a href="//tr.wikipedia.org/wiki/Belen,_Kumluca" title="Belen, Kumluca">Belen</a> |
+        <a href="//tr.wikipedia.org/wiki/Be%C5%9Fik%C3%A7i,_Kumluca" title="Beşikçi, Kumluca">Beşikçi</a> |
+        <a href="//tr.wikipedia.org/wiki/B%C3%BCy%C3%BCkalan,_Kumluca" title="Büyükalan, Kumluca">Büyükalan</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87alt%C4%B1,_Kumluca" title="Çaltı, Kumluca">Çaltı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ayi%C3%A7i,_Kumluca" title="Çayiçi, Kumluca">Çayiçi</a> |
+        <a href="//tr.wikipedia.org/wiki/Derek%C3%B6y,_Kumluca" title="Dereköy, Kumluca">Dereköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Erentepe,_Kumluca" title="Erentepe, Kumluca">Erentepe</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6lc%C3%BCk,_Kumluca" title="Gölcük, Kumluca">Gölcük</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCz%C3%B6ren,_Kumluca" title="Güzören, Kumluca">Güzören</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1veliler,_Kumluca" title="Hacıveliler, Kumluca">Hacıveliler</a> |
+        <a href="//tr.wikipedia.org/wiki/H%C4%B1z%C4%B1rkahya,_Kumluca" title="Hızırkahya, Kumluca">Hızırkahya</a> |
+        <a href="//tr.wikipedia.org/wiki/%C4%B0ncircik,_Kumluca" title="İncircik, Kumluca">İncircik</a> |
+        <a href="//tr.wikipedia.org/wiki/Karaa%C4%9Fa%C3%A7,_Kumluca" title="Karaağaç, Kumluca">Karaağaç</a> |
+        <a href="//tr.wikipedia.org/wiki/Karaca%C3%B6ren,_Kumluca" title="Karacaören, Kumluca">Karacaören</a> |
+        <a href="//tr.wikipedia.org/wiki/Kavakk%C3%B6y,_Kumluca" title="Kavakköy, Kumluca">Kavakköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Kuzca,_Kumluca" title="Kuzca, Kumluca">Kuzca</a> |
+        <a href="//tr.wikipedia.org/wiki/Ortak%C3%B6y,_Kumluca" title="Ortaköy, Kumluca">Ortaköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Salur,_Kumluca" title="Salur, Kumluca">Salur</a> |
+        <a href="//tr.wikipedia.org/wiki/Sar%C4%B1casu,_Kumluca" title="Sarıcasu, Kumluca">Sarıcasu</a> |
+        <a href="//tr.wikipedia.org/wiki/Topta%C5%9F,_Kumluca" title="Toptaş, Kumluca">Toptaş</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaz%C4%B1r,_Kumluca" title="Yazır, Kumluca">Yazır</a> |
+        <a href="//tr.wikipedia.org/wiki/Yenik%C4%B1%C5%9Fla,_Kumluca" title="Yenikışla, Kumluca">Yenikışla</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Filk%C3%B6y,_Kumluca" title="Yeşilköy, Kumluca">Yeşilköy</a> |
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Manavgat">Manavgat</h2><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=17"
+                title="Değiştirilen bölüm: Manavgat" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=17"
+                title="Bölümün kaynak kodunu değiştir: Manavgat"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a
+            href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Manavgat.svg" class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/0/04/Antalya_location_Manavgat.svg/250px-Antalya_location_Manavgat.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/0/04/Antalya_location_Manavgat.svg/500px-Antalya_location_Manavgat.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Ahmetler,_Manavgat" title="Ahmetler, Manavgat">Ahmetler</a> |
+        <a href="//tr.wikipedia.org/wiki/Aksaz,_Manavgat" title="Aksaz, Manavgat">Aksaz</a> |
+        <a href="//tr.wikipedia.org/wiki/Alt%C4%B1nkaya,_Manavgat" title="Altınkaya, Manavgat">Altınkaya</a> |
+        <a href="//tr.wikipedia.org/wiki/A%C5%9Fa%C4%9F%C4%B1_I%C5%9F%C4%B1klar" title="Aşağı Işıklar">Aşağı Işıklar</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/A%C5%9Fa%C4%9F%C4%B1hisar" title="Aşağıhisar">Aşağıhisar</a> |
+        <a href="//tr.wikipedia.org/wiki/A%C5%9Fa%C4%9F%C4%B1pazarc%C4%B1" title="Aşağıpazarcı">Aşağıpazarcı</a> |
+        <a href="//tr.wikipedia.org/wiki/Ayd%C4%B1nevler,_Manavgat" title="Aydınevler, Manavgat">Aydınevler</a> |
+        <a href="//tr.wikipedia.org/wiki/Bah%C3%A7elievler,_Manavgat" title="Bahçelievler, Manavgat">Bahçelievler</a> |
+        <a href="//tr.wikipedia.org/wiki/Ball%C4%B1bucak" title="Ballıbucak">Ballıbucak</a> |
+        <a href="//tr.wikipedia.org/wiki/Belenobas%C4%B1" title="Belenobası">Belenobası</a> |
+        <a href="//tr.wikipedia.org/wiki/Bereket,_Manavgat" title="Bereket, Manavgat">Bereket</a> |
+        <a href="//tr.wikipedia.org/wiki/Be%C5%9Fkonak,_Manavgat" title="Beşkonak, Manavgat">Beşkonak</a> |
+        <a href="//tr.wikipedia.org/wiki/Beydi%C4%9Fin" title="Beydiğin">Beydiğin</a> |
+        <a href="//tr.wikipedia.org/wiki/Boztepe,_Manavgat" title="Boztepe, Manavgat">Boztepe</a> |
+        <a href="//tr.wikipedia.org/wiki/Bucak%C5%9Feyhler" title="Bucakşeyhler">Bucakşeyhler</a> |
+        <a href="//tr.wikipedia.org/wiki/Burmahan" title="Burmahan">Burmahan</a> |
+        <a href="//tr.wikipedia.org/wiki/B%C3%BCkl%C3%BCce" title="Büklüce">Büklüce</a> |
+        <a href="//tr.wikipedia.org/wiki/Cevizler" title="Cevizler">Cevizler</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87a%C4%9Flayan,_Manavgat" title="Çağlayan, Manavgat">Çağlayan</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ak%C4%B1%C5%9F" title="Çakış">Çakış</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87altepe,_Manavgat" title="Çaltepe, Manavgat">Çaltepe</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ardakk%C3%B6y,_Manavgat" title="Çardakköy, Manavgat">Çardakköy</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87avu%C5%9Fk%C3%B6y,_Manavgat" title="Çavuşköy, Manavgat">Çavuşköy</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87ayyaz%C4%B1" title="Çayyazı">Çayyazı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87eltik%C3%A7i,_Manavgat" title="Çeltikçi, Manavgat">Çeltikçi</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87enger,_Manavgat" title="Çenger, Manavgat">Çenger</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87olakl%C4%B1,_Manavgat" title="Çolaklı, Manavgat">Çolaklı</a> |
+        <a href="//tr.wikipedia.org/wiki/De%C4%9Firmen%C3%B6z%C3%BC,_Manavgat"
+            title="Değirmenözü, Manavgat">Değirmenözü</a> |
+        <a href="//tr.wikipedia.org/wiki/Demirciler,_Manavgat" title="Demirciler, Manavgat">Demirciler</a> |
+        <a href="//tr.wikipedia.org/wiki/Denizkent,_Manavgat" title="Denizkent, Manavgat">Denizkent</a> |
+        <a href="//tr.wikipedia.org/wiki/Denizyaka" title="Denizyaka">Denizyaka</a> |
+        <a href="//tr.wikipedia.org/wiki/Dikmen,_Manavgat" title="Dikmen, Manavgat">Dikmen</a> |
+        <a href="//tr.wikipedia.org/wiki/Do%C4%9Fan%C3%A7am,_Manavgat" title="Doğançam, Manavgat">Doğançam</a> |
+        <a href="//tr.wikipedia.org/wiki/Dolbazlar" title="Dolbazlar">Dolbazlar</a> |
+        <a href="//tr.wikipedia.org/wiki/D%C3%BCza%C4%9Fa%C3%A7,_Manavgat" title="Düzağaç, Manavgat">Düzağaç</a> |
+        <a href="//tr.wikipedia.org/wiki/Emek,_Manavgat" title="Emek, Manavgat">Emek</a> |
+        <a href="//tr.wikipedia.org/wiki/Eski_Hisar" title="Eski Hisar">Eski Hisar</a> |
+        <a href="//tr.wikipedia.org/wiki/Evrenleryav%C5%9F%C4%B1" title="Evrenleryavşı">Evrenleryavşı</a> |
+        <a href="//tr.wikipedia.org/wiki/Evrenseki" title="Evrenseki">Evrenseki</a> |
+        <a href="//tr.wikipedia.org/wiki/Gaziler,_Manavgat" title="Gaziler, Manavgat">Gaziler</a> |
+        <a href="//tr.wikipedia.org/wiki/Gebece,_Manavgat" title="Gebece, Manavgat">Gebece</a> |
+        <a href="//tr.wikipedia.org/wiki/Gen%C3%A7ler,_Manavgat" title="Gençler, Manavgat">Gençler</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCltepe,_Manavgat" title="Gültepe, Manavgat">Gültepe</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCndo%C4%9Fdu,_Manavgat" title="Gündoğdu, Manavgat">Gündoğdu</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%BCzelyal%C4%B1,_Manavgat" title="Güzelyalı, Manavgat">Güzelyalı</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1ali,_Manavgat" title="Hacıali, Manavgat">Hacıali</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1isal%C4%B1" title="Hacıisalı">Hacıisalı</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1obas%C4%B1,_Manavgat" title="Hacıobası, Manavgat">Hacıobası</a> |
+        <a href="//tr.wikipedia.org/wiki/Halita%C4%9Falar,_Manavgat" title="Halitağalar, Manavgat">Halitağalar</a> |
+        <a href="//tr.wikipedia.org/wiki/Hatipler,_Manavgat" title="Hatipler, Manavgat">Hatipler</a> |
+        <a href="//tr.wikipedia.org/wiki/Hocalar,_Manavgat" title="Hocalar, Manavgat">Hocalar</a> |
+        <a href="//tr.wikipedia.org/wiki/Hocal%C4%B1,_Manavgat" title="Hocalı, Manavgat">Hocalı</a> |
+        <a href="//tr.wikipedia.org/wiki/Il%C4%B1ca,_Manavgat" title="Ilıca, Manavgat">Ilıca</a> |
+        <a href="//tr.wikipedia.org/wiki/Kad%C4%B1lar,_Manavgat" title="Kadılar, Manavgat">Kadılar</a> |
+        <a href="//tr.wikipedia.org/wiki/Kalemler,_Manavgat" title="Kalemler, Manavgat">Kalemler</a> |
+        <a href="//tr.wikipedia.org/wiki/Karabucak,_Manavgat" title="Karabucak, Manavgat">Karabucak</a> |
+        <a href="//tr.wikipedia.org/wiki/Karab%C3%BCk,_Manavgat" title="Karabük, Manavgat">Karabük</a> |
+        <a href="//tr.wikipedia.org/wiki/Karacalar,_Manavgat" title="Karacalar, Manavgat">Karacalar</a> |
+        <a href="//tr.wikipedia.org/wiki/Karakaya,_Manavgat" title="Karakaya, Manavgat">Karakaya</a> |
+        <a href="//tr.wikipedia.org/wiki/Kara%C3%B6z,_Manavgat" title="Karaöz, Manavgat">Karaöz</a> |
+        <a href="//tr.wikipedia.org/wiki/Karavca" title="Karavca">Karavca</a> |
+        <a href="//tr.wikipedia.org/wiki/Kasaplar,_Manavgat" title="Kasaplar, Manavgat">Kasaplar</a> |
+        <a href="//tr.wikipedia.org/wiki/Kavakl%C4%B1,_Manavgat" title="Kavaklı, Manavgat">Kavaklı</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1rkkavak,_Manavgat" title="Kırkkavak, Manavgat">Kırkkavak</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1salar,_Manavgat" title="Kısalar, Manavgat">Kısalar</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1z%C4%B1la%C4%9Fa%C3%A7,_Manavgat"
+            title="Kızılağaç, Manavgat">Kızılağaç</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1z%C4%B1lda%C4%9F,_Manavgat" title="Kızıldağ, Manavgat">Kızıldağ</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1z%C4%B1lot,_Manavgat" title="Kızılot, Manavgat">Kızılot</a> |
+        <a href="//tr.wikipedia.org/wiki/Milli_Egemenlik,_Manavgat" title="Milli Egemenlik, Manavgat">Milli
+            Egemenlik</a> |
+        <a href="//tr.wikipedia.org/wiki/Mimarsinan,_Manavgat" title="Mimarsinan, Manavgat">Mimarsinan</a> |
+        <a href="//tr.wikipedia.org/wiki/Namaras" title="Namaras">Namaras</a> |
+        <a href="//tr.wikipedia.org/wiki/Oda%C3%B6n%C3%BC" title="Odaönü">Odaönü</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%96ren%C5%9Fehir,_Manavgat" title="Örenşehir, Manavgat">Örenşehir</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%96rnek,_Manavgat" title="Örnek, Manavgat">Örnek</a> |
+        <a href="//tr.wikipedia.org/wiki/Perakende_(mahalle)" title="Perakende (mahalle)">Perakende</a> |
+        <a href="//tr.wikipedia.org/wiki/Sa%C4%9F%C4%B1rin" title="Sağırin">Sağırin</a> |
+        <a href="//tr.wikipedia.org/wiki/Salk%C4%B1m_Evler" title="Salkım Evler">Salkım Evler</a> |
+        <a href="//tr.wikipedia.org/wiki/Salur,_Manavgat" title="Salur, Manavgat">Salur</a> |
+        <a href="//tr.wikipedia.org/wiki/Sanayi,_Manavgat" title="Sanayi, Manavgat">Sanayi</a> |
+        <a href="//tr.wikipedia.org/wiki/Sara%C3%A7l%C4%B1,_Manavgat" title="Saraçlı, Manavgat">Saraçlı</a> |
+        <a href="//tr.wikipedia.org/wiki/Sar%C4%B1lar,_Manavgat" title="Sarılar, Manavgat">Sarılar</a> |
+        <a href="//tr.wikipedia.org/wiki/Sevin%C3%A7k%C3%B6y" title="Sevinçköy">Sevinçköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Seydiler,_Manavgat" title="Seydiler, Manavgat">Seydiler</a> |
+        <a href="//tr.wikipedia.org/wiki/S%C4%B1rtk%C3%B6y,_Manavgat" title="Sırtköy, Manavgat">Sırtköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Side" title="Side">Side</a> |
+        <a href="//tr.wikipedia.org/wiki/Sorgun,_Manavgat" title="Sorgun, Manavgat">Sorgun</a> |
+        <a href="//tr.wikipedia.org/wiki/S%C3%BClek,_Manavgat" title="Sülek, Manavgat">Sülek</a> |
+        <a href="//tr.wikipedia.org/wiki/%C5%9Eelale,_Manavgat" title="Şelale, Manavgat">Şelale</a> |
+        <a href="//tr.wikipedia.org/wiki/%C5%9Ei%C5%9Feler" title="Şişeler">Şişeler</a> |
+        <a href="//tr.wikipedia.org/wiki/Ta%C5%9Fa%C4%9F%C4%B1l,_Manavgat" title="Taşağıl, Manavgat">Taşağıl</a> |
+        <a href="//tr.wikipedia.org/wiki/Ta%C5%9Fkesi%C4%9Fi,_Manavgat" title="Taşkesiği, Manavgat">Taşkesiği</a> |
+        <a href="//tr.wikipedia.org/wiki/Tepek%C3%B6y,_Manavgat" title="Tepeköy, Manavgat">Tepeköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Tilkiler,_Manavgat" title="Tilkiler, Manavgat">Tilkiler</a> |
+        <a href="//tr.wikipedia.org/wiki/Ulukap%C4%B1,_Manavgat" title="Ulukapı, Manavgat">Ulukapı</a> |
+        <a href="//tr.wikipedia.org/wiki/Uzunkale" title="Uzunkale">Uzunkale</a> |
+        <a href="//tr.wikipedia.org/wiki/Uzunlar,_Manavgat" title="Uzunlar, Manavgat">Uzunlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Yal%C3%A7%C4%B1dibi" title="Yalçıdibi">Yalçıdibi</a> |
+        <a href="//tr.wikipedia.org/wiki/Yavrudo%C4%9Fan" title="Yavrudoğan">Yavrudoğan</a> |
+        <a href="//tr.wikipedia.org/wiki/Yayla,_Manavgat" title="Yayla, Manavgat">Yayla</a> |
+        <a href="//tr.wikipedia.org/wiki/Yaylaalan" title="Yaylaalan">Yaylaalan</a> |
+        <a href="//tr.wikipedia.org/wiki/Yenik%C3%B6y,_Manavgat" title="Yeniköy, Manavgat">Yeniköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Filba%C4%9F,_Manavgat" title="Yeşilbağ, Manavgat">Yeşilbağ</a> |
+        <a href="//tr.wikipedia.org/wiki/Yukar%C4%B1_I%C5%9F%C4%B1klar" title="Yukarı Işıklar">Yukarı Işıklar</a> |
+        <a href="//tr.wikipedia.org/wiki/Yukar%C4%B1hisar" title="Yukarıhisar">Yukarıhisar</a> |
+        <a href="//tr.wikipedia.org/wiki/Yukar%C4%B1pazarc%C4%B1" title="Yukarıpazarcı">Yukarıpazarcı</a>
+    </p>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Muratpaşa"><span id="Muratpa.C5.9Fa"></span>Muratpaşa</h2><span class="mw-editsection"><span
+                class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=18"
+                title="Değiştirilen bölüm: Muratpaşa" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=18"
+                title="Bölümün kaynak kodunu değiştir: Muratpaşa"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <div style="clear:both;"></div>
+    <div class="mw-heading mw-heading2">
+        <h2 id="Serik">Serik</h2><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;veaction=edit&amp;section=19"
+                title="Değiştirilen bölüm: Serik" class="mw-editsection-visualeditor"><span>değiştir</span></a><span
+                class="mw-editsection-divider"> | </span><a
+                href="//tr.wikipedia.org/w/index.php?title=Antalya%27n%C4%B1n_mahalleleri&amp;action=edit&amp;section=19"
+                title="Bölümün kaynak kodunu değiştir: Serik"><span>kaynağı değiştir</span></a><span
+                class="mw-editsection-bracket">]</span></span>
+    </div>
+    <figure class="mw-halign-right" typeof="mw:File"><a href="//tr.wikipedia.org/wiki/Dosya:Antalya_location_Serik.svg"
+            class="mw-file-description"><img
+                src="//upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Antalya_location_Serik.svg/250px-Antalya_location_Serik.svg.png"
+                decoding="async" width="200" height="108" class="mw-file-element"
+                srcset="//upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Antalya_location_Serik.svg/500px-Antalya_location_Serik.svg.png 2x"
+                data-file-width="786" data-file-height="426"></a>
+        <figcaption></figcaption>
+    </figure>
+    <p><a href="//tr.wikipedia.org/wiki/Akba%C5%9F,_Serik" title="Akbaş, Serik">Akbaş</a> |
+        <a href="//tr.wikipedia.org/wiki/Ak%C3%A7ap%C4%B1nar,_Serik" title="Akçapınar, Serik">Akçapınar</a> |
+        <a href="//tr.wikipedia.org/wiki/Alacami,_Serik" title="Alacami, Serik">Alacami</a> |
+        <a href="//tr.wikipedia.org/wiki/A%C5%9Fa%C4%9F%C4%B1%C3%A7atma,_Serik" title="Aşağıçatma, Serik">Aşağıçatma</a>
+        |
+        <a href="//tr.wikipedia.org/wiki/A%C5%9Fa%C4%9F%C4%B1kocayatak,_Serik"
+            title="Aşağıkocayatak, Serik">Aşağıkocayatak</a> |
+        <a href="//tr.wikipedia.org/wiki/A%C5%9Fa%C4%9F%C4%B1oba,_Serik" title="Aşağıoba, Serik">Aşağıoba</a> |
+        <a href="//tr.wikipedia.org/wiki/Berendi,_Serik" title="Berendi, Serik">Berendi</a> |
+        <a href="//tr.wikipedia.org/wiki/Bilginler,_Serik" title="Bilginler, Serik">Bilginler</a> |
+        <a href="//tr.wikipedia.org/wiki/Bozdo%C4%9Fan,_Serik" title="Bozdoğan, Serik">Bozdoğan</a> |
+        <a href="//tr.wikipedia.org/w/index.php?title=Boztepe,_Serik&amp;action=edit&amp;redlink=1" class="new"
+            title="Boztepe, Serik (sayfa mevcut değil)">Boztepe</a> |
+        <a href="//tr.wikipedia.org/wiki/Bucakk%C3%B6y,_Serik" title="Bucakköy, Serik">Bucakköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Burmahanc%C4%B1,_Serik" title="Burmahancı, Serik">Burmahancı</a> |
+        <a href="//tr.wikipedia.org/wiki/B%C3%BC%C4%9F%C3%BC%C5%9F,_Serik" title="Büğüş, Serik">Büğüş</a> |
+        <a href="//tr.wikipedia.org/wiki/Cumal%C4%B1,_Serik" title="Cumalı, Serik">Cumalı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87akall%C4%B1k,_Serik" title="Çakallık, Serik">Çakallık</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87anak%C3%A7%C4%B1,_Serik" title="Çanakçı, Serik">Çanakçı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%87atallar,_Serik" title="Çatallar, Serik">Çatallar</a> |
+        <a href="//tr.wikipedia.org/wiki/Demirciler,_Serik" title="Demirciler, Serik">Demirciler</a> |
+        <a href="//tr.wikipedia.org/wiki/Deniztepesi,_Serik" title="Deniztepesi, Serik">Deniztepesi</a> |
+        <a href="//tr.wikipedia.org/wiki/Dikmen,_Serik" title="Dikmen, Serik">Dikmen</a> |
+        <a href="//tr.wikipedia.org/wiki/Dorumlar,_Serik" title="Dorumlar, Serik">Dorumlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Eminceler,_Serik" title="Eminceler, Serik">Eminceler</a> |
+        <a href="//tr.wikipedia.org/wiki/Eskiy%C3%BCr%C3%BCk,_Serik" title="Eskiyürük, Serik">Eskiyürük</a> |
+        <a href="//tr.wikipedia.org/wiki/Etler,_Serik" title="Etler, Serik">Etler</a> |
+        <a href="//tr.wikipedia.org/wiki/Gedik,_Serik" title="Gedik, Serik">Gedik</a> |
+        <a href="//tr.wikipedia.org/wiki/G%C3%B6k%C3%A7ep%C4%B1nar,_Serik" title="Gökçepınar, Serik">Gökçepınar</a> |
+        <a href="//tr.wikipedia.org/wiki/Hac%C4%B1osmanlar,_Serik" title="Hacıosmanlar, Serik">Hacıosmanlar</a> |
+        <a href="//tr.wikipedia.org/wiki/Hasd%C3%BCmen,_Serik" title="Hasdümen, Serik">Hasdümen</a> |
+        <a href="//tr.wikipedia.org/wiki/Hasp%C4%B1nar,_Serik" title="Haspınar, Serik">Haspınar</a> |
+        <a href="//tr.wikipedia.org/wiki/Hask%C4%B1z%C4%B1l%C3%B6ren,_Serik"
+            title="Haskızılören, Serik">Haskızılören</a> |
+        <a href="//tr.wikipedia.org/wiki/Karata%C5%9F,_Serik" title="Karataş, Serik">Karataş</a> |
+        <a href="//tr.wikipedia.org/wiki/Kar%C4%B1ncal%C4%B1,_Serik" title="Karıncalı, Serik">Karıncalı</a> |
+        <a href="//tr.wikipedia.org/wiki/Kayaburnu,_Serik" title="Kayaburnu, Serik">Kayaburnu</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C4%B1rba%C5%9F,_Serik" title="Kırbaş, Serik">Kırbaş</a> |
+        <a href="//tr.wikipedia.org/wiki/Koza%C4%9Fa%C3%A7,_Serik" class="mw-redirect"
+            title="Kozağaç, Serik">Kozağaç</a> |
+        <a href="//tr.wikipedia.org/wiki/Kozan,_Serik" title="Kozan, Serik">Kozan</a> |
+        <a href="//tr.wikipedia.org/wiki/Kumk%C3%B6y,_Serik" class="mw-redirect" title="Kumköy, Serik">Kumköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Ku%C5%9Flar,_Serik" title="Kuşlar, Serik">Kuşlar</a> |
+        <a href="//tr.wikipedia.org/wiki/K%C3%BCr%C3%BC%C5%9F,_Serik" title="Kürüş, Serik">Kürüş</a> |
+        <a href="//tr.wikipedia.org/wiki/Nebiler,_Serik" title="Nebiler, Serik">Nebiler</a> |
+        <a href="//tr.wikipedia.org/wiki/P%C4%B1narc%C4%B1k,_Serik" title="Pınarcık, Serik">Pınarcık</a> |
+        <a href="//tr.wikipedia.org/wiki/Sar%C4%B1abal%C4%B1,_Serik" class="mw-redirect"
+            title="Sarıabalı, Serik">Sarıabalı</a> |
+        <a href="//tr.wikipedia.org/wiki/%C5%9Eat%C4%B1rl%C4%B1,_Serik" title="Şatırlı, Serik">Şatırlı</a> |
+        <a href="//tr.wikipedia.org/wiki/Tekke,_Serik" title="Tekke, Serik">Tekke</a> |
+        <a href="//tr.wikipedia.org/wiki/T%C3%B6ng%C3%BC%C5%9Fl%C3%BC,_Serik" title="Töngüşlü, Serik">Töngüşlü</a> |
+        <a href="//tr.wikipedia.org/wiki/%C3%9Cr%C3%BCnd%C3%BC,_Serik" title="Üründü, Serik">Üründü</a> |
+        <a href="//tr.wikipedia.org/wiki/Yank%C3%B6y,_Serik" title="Yanköy, Serik">Yanköy</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Filvadi,_Serik" title="Yeşilvadi, Serik">Yeşilvadi</a> |
+        <a href="//tr.wikipedia.org/wiki/Ye%C5%9Filyurt,_Serik" title="Yeşilyurt, Serik">Yeşilyurt</a> |
+        <a href="//tr.wikipedia.org/wiki/Yukar%C4%B1%C3%A7atma,_Serik" title="Yukarıçatma, Serik">Yukarıçatma</a> |
+        <a href="//tr.wikipedia.org/wiki/Yumaklar,_Serik" title="Yumaklar, Serik">Yumaklar</a> |
+        <a href="//tr.wikipedia.org/wiki/Z%C4%B1rlankaya,_Serik" title="Zırlankaya, Serik">Zırlankaya</a>
+    </p>
+    <!-- 
+NewPP limit report
+Parsed by mw‐web.eqiad.main‐5869749778‐7qr65
+Cached time: 20260502131122
+Cache expiry: 2592000
+Reduced expiry: false
+Complications: [prevent‐selective‐update, show‐toc]
+CPU time usage: 0.215 seconds
+Real time usage: 0.347 seconds
+Preprocessor visited node count: 873/1000000
+Revision size: 22932/2097152 bytes
+Post‐expand include size: 8562/2097152 bytes
+Template argument size: 22/2097152 bytes
+Highest expansion depth: 8/100
+Expensive parser function count: 2/500
+Unstrip recursion depth: 0/20
+Unstrip post‐expand size: 13380/5000000 bytes
+Lua time usage: 0.071/10.000 seconds
+Lua memory usage: 1016863/52428800 bytes
+Number of Wikibase entities loaded: 0/500
+-->
+    <!--
+Transclusion expansion time report (%,ms,calls,template)
+100.00%  159.120      1 -total
+ 92.54%  147.246      1 Şablon:Öksüz
+ 82.81%  131.769      2 Şablon:Mikutu
+  3.96%    6.294      1 Şablon:Güncelle
+  2.47%    3.927     18 Şablon:Temiz
+  1.70%    2.698      2 Şablon:PAGENAMEU
+-->
+
+    <!-- Render ID 6a39ba9e-4628-11f1-aceb-8b1b89e5efae -->
+
+    <!-- Saved in parser cache with key trwiki:stable-pcache:1316467:|#|:idhash:canonical and timestamp 20260502131122 and revision id 36567529. Rendering was triggered because: unknown
+ -->
+</div>

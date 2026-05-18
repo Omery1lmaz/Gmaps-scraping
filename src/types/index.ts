@@ -31,8 +31,16 @@ export interface Lead {
   totalPhotos?: number;
 }
 
+export interface DetailLogEntry {
+  businessName: string;
+  timestamp: number;
+  fields: string[]; // Extracted field names, e.g. ["phone", "website", "address"]
+  success: boolean;
+}
+
 export interface ScraperSettings {
   scrapeDetails: boolean; // Detay panelinden ek bilgi çeksin mi?
+  customCategory?: string; // Kullanıcının girdiği özel kategori
 }
 
 export interface ScraperStatus {
@@ -44,4 +52,7 @@ export interface ScraperStatus {
   error?: string;
   // Detail scraping progress
   detailProgress?: { current: number; total: number };
+  // Real-time detail info
+  currentDetail?: { name: string; index: number; total: number; currentFields?: string[] };
+  detailLog?: DetailLogEntry[];
 }

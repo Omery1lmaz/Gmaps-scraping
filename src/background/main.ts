@@ -1,8 +1,14 @@
 import { globalStateMachine } from "../logic/StateMachine";
 import type { Lead, ScraperSettings } from "../types";
-import { API_BASE_URL } from "./config";
+import { API_BASE_URL, API_KEY } from "./config";
 
 let currentSettings: ScraperSettings = { scrapeDetails: false };
+
+const apiHeaders = (extra: Record<string, string> = {}): Record<string, string> => ({
+  'Content-Type': 'application/json',
+  'x-api-key': API_KEY,
+  ...extra,
+});
 
 chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
   if (message.type === "GET_STATUS") {
@@ -14,31 +20,65 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
     if (message.settings) {
       currentSettings = message.settings;
     }
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const activeTab = tabs[0];
-      const tabId = activeTab?.id;
-      const url = activeTab?.url || "";
 
-      if (!url.includes("google.com/maps")) {
-        globalStateMachine.transition("failed", { error: "Open Google Maps results first." });
-        return;
-      }
+    // Fetch existing external IDs first to skip duplicates
+    fetch(`${API_BASE_URL}/api/leads/external-ids`, {
+      headers: apiHeaders()
+    })
+    .then(res => res.json())
+    .then(existingIds => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const activeTab = tabs[0];
+        const tabId = activeTab?.id;
+        const url = activeTab?.url || "";
 
-      if (tabId) {
-        globalStateMachine.transition("scraping", { leadsCount: 0, pageIndex: 0, lastLeads: [], activity: "Starting scraper...", detailProgress: undefined });
-        
-        chrome.tabs.sendMessage(tabId, { type: "START_SCRAPING_CMD", scrapeDetails: currentSettings.scrapeDetails }, (_response) => {
-          if (chrome.runtime.lastError) {
-            globalStateMachine.transition("failed", { error: "Please refresh the Google Maps page." });
-          }
-        });
-      }
+        if (!url.includes("google.com/maps")) {
+          globalStateMachine.transition("failed", { error: "Open Google Maps results first." });
+          return;
+        }
+
+        if (tabId) {
+          globalStateMachine.transition("scraping", { 
+            leadsCount: 0, 
+            pageIndex: 0, 
+            lastLeads: [], 
+            activity: "Starting scraper...", 
+            detailProgress: undefined 
+          });
+          
+          chrome.tabs.sendMessage(tabId, { 
+            type: "START_SCRAPING_CMD", 
+            scrapeDetails: currentSettings.scrapeDetails,
+            customCategory: currentSettings.customCategory,
+            existingIds: Array.isArray(existingIds) ? existingIds : []
+          }, (_response) => {
+            if (chrome.runtime.lastError) {
+              globalStateMachine.transition("failed", { error: "Please refresh the Google Maps page." });
+            }
+          });
+        }
+      });
+    })
+    .catch(err => {
+      console.error("Failed to fetch existing IDs:", err);
+      // Proceed anyway, but without skipping
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs[0]?.id;
+        if (tabId) {
+          chrome.tabs.sendMessage(tabId, { 
+            type: "START_SCRAPING_CMD", 
+            scrapeDetails: currentSettings.scrapeDetails,
+            customCategory: currentSettings.customCategory,
+            existingIds: []
+          });
+        }
+      });
     });
     return false;
   }
 
   if (message.type === "STOP_SCRAPING") {
-    globalStateMachine.transition("idle", { activity: "Stopped by user." });
+    globalStateMachine.transition("idle", { activity: "Stopped by user.", currentDetail: undefined });
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tabId = tabs[0]?.id;
       if (tabId) {
@@ -58,7 +98,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
 
       fetch(`${API_BASE_URL}/api/leads`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders(),
         body: JSON.stringify(leads)
       })
       .then(res => res.json())
@@ -81,7 +121,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
     // Sync with backend API
     fetch(`${API_BASE_URL}/api/leads`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify(leads)
     })
     .then(res => res.json())
@@ -127,7 +167,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
     // Sync enriched lead to backend
     fetch(`${API_BASE_URL}/api/leads`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify([enrichedLead])
     }).catch(err => console.error('Enrichment sync failed:', err));
 
@@ -142,8 +182,26 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
     return false;
   }
 
+  if (message.type === "DETAIL_ACTIVITY") {
+    globalStateMachine.updateProgress({
+      currentDetail: message.payload
+    });
+    return false;
+  }
+
+  if (message.type === "DETAIL_LOG_ENTRY") {
+    const entry = message.payload;
+    const currentStatus = globalStateMachine.getStatus();
+    const existingLog = currentStatus.detailLog || [];
+    const updatedLog = [...existingLog, entry].slice(-50); // Keep last 50
+    globalStateMachine.updateProgress({
+      detailLog: updatedLog
+    });
+    return false;
+  }
+
   if (message.type === "SCRAPING_COMPLETED") {
-    globalStateMachine.transition("completed", { activity: "Scraping finished successfully!", detailProgress: undefined });
+    globalStateMachine.transition("completed", { activity: "Scraping finished successfully!", detailProgress: undefined, currentDetail: undefined });
     return false;
   }
 
@@ -156,7 +214,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
     return false;
   }
   if (message.type === "SCRAPING_FAILED") {
-    globalStateMachine.transition("failed", { error: message.error, activity: "Scraping failed." });
+    globalStateMachine.transition("failed", { error: message.error, activity: "Scraping failed.", currentDetail: undefined });
     return false;
   }
 

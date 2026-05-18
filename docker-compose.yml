@@ -1,0 +1,126 @@
+services:
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3001:3001"
+    env_file: ./server/.env
+    environment:
+      - PORT=3001
+      - REDIS_URL=redis://redis:6379
+      - WHATSAPP_MEDIA_DIR=/app/media/whatsapp
+      - MONGODB_URL=mongodb://mongo:27017/gmaps-lead-scraper
+      - API_KEY=AIzaSyAZ7I8BW1Lpli58sLnmCE05Bbvyv7OrJ0g
+      - NODE_ENV=development
+    volumes:
+      - ${HOST_PROJECT_DIR}/server:/app
+      - /app/node_modules
+      - wa_media:/app/media/whatsapp
+    depends_on:
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  api-prod:
+    build: ./server
+    ports:
+      - "3001:3001"
+    env_file: ./server/.env
+    environment:
+      - PORT=3001
+      - REDIS_URL=redis://redis:6379
+      - WHATSAPP_MEDIA_DIR=/app/media/whatsapp
+      - MONGODB_URL=mongodb://mongo:27017/gmaps-lead-scraper
+      - API_KEY=AIzaSyAZ7I8BW1Lpli58sLnmCE05Bbvyv7OrJ0g
+      - NODE_ENV=production
+    volumes:
+      - wa_media:/app/media/whatsapp
+    depends_on:
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    profiles: ["production"]
+
+  wa-engine:
+    build: ./whatsapp-engine
+    ports:
+      - "3002:3002"
+    env_file: ./server/.env
+    environment:
+      - WA_ENGINE_PORT=3002
+      - REDIS_URL=redis://redis:6379
+      - WHATSAPP_MEDIA_DIR=/app/media/whatsapp
+      - MONGODB_URL=mongodb://mongo:27017/gmaps-lead-scraper
+      - API_KEY=AIzaSyAZ7I8BW1Lpli58sLnmCE05Bbvyv7OrJ0g
+    volumes:
+      - ${HOST_PROJECT_DIR}/whatsapp-engine:/app
+      - /app/node_modules
+      - ${HOST_PROJECT_DIR}/whatsapp-engine/.wwebjs_auth:/app/.wwebjs_auth
+      - ${HOST_PROJECT_DIR}/whatsapp-engine/media:/app/media/whatsapp
+    depends_on:
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    shm_size: '2gb'
+
+  redis:
+    image: redis:alpine
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3001/api
+      - VITE_WA_ENGINE_URL=http://localhost:3002
+      - VITE_API_KEY=AIzaSyAZ7I8BW1Lpli58sLnmCE05Bbvyv7OrJ0g
+      - CHOKIDAR_USEPOLLING=true
+    command: npm run dev -- --host 0.0.0.0
+    depends_on:
+      wa-engine:
+        condition: service_started
+    volumes:
+      - ${HOST_PROJECT_DIR}/dashboard:/app
+      - /app/node_modules
+
+  dashboard-prod:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3001/api
+        VITE_WA_ENGINE_URL: http://localhost:3002
+    ports:
+      - "5173:80"
+    depends_on:
+      - api-prod
+      - wa-engine
+    profiles: ["production"]
+
+volumes:
+  wa_engine_auth:
+  wa_media:
+  mongo_data:

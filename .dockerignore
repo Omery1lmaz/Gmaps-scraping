@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.env
+*.log
+*.md
+postgres_data
+mongo_data
+wa_media
+server
+dashboard
