@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ILead extends Document {
+  userId: string;
   externalId: string;
   name: string;
   businessName?: string;
@@ -10,6 +11,7 @@ export interface ILead extends Document {
   category?: string;
   address?: string;
   city?: string;
+  country?: string;
   phone?: string;
   website?: string;
   url: string;
@@ -39,7 +41,8 @@ export interface ILead extends Document {
 }
 
 const LeadSchema: Schema = new Schema({
-  externalId: { type: String, required: true, unique: true, index: true },
+  userId: { type: String, required: true, index: true },
+  externalId: { type: String, required: true, index: true },
   name: { type: String, required: true },
   businessName: { type: String },
   rating: { type: Number, index: true },
@@ -48,6 +51,7 @@ const LeadSchema: Schema = new Schema({
   category: { type: String, index: true },
   address: { type: String },
   city: { type: String, index: true },
+  country: { type: String, index: true },
   phone: { type: String },
   website: { type: String },
   url: { type: String, required: true },
@@ -75,6 +79,8 @@ const LeadSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now, index: true },
   updatedAt: { type: Date, default: Date.now },
 });
+
+LeadSchema.index({ userId: 1, externalId: 1 }, { unique: true });
 
 // Update updatedAt before saving
 LeadSchema.pre('save', function(next) {

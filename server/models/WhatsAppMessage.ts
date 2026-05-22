@@ -2,6 +2,8 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IWhatsAppMessage extends Document {
   id: string;
+  userId: string;
+  sessionId?: string;
   whatsappMessageId?: string;
   chatId: string;
   leadId?: string;
@@ -22,7 +24,9 @@ export interface IWhatsAppMessage extends Document {
 
 const WhatsAppMessageSchema: Schema = new Schema({
   _id: { type: String, required: true },
-  whatsappMessageId: { type: String, unique: true, sparse: true },
+  userId: { type: String, required: true, index: true },
+  sessionId: { type: String, index: true },
+  whatsappMessageId: { type: String, sparse: true },
   chatId: { type: String, required: true, index: true },
   leadId: { type: String, index: true },
   direction: { type: String, default: 'OUTGOING' },
@@ -42,5 +46,6 @@ const WhatsAppMessageSchema: Schema = new Schema({
 
 // Compound index for chatId + timestamp
 WhatsAppMessageSchema.index({ chatId: 1, timestamp: 1 });
+WhatsAppMessageSchema.index({ userId: 1, sessionId: 1, whatsappMessageId: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model<IWhatsAppMessage>('WhatsAppMessage', WhatsAppMessageSchema);

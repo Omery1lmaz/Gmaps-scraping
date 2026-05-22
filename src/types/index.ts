@@ -18,6 +18,7 @@ export interface Lead {
   category?: string;
   address?: string;
   city?: string;
+  country?: string;
   phone?: string;
   website?: string;
   plusCode?: string;
@@ -41,6 +42,11 @@ export interface DetailLogEntry {
 export interface ScraperSettings {
   scrapeDetails: boolean; // Detay panelinden ek bilgi çeksin mi?
   customCategory?: string; // Kullanıcının girdiği özel kategori
+  searchKeyword?: string;
+  searchCity?: string;
+  searchCountry?: string;
+  defaultCity?: string;
+  defaultCountry?: string;
 }
 
 export interface ScraperStatus {

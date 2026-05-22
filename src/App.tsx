@@ -6,7 +6,7 @@ import { Badge } from './components/ui/badge'
 import { Progress } from './components/ui/progress'
 import { ScrollArea } from './components/ui/scroll-area'
 import { Switch } from './components/ui/switch'
-import { 
+import {
   Play, 
   Pause, 
   Square, 
@@ -21,11 +21,14 @@ import {
   Clock, 
   Info,
   X,
-  Zap,
+  MessageSquare,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  LogIn,
+  LogOut,
+  ArrowRight,
+  Sparkles
 } from 'lucide-react'
-
 const fieldMeta: Record<string, { icon: any; label: string; color: string }> = {
   phone: { icon: Phone, label: 'Tel', color: 'text-green-600 bg-green-50' },
   website: { icon: Globe, label: 'Web', color: 'text-blue-600 bg-blue-50' },
@@ -77,9 +80,24 @@ function App() {
   })
   const [scrapeDetails, setScrapeDetails] = useState(true)
   const [customCategory, setCustomCategory] = useState('')
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [searchCity, setSearchCity] = useState('')
+  const [searchCountry, setSearchCountry] = useState('')
+  const [defaultCity, setDefaultCity] = useState('')
+  const [defaultCountry, setDefaultCountry] = useState('')
   const [dismissedError, setDismissedError] = useState<string | null>(null)
+  const [authUser, setAuthUser] = useState<any>(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [authLoading, setAuthLoading] = useState(true)
 
   useEffect(() => {
+    chrome.runtime.sendMessage({ type: 'GET_AUTH' }, (response) => {
+      setAuthUser(response?.user || null)
+      setAuthLoading(false)
+    })
+
     chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (response: ScraperStatus) => {
       if (response) {
         setStatus(response)
@@ -100,11 +118,41 @@ function App() {
     return () => chrome.runtime.onMessage.removeListener(listener)
   }, [status.error])
 
+  const login = () => {
+    setAuthError('')
+    setAuthLoading(true)
+    chrome.runtime.sendMessage({ type: 'AUTH_LOGIN', email, password }, (response) => {
+      setAuthLoading(false)
+      if (response?.success) {
+        setAuthUser(response.user)
+        setPassword('')
+      } else {
+        setAuthError(response?.error || 'Giriş başarısız')
+      }
+    })
+  }
+
+  const logout = () => {
+    chrome.runtime.sendMessage({ type: 'AUTH_LOGOUT' }, () => {
+      setAuthUser(null)
+      setEmail('')
+      setPassword('')
+    })
+  }
+
   const startScraping = () => {
     setDismissedError(null)
     chrome.runtime.sendMessage({
       type: 'START_SCRAPING',
-      settings: { scrapeDetails, customCategory: customCategory.trim() }
+      settings: { 
+        scrapeDetails, 
+        customCategory: customCategory.trim(),
+        searchKeyword: searchKeyword.trim(),
+        searchCity: searchCity.trim(),
+        searchCountry: searchCountry.trim(),
+        defaultCity: defaultCity.trim(),
+        defaultCountry: defaultCountry.trim()
+      }
     })
   }
   const stopScraping = () => chrome.runtime.sendMessage({ type: 'STOP_SCRAPING' })
@@ -138,7 +186,8 @@ function App() {
       if (response?.success) {
         alert(`Bulut Senkronizasyonu Tamamlandı!\nEklenen: ${response.saved}\nAtlanan (Kopyalar): ${response.duplicates}`)
       } else {
-        alert('Senkronizasyon başarısız. Sunucu çalışıyor mu?')
+        const errorMsg = response?.error || 'Senkronizasyon başarısız. Sunucu çalışıyor mu?';
+        alert(`Senkronizasyon Başarısız!\nSebep: ${errorMsg}`);
       }
     })
   }
@@ -160,17 +209,80 @@ function App() {
 
   const statusInfo = getStatusInfo(status.state)
 
-  return (
-    <div className="w-[400px] h-[600px] flex flex-col bg-[#F8FAFC] text-slate-900 font-sans selection:bg-blue-100">
-      {/* Header */}
-      <header className="flex items-center justify-between px-5 py-4 bg-white border-b border-slate-200 shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center gap-2.5">
-          <div className="bg-blue-600 p-1.5 rounded-lg shadow-sm">
-            <Zap className="size-5 text-white fill-white" />
+  if (authLoading && !authUser) {
+    return (
+      <div className="w-[400px] h-[600px] flex items-center justify-center bg-[#F8FAFC] text-sm font-bold text-slate-500">
+        Yükleniyor...
+      </div>
+    )
+  }
+
+  if (!authUser) {
+    return (
+      <div className="w-[400px] h-[600px] flex flex-col bg-[var(--bg)] text-[var(--text)] font-sans p-5">
+        <div className="flex items-center gap-2.5 mb-6">
+          <div className="bg-[var(--primary)] p-2 rounded-xl shadow-sm">
+            <MessageSquare className="size-5 text-[var(--bg)] fill-[var(--bg)]" />
           </div>
-          <h1 className="text-[17px] font-bold tracking-tight text-slate-800">LeadScraper <span className="text-blue-600 text-[10px] font-medium align-top ml-1">PRO</span></h1>
+          <div>
+            <h1 className="text-lg font-black tracking-tight text-[var(--text)]">LeadFlow PRO</h1>
+            <p className="text-xs font-semibold text-[var(--text-muted)]">Senkronizasyon için giriş yapın</p>
+          </div>
+        </div>
+        <div className="bg-[var(--card)] rounded-2xl shadow-sm border border-[var(--border)] p-4 space-y-3">
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="E-posta"
+            type="email"
+            className="w-full h-11 rounded-xl border border-[var(--border)] px-3 text-sm font-semibold outline-none focus:border-[var(--primary)]"
+          />
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Şifre"
+            type="password"
+            className="w-full h-11 rounded-xl border border-[var(--border)] px-3 text-sm font-semibold outline-none focus:border-[var(--primary)]"
+            onKeyDown={(e) => { if (e.key === 'Enter') login() }}
+          />
+          {authError && <div className="rounded-xl bg-[#fee2e2] px-3 py-2 text-xs font-bold text-[var(--danger)]">{authError}</div>}
+          <Button onClick={login} disabled={authLoading || !email || !password} className="w-full h-11 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white font-black gap-2">
+            <LogIn className="size-4" /> Giriş Yap
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-[400px] h-[600px] flex flex-col bg-[var(--bg)] text-[var(--text)] font-sans selection:bg-[var(--primary-light)]">
+      {/* Header */}
+      <header className="flex items-center justify-between px-5 py-4 bg-[var(--card)] border-b border-[var(--border)] shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+        <div className="flex items-center gap-2.5">
+          <div className="bg-[var(--primary)] p-1.5 rounded-lg shadow-sm">
+            <MessageSquare className="size-5 text-[var(--bg)] fill-[var(--bg)]" />
+          </div>
+          <h1 className="text-[17px] font-bold tracking-tight text-[var(--text)]">LeadFlow <span className="text-[var(--primary)] text-[10px] font-medium align-top ml-1">PRO</span></h1>
+          {authUser && (
+            <span 
+              onClick={() => chrome.tabs.create({ url: 'http://localhost:5173/billing' })}
+              className={`cursor-pointer px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${
+                authUser.plan === 'pro'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black shadow-[0_0_8px_rgba(16,185,129,0.2)]'
+                  : authUser.plan === 'enterprise'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-slate-200 text-slate-600'
+              }`}
+              title="Aboneliği Yönet"
+            >
+              {authUser.plan === 'pro' ? 'PRO' : authUser.plan === 'enterprise' ? 'ENT' : 'FREE'}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={logout} className="text-slate-400 hover:text-red-500" title={`${authUser.email} çıkış`}>
+            <LogOut className="size-4" />
+          </button>
           {isScraping && !isPaused && (
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -184,6 +296,28 @@ function App() {
       </header>
 
       <main className="flex-1 overflow-auto p-5 space-y-4">
+        {/* Upgrade Banner for Free Users */}
+        {(!authUser.plan || authUser.plan === 'free') && (
+          <div 
+            onClick={() => chrome.tabs.create({ url: 'http://localhost:5173/billing' })}
+            className="p-3 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 border border-emerald-500/20 hover:border-emerald-500/40 rounded-xl shadow-sm flex items-center justify-between cursor-pointer group transition-all duration-300 active:scale-[0.98] animate-in fade-in slide-in-from-top-1"
+          >
+            <div className="flex items-center gap-2">
+              <div className="bg-emerald-500 p-1.5 rounded-lg text-slate-950 shadow-[0_0_8px_rgba(16,185,129,0.2)]">
+                <Zap size={13} className="fill-current animate-pulse" />
+              </div>
+              <div className="flex flex-col">
+                <div className="text-[11px] font-black text-slate-800 flex items-center gap-1">
+                  Limitleri Kaldırın & PRO'ya Geçin
+                  <Sparkles size={10} className="text-emerald-500" />
+                </div>
+                <p className="text-[9px] font-bold text-slate-500 mt-0.5 leading-tight">Oturum başı 20 lead sınırını kaldırın ve WhatsApp otomasyonunu açın.</p>
+              </div>
+            </div>
+            <ArrowRight size={13} className="text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
           <Card className="border-none shadow-sm bg-white overflow-hidden group">
@@ -275,20 +409,101 @@ function App() {
           </div>
         )}
 
-        {/* Custom Category Input */}
+        {/* Google Maps Search Parameters */}
         {!isScraping && status.state !== 'completed' && (
-          <div className="flex flex-col gap-2 p-4 bg-white rounded-xl shadow-sm border border-slate-100">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-700">Özel Kategori (İsteğe Bağlı)</span>
+          <div className="flex flex-col gap-3.5 p-4 bg-white rounded-xl shadow-sm border border-slate-100">
+            <div className="flex items-center gap-2 text-blue-600">
+              <Building2 className="size-4" />
+              <span className="text-[11px] font-black uppercase tracking-wider">Google Haritalar Arama</span>
             </div>
-            <input
-              type="text"
-              placeholder="Örn: Restoran, Yazılım Firması"
-              value={customCategory}
-              onChange={(e) => setCustomCategory(e.target.value)}
-              className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all font-semibold"
-            />
-            <p className="text-[10px] text-slate-400 font-medium">Boş bırakılırsa Google Haritalar'daki orijinal kategori kaydedilir.</p>
+            
+            <div className="space-y-2.5">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-slate-500">Ne Aranacak? (Örn: Eczane, Avukat)</span>
+                <input
+                  type="text"
+                  placeholder="Kategori veya Anahtar Kelime"
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold text-slate-500">Şehir (Örn: İzmir, Berlin)</span>
+                  <input
+                    type="text"
+                    placeholder="Şehir"
+                    value={searchCity}
+                    onChange={(e) => setSearchCity(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all font-semibold"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold text-slate-500">Ülke (Örn: Türkiye, DE)</span>
+                  <input
+                    type="text"
+                    placeholder="Ülke"
+                    value={searchCountry}
+                    onChange={(e) => setSearchCountry(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all font-semibold"
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="text-[9px] text-slate-400 font-semibold leading-tight">
+              Arama alanlarını doldurursanız tarayıcı otomatik arama yapar. Boş bırakırsanız mevcut açık olan sekmedeki sonuçlar taranır.
+            </p>
+          </div>
+        )}
+
+        {/* Custom Saving Values (Category, City, Country) */}
+        {!isScraping && status.state !== 'completed' && (
+          <div className="flex flex-col gap-3.5 p-4 bg-white rounded-xl shadow-sm border border-slate-100">
+            <div className="flex items-center gap-2 text-indigo-600">
+              <Building2 className="size-4" />
+              <span className="text-[11px] font-black uppercase tracking-wider">Varsayılan Kayıt Değerleri</span>
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-slate-500">Özel Kategori (İsteğe Bağlı)</span>
+                <input
+                  type="text"
+                  placeholder="Örn: Restoran, Yazılım Firması"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold text-slate-500">Varsayılan Şehir (İsteğe Bağlı)</span>
+                  <input
+                    type="text"
+                    placeholder="Örn: İzmir"
+                    value={defaultCity}
+                    onChange={(e) => setDefaultCity(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all font-semibold"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold text-slate-500">Varsayılan Ülke (İsteğe Bağlı)</span>
+                  <input
+                    type="text"
+                    placeholder="Örn: Türkiye"
+                    value={defaultCountry}
+                    onChange={(e) => setDefaultCountry(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all font-semibold"
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="text-[9px] text-slate-400 font-semibold leading-tight">
+              Boş bırakılan alanlar Google Haritalar'dan çekilen orijinal verilerle kaydedilir.
+            </p>
           </div>
         )}
 
@@ -434,20 +649,33 @@ function App() {
       {/* Improved Error Notification */}
       {status.error && dismissedError !== status.error && (
         <div className="fixed bottom-6 left-6 right-6 bg-red-600 text-white p-4 rounded-2xl shadow-2xl z-[100] animate-in fade-in slide-in-from-bottom-5 duration-300">
-          <div className="flex items-start gap-3">
-            <div className="bg-white/20 p-1.5 rounded-lg shrink-0 mt-0.5">
-              <AlertCircle className="size-4" />
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start gap-3">
+              <div className="bg-white/20 p-1.5 rounded-lg shrink-0 mt-0.5">
+                <AlertCircle className="size-4" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="text-xs font-black uppercase tracking-widest opacity-80">Hata Saptandı</div>
+                <p className="text-[13px] font-bold leading-tight">{status.error}</p>
+              </div>
+              <button 
+                onClick={() => setDismissedError(status.error || null)}
+                className="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg transition-colors"
+              >
+                <X className="size-4" />
+              </button>
             </div>
-            <div className="flex-1 space-y-1">
-              <div className="text-xs font-black uppercase tracking-widest opacity-80">Hata Saptandı</div>
-              <p className="text-[13px] font-bold leading-tight">{status.error}</p>
-            </div>
-            <button 
-              onClick={() => setDismissedError(status.error || null)}
-              className="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg transition-colors"
-            >
-              <X className="size-4" />
-            </button>
+            {(status.error.includes("limit") || status.error.includes("yükseltin") || status.error.includes("PRO") || status.error.includes("Limit")) && (
+              <button
+                onClick={() => {
+                  chrome.tabs.create({ url: 'http://localhost:5173/billing' });
+                  setDismissedError(status.error || null);
+                }}
+                className="w-full bg-white hover:bg-slate-100 text-red-700 text-xs font-black uppercase tracking-widest py-2 rounded-xl transition-all active:scale-[0.98] shadow-md shadow-black/10"
+              >
+                HEMEN PRO'YA YÜKSELT 🚀
+              </button>
+            )}
           </div>
         </div>
       )}

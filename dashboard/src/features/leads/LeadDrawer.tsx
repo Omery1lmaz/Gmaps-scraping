@@ -21,7 +21,8 @@ import {
   Loader2,
   Pencil,
   Trash2,
-  Check
+  Check,
+  Lock
 } from 'lucide-react';
 import {
   Sheet,
@@ -43,18 +44,22 @@ import {
   SelectValue
 } from '../../components/ui/select';
 import { useUIStore } from '../../lib/store';
+import { useAuth } from '../../lib/auth';
 import { getLead, updateLead, addNote, updateNote, deleteNote } from '../../lib/api';
+
 import { cn, safeFormatDate } from '../../lib/utils';
 import { toast } from 'sonner';
 import { AIPersonalizer } from '../../components/AIPersonalizer';
+import { useT } from '../../lib/i18n';
 
 const API_URL = 'http://localhost:3001/api';
-const MOCK_USER_ID = 'mock-admin-user-id';
 
 export function LeadDrawer() {
+  const { user } = useAuth();
   const { selectedLeadId, setSelectedLeadId, isDrawerOpen, setDrawerOpen } = useUIStore();
   const queryClient = useQueryClient();
   const [newNote, setNewNote] = useState('');
+  const t = useT();
 
   // Edit mode states
   const [isEditMode, setIsEditMode] = useState(false);
@@ -72,10 +77,10 @@ export function LeadDrawer() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
       setIsEditMode(false);
-      toast.success('Müşteri bilgileri başarıyla güncellendi.');
+      toast.success(t('ld_updated'));
     },
     onError: () => {
-      toast.error('Müşteri bilgileri güncellenirken bir hata oluştu.');
+      toast.error(t('ld_update_error'));
     }
   });
 
@@ -127,10 +132,10 @@ export function LeadDrawer() {
       queryClient.invalidateQueries({ queryKey: ['lead', selectedLeadId] });
       setEditingNoteId(null);
       setEditingNoteContent('');
-      toast.success('Not başarıyla güncellendi');
+      toast.success(t('ld_note_updated'));
     },
     onError: () => {
-      toast.error('Not güncellenirken bir hata oluştu');
+      toast.error(t('ld_note_update_err'));
     }
   });
 
@@ -138,10 +143,10 @@ export function LeadDrawer() {
     mutationFn: (noteId: string) => deleteNote(selectedLeadId!, noteId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lead', selectedLeadId] });
-      toast.success('Not silindi');
+      toast.success(t('ld_note_deleted'));
     },
     onError: () => {
-      toast.error('Not silinirken bir hata oluştu');
+      toast.error(t('ld_note_del_err'));
     }
   });
 
@@ -151,20 +156,36 @@ export function LeadDrawer() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lead', selectedLeadId] });
-      toast.success('Diziye başarıyla eklendi');
+      toast.success(t('ld_seq_added'));
       setSelectedSequenceId('');
     }
   });
 
   const analyzeMutation = useMutation({
     mutationFn: async () => {
+      if (user && user.plan === 'free') {
+        throw new Error('AI Analizi sadece PRO üyelerimiz içindir.');
+      }
       return api.post(`/ai/analyze-lead/${selectedLeadId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lead', selectedLeadId] });
-      toast.success('Lead analizi tamamlandı');
+      toast.success(t('ld_ai_analysis_complete'));
+    },
+    onError: (err: any) => {
+      if (err.message.includes('PRO')) {
+        toast.error(err.message, {
+          action: {
+            label: 'Yükselt',
+            onClick: () => window.location.href = '/billing'
+          }
+        });
+      } else {
+        toast.error(t('ld_ai_analysis_error'));
+      }
     }
   });
+
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -189,23 +210,34 @@ export function LeadDrawer() {
 
   const handleSendMessage = async () => {
     if (!messageContent || !lead?.id) return;
+
+    if (user && user.plan === 'free') {
+      toast.error('Panel üzerinden WhatsApp mesajı göndermek sadece PRO üyelerimiz içindir.', {
+        action: {
+          label: 'Yükselt',
+          onClick: () => window.location.href = '/billing'
+        }
+      });
+      return;
+    }
+
     setIsSending(true);
     try {
       await api.post('/whatsapp/enqueue', {
         leadId: lead.id,
-        content: messageContent,
-        userId: MOCK_USER_ID
+        content: messageContent
       });
-      toast.success('Mesaj kuyruğa eklendi');
+      toast.success(t('ld_msg_enqueued'));
       setMessageContent('');
       setSelectedTemplateId('');
       queryClient.invalidateQueries({ queryKey: ['lead', selectedLeadId] });
-    } catch (err) {
-      toast.error('Mesaj gönderilemedi');
+    } catch (error) {
+      toast.error(t('ld_msg_send_error'));
     } finally {
       setIsSending(false);
     }
   };
+
 
   if (!selectedLeadId) return null;
 
@@ -213,20 +245,20 @@ export function LeadDrawer() {
     <Sheet open={isDrawerOpen} onOpenChange={setDrawerOpen}>
       <SheetContent
         side="right"
-        className="sm:max-w-xl p-0 overflow-hidden flex flex-col border-l border-slate-200/60 bg-slate-50/95 backdrop-blur-xl shadow-2xl"
+        className="sm:max-w-xl p-0 overflow-hidden flex flex-col border-l border-slate-200/60 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-xl shadow-2xl"
       >
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400">
             <div className="relative flex items-center justify-center">
-              <Loader2 className="animate-spin size-8 text-blue-600" />
-              <div className="absolute size-4 bg-blue-600/10 rounded-full animate-ping" />
+              <Loader2 className="animate-spin size-8 text-emerald-500" />
+              <div className="absolute size-4 bg-emerald-500/10 rounded-full animate-ping" />
             </div>
-            <span className="text-xs font-black tracking-wide text-slate-500 uppercase">Detaylar Yükleniyor...</span>
+            <span className="text-xs font-black tracking-wide text-slate-500 dark:text-slate-400 uppercase">Detaylar Yükleniyor...</span>
           </div>
         ) : lead && (
           <>
             {/* Drawer Premium Header */}
-            <div className="p-6 bg-white border-b border-slate-200/60 space-y-4 shrink-0 shadow-3xs">
+            <div className="p-6 bg-white dark:bg-slate-900/50 border-b border-slate-200/60 dark:border-slate-800 space-y-4 shrink-0 shadow-3xs">
               <div className="flex items-start justify-between">
                 <div className="space-y-1.5 flex-1 min-w-0">
                   {isEditMode ? (
@@ -237,7 +269,7 @@ export function LeadDrawer() {
                           type="text"
                           value={editBusinessName}
                           onChange={(e) => setEditBusinessName(e.target.value)}
-                          className="w-full h-8 px-2.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
+                          className="w-full h-8 px-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all"
                           placeholder="İşletme Adı"
                         />
                       </div>
@@ -247,7 +279,7 @@ export function LeadDrawer() {
                           type="text"
                           value={editCategory}
                           onChange={(e) => setEditCategory(e.target.value)}
-                          className="w-full h-8 px-2.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
+                          className="w-full h-8 px-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all"
                           placeholder="Kategori"
                         />
                       </div>
@@ -255,10 +287,10 @@ export function LeadDrawer() {
                   ) : (
                     <>
                       <div className="flex items-center gap-2">
-                        <div className="bg-blue-50 p-2 rounded-lg border border-blue-100/50">
-                          <Building2 className="size-5 text-blue-600" />
+                        <div className="bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
+                          <Building2 className="size-5 text-emerald-500" />
                         </div>
-                        <SheetTitle className="text-xl font-black text-slate-800 tracking-tight truncate leading-tight">
+                        <SheetTitle className="text-xl font-black text-slate-800 dark:text-white dark:text-white tracking-tight truncate leading-tight">
                           {lead.businessName || lead.name}
                         </SheetTitle>
                       </div>
@@ -312,7 +344,7 @@ export function LeadDrawer() {
                             status: editStatus
                           });
                         }}
-                        className="h-8 text-[11px] font-black bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-3 shadow-md shadow-blue-500/10"
+                        className="h-8 text-[11px] font-black bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold rounded-xl px-3 shadow-md shadow-emerald-500/10"
                         disabled={updateLeadMutation.isPending}
                       >
                         {updateLeadMutation.isPending ? (
@@ -340,7 +372,7 @@ export function LeadDrawer() {
                     <select
                       value={editStatus}
                       onChange={(e) => setEditStatus(e.target.value)}
-                      className="w-full h-8 px-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all cursor-pointer"
+                      className="w-full h-8 px-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer"
                     >
                       <option value="NEW">NEW</option>
                       <option value="CONTACTED">CONTACTED</option>
@@ -352,13 +384,13 @@ export function LeadDrawer() {
                 ) : (
                   <Badge className={cn(
                     "border-none font-black uppercase text-[9px] px-2.5 py-1 shadow-3xs flex items-center gap-1.5 rounded-full",
-                    lead.status === 'NEW' ? 'bg-blue-600 text-white' :
+                    lead.status === 'NEW' ? 'bg-emerald-500 text-white' :
                       lead.status === 'CONTACTED' ? 'bg-indigo-600 text-white' :
                         lead.status === 'FOLLOW_UP' ? 'bg-amber-500 text-white' :
                           lead.status === 'MEETING_BOOKED' ? 'bg-emerald-600 text-white' :
                             lead.status === 'CLOSED' ? 'bg-purple-600 text-white' : 'bg-slate-500 text-white'
                   )}>
-                    <div className="size-1.5 bg-white rounded-full animate-pulse" />
+                    <div className="size-1.5 bg-white dark:bg-slate-900/50 rounded-full animate-pulse" />
                     {(lead.status || 'NEW').replace('_', ' ')}
                   </Badge>
                 )}
@@ -380,7 +412,7 @@ export function LeadDrawer() {
 
                 {/* Contact Info Redesigned as Luxury Bordered Cards */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1 p-3.5 bg-white rounded-xl border border-slate-200/50 border-l-4 border-l-emerald-500 shadow-3xs hover:shadow-xs transition-shadow duration-300">
+                  <div className="space-y-1 p-3.5 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200/50 dark:border-slate-800 border-l-4 border-l-emerald-500 shadow-3xs hover:shadow-xs transition-shadow duration-300">
                     <div className="flex items-center gap-1.5 text-slate-400">
                       <Phone className="size-3.5 text-emerald-500" />
                       <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Telefon</span>
@@ -390,17 +422,17 @@ export function LeadDrawer() {
                         type="text"
                         value={editPhone}
                         onChange={(e) => setEditPhone(e.target.value)}
-                        className="w-full h-8 px-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all"
+                        className="w-full h-8 px-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all"
                         placeholder="Telefon Numarası"
                       />
                     ) : (
-                      <div className="text-xs font-bold text-slate-700 select-all">{lead.phone || 'Girilmemiş'}</div>
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-300 select-all">{lead.phone || 'Girilmemiş'}</div>
                     )}
                   </div>
 
-                  <div className="space-y-1 p-3.5 bg-white rounded-xl border border-slate-200/50 border-l-4 border-l-blue-500 shadow-3xs hover:shadow-xs transition-shadow duration-300">
+                  <div className="space-y-1 p-3.5 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200/50 dark:border-slate-800 border-l-4 border-l-emerald-500 shadow-3xs hover:shadow-xs transition-shadow duration-300">
                     <div className="flex items-center gap-1.5 text-slate-400">
-                      <Globe className="size-3.5 text-blue-500" />
+                      <Globe className="size-3.5 text-emerald-500" />
                       <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Web Sitesi</span>
                     </div>
                     {isEditMode ? (
@@ -408,7 +440,7 @@ export function LeadDrawer() {
                         type="text"
                         value={editWebsite}
                         onChange={(e) => setEditWebsite(e.target.value)}
-                        className="w-full h-8 px-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
+                        className="w-full h-8 px-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all"
                         placeholder="Web Sitesi URL"
                       />
                     ) : lead.website ? (
@@ -416,7 +448,7 @@ export function LeadDrawer() {
                         href={lead.website}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-bold text-blue-600 truncate block hover:underline hover:text-blue-700"
+                        className="text-xs font-bold text-emerald-500 truncate block hover:underline hover:text-emerald-400"
                       >
                         {lead.website}
                       </a>
@@ -425,7 +457,7 @@ export function LeadDrawer() {
                     )}
                   </div>
 
-                  <div className="col-span-2 space-y-1 p-3.5 bg-white rounded-xl border border-slate-200/50 border-l-4 border-l-indigo-500 shadow-3xs hover:shadow-xs transition-shadow duration-300">
+                  <div className="col-span-2 space-y-1 p-3.5 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200/50 dark:border-slate-800 border-l-4 border-l-indigo-500 shadow-3xs hover:shadow-xs transition-shadow duration-300">
                     <div className="flex items-center gap-1.5 text-slate-400">
                       <MapPin className="size-3.5 text-indigo-500" />
                       <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Adres Bilgisi</span>
@@ -434,26 +466,30 @@ export function LeadDrawer() {
                       <textarea
                         value={editAddress}
                         onChange={(e) => setEditAddress(e.target.value)}
-                        className="w-full min-h-[60px] p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all resize-none"
+                        className="w-full min-h-[60px] p-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all resize-none"
                         placeholder="Adres Bilgisi"
                       />
                     ) : (
-                      <div className="text-xs font-bold text-slate-700 select-all leading-relaxed">{lead.address || 'Girilmemiş'}</div>
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-300 select-all leading-relaxed">{lead.address || 'Girilmemiş'}</div>
                     )}
                   </div>
                 </div>
 
                 {/* AI Intelligence Center */}
-                <div className="bg-white rounded-2xl border border-slate-200/50 p-5 space-y-4 shadow-3xs">
+                <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800 p-5 space-y-4 shadow-3xs">
                   <div className="flex items-center justify-between">
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <Sparkles className="size-4 text-blue-600 animate-pulse" /> AI Zekası & Analiz
+                      <Sparkles className="size-4 text-emerald-500 animate-pulse" /> AI Zekası & Analiz
                     </h3>
-                    {!lead.aiQualityScore && (
+                    {user?.plan === 'free' ? (
+                       <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-black text-[8px] uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+                         <Lock className="size-2.5" /> Starter Gerekli
+                       </Badge>
+                    ) : !lead.aiQualityScore && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 text-[9px] font-black text-blue-600 uppercase hover:bg-blue-50 border border-blue-200/60 rounded-xl px-3 transition-colors"
+                        className="h-8 text-[9px] font-black text-emerald-500 uppercase hover:bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-3 transition-colors"
                         onClick={() => analyzeMutation.mutate()}
                         disabled={analyzeMutation.isPending}
                       >
@@ -469,12 +505,24 @@ export function LeadDrawer() {
                     )}
                   </div>
 
-                  {lead.aiQualityScore ? (
+                  {user?.plan === 'free' ? (
+                     <div className="p-4 text-center bg-slate-50/60 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200/80 dark:border-slate-700">
+                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-2">
+                          AI analiz özelliğini kullanabilmek için planınızı en az Starter paketine yükseltin.
+                        </p>
+                        <Button 
+                          onClick={() => window.location.href = '/billing'}
+                          className="h-7 text-[8px] font-black uppercase bg-emerald-500 hover:bg-emerald-600 text-black rounded-lg px-2 shadow-xs"
+                        >
+                          Planları İncele
+                        </Button>
+                     </div>
+                  ) : lead.aiQualityScore ? (
                     <div className="space-y-4 animate-fade-in">
                       <div className="grid grid-cols-3 gap-3">
-                        <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100/50 flex flex-col items-center text-center">
-                          <p className="text-[9px] font-black text-blue-500 uppercase tracking-wider mb-1">Skor</p>
-                          <div className="text-lg font-black text-blue-600">{lead.aiQualityScore}%</div>
+                        <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20 flex flex-col items-center text-center">
+                          <p className="text-[9px] font-black text-emerald-500 uppercase tracking-wider mb-1">Skor</p>
+                          <div className="text-lg font-black text-emerald-500">{lead.aiQualityScore}%</div>
                         </div>
                         <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100/50 flex flex-col items-center text-center">
                           <p className="text-[9px] font-black text-emerald-500 uppercase tracking-wider mb-1">Yanıt İhtimali</p>
@@ -486,19 +534,19 @@ export function LeadDrawer() {
                         </div>
                       </div>
                       {lead.aiAnalysisSummary && (
-                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/50 relative">
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-800 relative">
                           <div className="absolute top-2 right-2 text-slate-300">
                             <Sparkles className="size-3" />
                           </div>
-                          <p className="text-xs font-bold text-slate-600 italic leading-relaxed pl-1">
+                          <p className="text-xs font-bold text-slate-600 dark:text-slate-300 italic leading-relaxed pl-1">
                             "{lead.aiAnalysisSummary}"
                           </p>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="p-6 text-center bg-slate-50/60 rounded-xl border border-dashed border-slate-200/80">
-                      <p className="text-xs font-bold text-slate-500">
+                    <div className="p-6 text-center bg-slate-50/60 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200/80 dark:border-slate-700">
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
                         İşletmenin AI uyumunu, yanıt alma oranını ve özetini görmek için hızlı analiz başlatın.
                       </p>
                     </div>
@@ -506,11 +554,11 @@ export function LeadDrawer() {
                 </div>
 
                 {/* Assignment - Assigned To */}
-                <div className="bg-white rounded-2xl border border-slate-200/50 p-4 space-y-3 shadow-3xs">
+                <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800 p-4 space-y-3 shadow-3xs">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                     <UserIcon className="size-3.5 text-slate-400" /> Sorumlu Kişi
                   </h3>
-                  <div className="flex items-center gap-3 p-2 bg-slate-50/50 rounded-xl border border-slate-200/30">
+                  <div className="flex items-center gap-3 p-2 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-slate-200/30 dark:border-slate-700">
                     {lead.assignedTo ? (
                       <>
                         <img
@@ -519,7 +567,7 @@ export function LeadDrawer() {
                           alt=""
                         />
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-800">{lead.assignedTo.name}</div>
+                          <div className="text-xs font-bold text-slate-800 dark:text-white dark:text-white">{lead.assignedTo.name}</div>
                           <div className="text-[10px] font-medium text-slate-400 truncate">{lead.assignedTo.email}</div>
                         </div>
                       </>
@@ -534,22 +582,22 @@ export function LeadDrawer() {
                 {/* Apple & Linear Styled Tabs Container */}
                 <Tabs defaultValue="notes" className="w-full flex flex-col">
                   <TabsList className="grid w-full grid-cols-3 bg-slate-200/60 p-1 rounded-xl h-11 border border-slate-200/30 shadow-3xs shrink-0">
-                    <TabsTrigger value="notes" className="rounded-lg font-bold text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-300">Notlar</TabsTrigger>
-                    <TabsTrigger value="activity" className="rounded-lg font-bold text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-300">Aktiviteler</TabsTrigger>
-                    <TabsTrigger value="whatsapp" className="rounded-lg font-bold text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-300">WhatsApp</TabsTrigger>
+                    <TabsTrigger value="notes" className="rounded-lg font-bold text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all duration-300">Notlar</TabsTrigger>
+                    <TabsTrigger value="activity" className="rounded-lg font-bold text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all duration-300">Aktiviteler</TabsTrigger>
+                    <TabsTrigger value="whatsapp" className="rounded-lg font-bold text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all duration-300">WhatsApp</TabsTrigger>
                   </TabsList>
 
                   {/* Notes Tab Content */}
                   <TabsContent value="notes" className="space-y-4 pt-4 animate-fade-in">
-                    <div className="bg-white rounded-2xl border border-slate-200/50 p-4 space-y-3 shadow-3xs">
+                    <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800 p-4 space-y-3 shadow-3xs">
                       <Textarea
                         placeholder="İşletmeyle ilgili bir not girin..."
-                        className="rounded-xl border-slate-200 focus-visible:ring-4 focus-visible:ring-blue-500/10 focus-visible:border-blue-500 min-h-[90px] text-xs font-bold shadow-3xs bg-slate-50/20"
+                        className="rounded-xl border-slate-200 dark:border-slate-700 focus-visible:ring-4 focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 min-h-[90px] text-xs font-bold shadow-3xs bg-slate-50/20 dark:bg-slate-800/50"
                         value={newNote}
                         onChange={(e) => setNewNote(e.target.value)}
                       />
                       <Button
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold h-10 rounded-xl shadow-lg shadow-blue-500/15 hover:shadow-blue-500/25 active:scale-[0.99] transition-all"
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold h-10 rounded-xl shadow-lg shadow-emerald-500/15 hover:shadow-emerald-500/25 active:scale-[0.99] transition-all"
                         onClick={() => noteMutation.mutate(newNote)}
                         disabled={!newNote.trim() || noteMutation.isPending}
                       >
@@ -569,12 +617,12 @@ export function LeadDrawer() {
                           return (
                             <div 
                               key={note.id} 
-                              className="p-4 bg-white rounded-xl border border-slate-200/40 shadow-3xs space-y-2 relative group hover:border-slate-300 transition-all duration-200"
+                              className="p-4 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200/40 dark:border-slate-800 shadow-3xs space-y-2 relative group hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200"
                             >
                               {isEditing ? (
                                 <div className="space-y-2 animate-fade-in">
                                   <Textarea
-                                    className="rounded-xl border-slate-200 focus-visible:ring-4 focus-visible:ring-blue-500/10 focus-visible:border-blue-500 min-h-[70px] text-xs font-bold shadow-3xs bg-slate-50/20"
+                                    className="rounded-xl border-slate-200 dark:border-slate-700 focus-visible:ring-4 focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 min-h-[70px] text-xs font-bold shadow-3xs bg-slate-50/20 dark:bg-slate-800/50"
                                     value={editingNoteContent}
                                     onChange={(e) => setEditingNoteContent(e.target.value)}
                                   />
@@ -592,7 +640,7 @@ export function LeadDrawer() {
                                     </Button>
                                     <Button
                                       size="sm"
-                                      className="h-7 px-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-[10px] font-bold shadow-sm"
+                                      className="h-7 px-3 rounded-lg bg-emerald-500 text-black hover:bg-emerald-600 text-[10px] font-extrabold shadow-sm"
                                       onClick={() => editNoteMutation.mutate({ noteId: note.id, content: editingNoteContent })}
                                       disabled={!editingNoteContent.trim() || editNoteMutation.isPending}
                                     >
@@ -612,7 +660,7 @@ export function LeadDrawer() {
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      className="h-7 w-7 p-0 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50/50"
+                                      className="h-7 w-7 p-0 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10"
                                       onClick={() => {
                                         setEditingNoteId(note.id);
                                         setEditingNoteContent(note.content);
@@ -634,7 +682,7 @@ export function LeadDrawer() {
                                     </Button>
                                   </div>
 
-                                  <p className="text-xs text-slate-700 font-semibold leading-relaxed pr-14 whitespace-pre-wrap">{note.content}</p>
+                                  <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold leading-relaxed pr-14 whitespace-pre-wrap">{note.content}</p>
                                   <div className="text-[9px] font-black text-slate-400 flex items-center gap-1">
                                     <Clock className="size-3 text-slate-300" /> {safeFormatDate(note.createdAt, 'dd MMM yyyy HH:mm')}
                                   </div>
@@ -644,7 +692,7 @@ export function LeadDrawer() {
                           );
                         })
                       ) : (
-                        <div className="p-8 text-center bg-white border border-slate-200/40 rounded-2xl shadow-3xs">
+                        <div className="p-8 text-center bg-white dark:bg-slate-900/50 border border-slate-200/40 dark:border-slate-800 rounded-2xl shadow-3xs">
                           <p className="text-xs font-bold text-slate-400">Henüz kaydedilmiş not bulunmuyor.</p>
                         </div>
                       )}
@@ -653,21 +701,21 @@ export function LeadDrawer() {
 
                   {/* Activity Logs (Linear styled Timeline) */}
                   <TabsContent value="activity" className="pt-4 animate-fade-in">
-                    <div className="bg-white rounded-2xl border border-slate-200/50 p-5 shadow-3xs">
+                    <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800 p-5 shadow-3xs">
                       {lead.activities && lead.activities.length > 0 ? (
-                        <div className="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-100">
+                        <div className="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-100 dark:before:bg-slate-800">
                           {lead.activities.map((activity: any) => (
                             <div key={activity.id} className="relative">
                               <div className={cn(
                                 "absolute -left-[30px] top-0 size-6 rounded-full border-4 border-white flex items-center justify-center shadow-xs",
                                 activity.type === 'CREATED' ? 'bg-emerald-500' :
-                                  activity.type === 'STATUS_CHANGE' ? 'bg-blue-500' :
+                                  activity.type === 'STATUS_CHANGE' ? 'bg-emerald-500' :
                                     activity.type === 'AUTOMATION_STOPPED' ? 'bg-amber-500' : 'bg-slate-400'
                               )}>
                                 <History className="size-3 text-white" />
                               </div>
                               <div className="space-y-1">
-                                <p className="text-xs font-bold text-slate-800 leading-tight">{activity.description}</p>
+                                <p className="text-xs font-bold text-slate-800 dark:text-white dark:text-white leading-tight">{activity.description}</p>
                                 <p className="text-[9px] font-black text-slate-400 flex items-center gap-1 mt-0.5">
                                   <Calendar className="size-2.5 text-slate-300" />
                                   {safeFormatDate(activity.createdAt, 'dd MMM yyyy HH:mm')}
@@ -704,96 +752,154 @@ export function LeadDrawer() {
                     )}
 
                     {/* Sequence Enrollment */}
-                    <div className="space-y-3 p-4 bg-white rounded-xl border border-slate-200/50 shadow-3xs">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Zap size={14} className="text-amber-500" />
-                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">WhatsApp Dizi Başlat</h4>
+                    <div className="space-y-3 p-4 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200/50 dark:border-slate-800 shadow-3xs">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <Zap size={14} className="text-amber-500" />
+                          <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">WhatsApp Dizi Başlat</h4>
+                        </div>
+                        {(user?.plan === 'free' || user?.plan === 'starter') && (
+                          <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-black text-[8px] uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Lock className="size-2.5" /> Growth Gerekli
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex gap-2">
-                        <select
-                          value={selectedSequenceId}
-                          onChange={(e) => setSelectedSequenceId(e.target.value)}
-                          className="flex-1 h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-slate-50/50 hover:bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer shadow-3xs"
-                        >
-                          <option value="">Bir dizi seçin...</option>
-                          {sequences.map((s: any) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}
-                            </option>
-                          ))}
-                        </select>
-                        <Button
-                          className="bg-amber-500 hover:bg-amber-600 text-white font-bold h-10 text-xs px-5 rounded-xl shadow-md shadow-amber-500/10 active:scale-[0.98] transition-all"
-                          disabled={!selectedSequenceId || enrollMutation.isPending}
-                          onClick={() => enrollMutation.mutate(selectedSequenceId)}
-                        >
-                          {enrollMutation.isPending ? (
-                            <Loader2 className="animate-spin size-3" />
-                          ) : (
-                            'Kaydet'
-                          )}
-                        </Button>
-                      </div>
+                      
+                      {user?.plan === 'free' || user?.plan === 'starter' ? (
+                        <div className="p-3 text-center bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200/50 dark:border-slate-700">
+                          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-2">
+                            Otomatik takip dizileri Growth paketine özeldir.
+                          </p>
+                          <Button 
+                            onClick={() => window.location.href = '/billing'}
+                            className="h-7 text-[8px] font-black uppercase bg-emerald-500 text-black rounded-lg px-2"
+                          >
+                            Yükselt
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <select
+                            value={selectedSequenceId}
+                            onChange={(e) => setSelectedSequenceId(e.target.value)}
+                            className="flex-1 h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-3xs"
+                          >
+                            <option value="">Bir dizi seçin...</option>
+                            {sequences.map((s: any) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name}
+                              </option>
+                            ))}
+                          </select>
+                          <Button
+                            className="bg-amber-500 hover:bg-amber-600 text-white font-bold h-10 text-xs px-5 rounded-xl shadow-md shadow-amber-500/10 active:scale-[0.98] transition-all"
+                            disabled={!selectedSequenceId || enrollMutation.isPending}
+                            onClick={() => enrollMutation.mutate(selectedSequenceId)}
+                          >
+                            {enrollMutation.isPending ? (
+                              <Loader2 className="animate-spin size-3" />
+                            ) : (
+                              'Kaydet'
+                            )}
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     {/* AI Personalizer Integration */}
-                    <AIPersonalizer
-                      leadId={lead.id}
-                      templateContent={messageContent || 'Lütfen önce bir şablon seçin'}
-                      onVariationGenerated={setMessageContent}
-                    />
+                    {user?.plan === 'free' ? (
+                      <div className="p-4 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200/50 dark:border-slate-800 shadow-3xs flex flex-col items-center text-center space-y-2">
+                        <Sparkles className="size-5 text-emerald-500/50" />
+                        <p className="text-[10px] font-bold text-slate-400">AI Mesaj Kişiselleştirme için Starter plana geçin.</p>
+                      </div>
+                    ) : (
+                      <AIPersonalizer
+                        leadId={lead.id}
+                        templateContent={messageContent || 'Lütfen önce bir şablon seçin'}
+                        onVariationGenerated={setMessageContent}
+                      />
+                    )}
 
                     {/* Send Message Section */}
-                    <div className="space-y-4 p-4.5 bg-emerald-50/30 rounded-2xl border border-emerald-100/60 shadow-3xs">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Sparkles className="size-4.5 text-emerald-600 animate-pulse" />
-                        <h4 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Hızlı Mesaj Gönder</h4>
-                      </div>
-
-                      <div className="space-y-3">
-                        <select
-                          value={selectedTemplateId}
-                          onChange={(e) => handleTemplateChange(e.target.value)}
-                          className="w-full h-10 px-3 border border-emerald-100 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-3xs"
-                        >
-                          <option value="">Hızlı bir şablon seçin...</option>
-                          {templates.map((t: any) => (
-                            <option key={t.id} value={t.id}>
-                              {t.name}
-                            </option>
-                          ))}
-                        </select>
-
-                        <Textarea
-                          placeholder="Mesaj içeriğini buraya girin veya yukarıdan bir şablon seçin..."
-                          className="min-h-[110px] rounded-xl border-emerald-100 bg-white font-medium text-xs focus:ring-emerald-500/10 focus-visible:ring-4"
-                          value={messageContent}
-                          onChange={(e) => setMessageContent(e.target.value)}
-                        />
-
-                        <Button
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 shadow-lg shadow-emerald-500/15 active:scale-[0.98] transition-all rounded-xl"
-                          disabled={!messageContent || isSending || !lead?.phone}
-                          onClick={handleSendMessage}
-                        >
-                          {isSending ? (
-                            <div className="flex items-center gap-2 justify-center">
-                              <Loader2 className="animate-spin size-4" />
-                              Gönderiliyor...
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 justify-center">
-                              <MessageSquare className="size-4" />
-                              WhatsApp Güvenli Gönder
-                            </div>
-                          )}
-                        </Button>
-                        {!lead?.phone && (
-                          <div className="p-2.5 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-1.5">
-                            <span className="text-[9px] font-black text-red-600 uppercase tracking-wider">İşletmenin Telefonu Yok!</span>
-                          </div>
+                    <div className="space-y-4 p-4.5 bg-emerald-50/30 rounded-2xl border border-emerald-100/60 shadow-3xs relative overflow-hidden">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="size-4.5 text-emerald-600 animate-pulse" />
+                          <h4 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Hızlı Mesaj Gönder</h4>
+                        </div>
+                        {user?.plan === 'free' && (
+                          <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-black text-[8px] uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Lock className="size-2.5" /> Starter Gerekli
+                          </Badge>
                         )}
                       </div>
+
+                      {user?.plan === 'free' ? (
+                        <div className="space-y-3 blur-[2px] pointer-events-none select-none">
+                          <div className="h-10 w-full bg-white rounded-xl border border-emerald-100" />
+                          <div className="h-24 w-full bg-white rounded-xl border border-emerald-100" />
+                          <div className="h-11 w-full bg-emerald-600/50 rounded-xl" />
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <select
+                            value={selectedTemplateId}
+                            onChange={(e) => handleTemplateChange(e.target.value)}
+                            className="w-full h-10 px-3 border border-emerald-100 rounded-xl text-xs font-bold text-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-3xs"
+                          >
+                            <option value="">Hızlı bir şablon seçin...</option>
+                            {templates.map((t: any) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name}
+                              </option>
+                            ))}
+                          </select>
+
+                          <Textarea
+                            placeholder="Mesaj içeriğini buraya girin veya yukarıdan bir şablon seçin..."
+                            className="min-h-[110px] rounded-xl border-emerald-100 bg-white dark:bg-slate-800 font-medium text-xs focus:ring-emerald-500/10 focus-visible:ring-4"
+                            value={messageContent}
+                            onChange={(e) => setMessageContent(e.target.value)}
+                          />
+
+                          <Button
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 shadow-lg shadow-emerald-500/15 active:scale-[0.98] transition-all rounded-xl"
+                            disabled={!messageContent || isSending || !lead?.phone}
+                            onClick={handleSendMessage}
+                          >
+                            {isSending ? (
+                              <div className="flex items-center gap-2 justify-center">
+                                <Loader2 className="animate-spin size-4" />
+                                Gönderiliyor...
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 justify-center">
+                                <MessageSquare className="size-4" />
+                                WhatsApp Güvenli Gönder
+                              </div>
+                            )}
+                          </Button>
+                          {!lead?.phone && (
+                            <div className="p-2.5 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-1.5">
+                              <span className="text-[9px] font-black text-red-600 uppercase tracking-wider">İşletmenin Telefonu Yok!</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {user?.plan === 'free' && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-white/10 backdrop-blur-[1px] z-10 space-y-3">
+                           <p className="text-xs font-black text-emerald-800">
+                             Hızlı mesaj gönderme özelliği Starter paketiyle açılır.
+                           </p>
+                           <Button 
+                             onClick={() => window.location.href = '/billing'}
+                             className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-[10px] uppercase h-8 px-4 rounded-xl shadow-lg shadow-emerald-500/20"
+                           >
+                             Hemen Yükselt
+                           </Button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Messages Logs History */}
@@ -810,7 +916,7 @@ export function LeadDrawer() {
                                   "p-4 rounded-xl border flex items-start gap-3 shadow-3xs transition-shadow duration-300",
                                   isIncoming
                                     ? "bg-purple-50/20 border-purple-100/80"
-                                    : "bg-white border-slate-200/50"
+                                    : "bg-white dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800"
                                 )}
                               >
                                 <div className={cn(
@@ -828,12 +934,12 @@ export function LeadDrawer() {
                                     </p>
                                     <span className="text-[9px] font-bold text-slate-400">{safeFormatDate(log.createdAt, 'dd MMM HH:mm')}</span>
                                   </div>
-                                  <p className="text-xs font-semibold text-slate-700 leading-relaxed break-words">{log.content}</p>
+                                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed break-words">{log.content}</p>
                                   <div className="flex items-center gap-3 pt-1">
                                     <Badge className={cn(
                                       "border-none font-black text-[8px] px-2 py-0.5 rounded-full shadow-3xs",
                                       isIncoming ? "bg-purple-500 text-white" :
-                                        log.status === 'READ' ? "bg-blue-500 text-white" :
+                                        log.status === 'READ' ? "bg-emerald-500 text-white" :
                                           log.status === 'SENT' || log.status === 'DELIVERED' ? "bg-emerald-500 text-white" :
                                             log.status === 'FAILED' ? "bg-red-500 text-white" : "bg-amber-500 text-white"
                                     )}>
@@ -846,7 +952,7 @@ export function LeadDrawer() {
                           })}
                         </div>
                       ) : (
-                        <div className="py-10 text-center space-y-3 bg-white border border-slate-200/50 rounded-2xl shadow-3xs">
+                        <div className="py-10 text-center space-y-3 bg-white dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800 rounded-2xl shadow-3xs">
                           <MessageSquare className="size-8 text-slate-300 mx-auto" />
                           <p className="text-xs font-bold text-slate-400">Henüz mesajlaşma kaydı bulunamadı.</p>
                         </div>

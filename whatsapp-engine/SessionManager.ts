@@ -4,7 +4,7 @@ import db from './mongoService.js';
 import path from 'path';
 import fs from 'fs';
 import fsp from 'fs/promises';
-
+import { generateAiReply } from './aiUtility.js';
 
 const { Client, LocalAuth, Events } = whatsappWeb as any;
 const MEDIA_DIR = process.env.WHATSAPP_MEDIA_DIR || path.join(process.cwd(), 'media', 'whatsapp');
@@ -40,7 +40,7 @@ export class WhatsAppSessionManager {
     }
   }
 
-  private async safeCallClientMethod(userId: string, client: any, method: 'logout' | 'destroy') {
+  private async safeCallClientMethod(sessionId: string, client: any, method: 'logout' | 'destroy') {
     if (!client || typeof client[method] !== 'function') return;
 
     try {
@@ -54,7 +54,7 @@ export class WhatsAppSessionManager {
         message.includes('Protocol error');
 
       if (isAlreadyClosed) {
-        console.warn(`WhatsApp client ${method} skipped for ${userId}; browser session was already closed: ${message}`);
+        console.warn(`WhatsApp client ${method} skipped for session ${sessionId}; browser session was already closed: ${message}`);
         return;
       }
 
@@ -66,13 +66,14 @@ export class WhatsAppSessionManager {
     return String(value || '').replace(/\D/g, '');
   }
 
-  private async findLeadForJid(jid: string) {
+  private async findLeadForJid(userId: string, jid: string) {
     const phone = this.normalizePhone(jid);
     if (!phone) return null;
     const last10 = phone.slice(-10);
 
     return db.lead.findFirst({
       where: {
+        userId,
         OR: [
           { phone: { contains: phone } },
           ...(last10 ? [{ phone: { contains: last10 } }] : []),
@@ -81,7 +82,7 @@ export class WhatsAppSessionManager {
     });
   }
 
-  private async saveMedia(rawMessage: any, messageId: string, direction: string) {
+  private async saveMedia(userId: string, rawMessage: any, messageId: string, direction: string) {
     if (!rawMessage?.hasMedia || typeof rawMessage.downloadMedia !== 'function') return null;
 
     try {
@@ -100,6 +101,7 @@ export class WhatsAppSessionManager {
       return db.whatsAppMedia.create({
         data: {
           messageId,
+          userId,
           fileName: media.filename || fileName,
           mimeType: media.mimetype,
           size: buffer.length,
@@ -113,17 +115,18 @@ export class WhatsAppSessionManager {
     }
   }
 
-  private async upsertChatFromRaw(rawChat: any, fallbackJid?: string) {
+  private async upsertChatFromRaw(sessionId: string, userId: string, rawChat: any, fallbackJid?: string) {
     const jid = rawChat?.id?._serialized || fallbackJid;
     if (!jid) throw new Error('WhatsApp chat JID is missing');
     const phone = this.normalizePhone(jid);
-    const lead = await this.findLeadForJid(jid);
+    const lead = await this.findLeadForJid(userId, jid);
 
     let contact = null;
     if (!rawChat?.isGroup) {
       contact = await db.whatsAppContact.upsert({
-        where: { jid },
+        where: { userId, jid },
         update: {
+          userId,
           phone: phone || null,
           name: rawChat?.name || undefined,
           pushName: rawChat?.contact?.pushname || undefined,
@@ -132,7 +135,8 @@ export class WhatsAppSessionManager {
           leadId: lead?.id || null,
         },
         create: {
-          id: jid,
+          id: `${userId}:${jid}`,
+          userId,
           jid,
           phone: phone || null,
           name: rawChat?.name || phone || jid,
@@ -149,8 +153,10 @@ export class WhatsAppSessionManager {
     const lastPreview = lastMessage?.body || (lastMessage?.hasMedia ? 'Media' : null);
 
     return db.whatsAppChat.upsert({
-      where: { jid },
+      where: { userId, sessionId, jid },
       update: {
+        userId,
+        sessionId,
         name: rawChat?.name || contact?.name || phone || jid,
         isGroup: Boolean(rawChat?.isGroup),
         isArchived: Boolean(rawChat?.archived),
@@ -163,7 +169,9 @@ export class WhatsAppSessionManager {
         leadId: lead?.id || null,
       },
       create: {
-        id: jid,
+        id: `${userId}:${sessionId}:${jid}`,
+        userId,
+        sessionId,
         jid,
         name: rawChat?.name || contact?.name || phone || jid,
         isGroup: Boolean(rawChat?.isGroup),
@@ -179,12 +187,12 @@ export class WhatsAppSessionManager {
     });
   }
 
-  private async persistWhatsAppMessage(rawMessage: any, rawChat?: any) {
-    const chat = await this.upsertChatFromRaw(rawChat, rawMessage?.fromMe ? rawMessage?.to : rawMessage?.from);
+  private async persistWhatsAppMessage(sessionId: string, userId: string, rawMessage: any, rawChat?: any) {
+    const chat = await this.upsertChatFromRaw(sessionId, userId, rawChat, rawMessage?.fromMe ? rawMessage?.to : rawMessage?.from);
     const whatsappMessageId = rawMessage?.id?._serialized;
     if (whatsappMessageId) {
-      const existing = await db.whatsAppMessage.findUnique({
-        where: { whatsappMessageId },
+      const existing = await db.whatsAppMessage.findFirst({
+        where: { userId, sessionId, whatsappMessageId },
       });
       if (existing) return existing;
     }
@@ -192,11 +200,14 @@ export class WhatsAppSessionManager {
     const direction = rawMessage?.fromMe ? 'OUTGOING' : 'INCOMING';
     const status = direction === 'INCOMING' ? 'READ' : 'SENT';
     const timestamp = rawMessage?.timestamp ? new Date(rawMessage.timestamp * 1000) : new Date();
+
     const type = rawMessage?.type || (rawMessage?.hasMedia ? 'media' : 'text');
     const message = await db.whatsAppMessage.create({
       data: {
         whatsappMessageId,
-        chatId: chat.id,
+        userId,
+        sessionId,
+        chatId: chat.jid || chat.id,
         leadId: chat.leadId,
         direction,
         status,
@@ -209,7 +220,7 @@ export class WhatsAppSessionManager {
       },
     });
 
-    await this.saveMedia(rawMessage, message.id, direction);
+    await this.saveMedia(userId, rawMessage, message.id, direction);
     await db.whatsAppChat.update({
       where: { id: chat.id },
       data: {
@@ -224,14 +235,18 @@ export class WhatsAppSessionManager {
     return saved || message;
   }
 
-  public async syncHistory(userId: string) {
-    const client = this.clients.get(userId);
-    if (!client) throw new Error(`WhatsApp client is not connected for ${userId}`);
-    if (this.activeSyncs.has(userId)) return;
+  public async syncHistory(sessionId: string) {
+    const client = this.clients.get(sessionId);
+    if (!client) throw new Error(`WhatsApp client is not connected for session ${sessionId}`);
 
-    this.activeSyncs.add(userId);
+    const sessionRecord = await db.whatsAppSession.findUnique({ where: { id: sessionId } });
+    const userId = sessionRecord ? sessionRecord.userId : sessionId;
+
+    if (this.activeSyncs.has(sessionId)) return;
+
+    this.activeSyncs.add(sessionId);
     await db.whatsAppSyncState.upsert({
-      where: { userId },
+      where: { userId, sessionId },
       update: {
         status: 'RUNNING',
         syncedChats: 0,
@@ -241,18 +256,19 @@ export class WhatsAppSessionManager {
         finishedAt: null,
       },
       create: {
-        id: userId,
+        id: sessionId,
         userId,
+        sessionId,
         status: 'RUNNING',
         startedAt: new Date(),
       },
     });
-    this.io.to(userId).emit('sync_status', { status: 'RUNNING' });
+    this.io.to(userId).emit('sync_status', { sessionId, status: 'RUNNING' });
 
     try {
       const chats = await client.getChats();
       await db.whatsAppSyncState.update({
-        where: { userId },
+        where: { id: sessionId },
         data: { totalChats: chats.length },
       });
 
@@ -260,20 +276,19 @@ export class WhatsAppSessionManager {
       for (let i = 0; i < chats.length; i++) {
         const chat = chats[i];
         const chatName = chat?.name || chat?.id?._serialized || `Chat ${i + 1}`;
-        await this.upsertChatFromRaw(chat);
+        await this.upsertChatFromRaw(sessionId, userId, chat);
 
         try {
-          const messages = await chat.fetchMessages({ limit: 100000 });
+          const messages = await chat.fetchMessages({ limit: 500 });
           totalMessages += messages.length;
 
           for (let m = 0; m < messages.length; m++) {
             const message = messages[m];
-            await this.persistWhatsAppMessage(message, chat);
+            await this.persistWhatsAppMessage(sessionId, userId, message, chat);
 
-            // Granular progress: emit every 10 messages or last message
             if (m % 10 === 0 || m === messages.length - 1) {
               await db.whatsAppSyncState.update({
-                where: { userId },
+                where: { id: sessionId },
                 data: {
                   syncedChats: i + 1,
                   totalMessages,
@@ -283,6 +298,7 @@ export class WhatsAppSessionManager {
                 },
               });
               this.io.to(userId).emit('sync_status', {
+                sessionId,
                 status: 'RUNNING',
                 totalChats: chats.length,
                 syncedChats: i + 1,
@@ -295,8 +311,8 @@ export class WhatsAppSessionManager {
           }
         } catch (error) {
           console.warn(`Failed to sync chat ${chatName}:`, error);
-          // Still emit progress even on failure
           this.io.to(userId).emit('sync_status', {
+            sessionId,
             status: 'RUNNING',
             totalChats: chats.length,
             syncedChats: i + 1,
@@ -306,12 +322,12 @@ export class WhatsAppSessionManager {
           });
         }
 
-        // Always update sync state after each chat
         await db.whatsAppSyncState.update({
-          where: { userId },
+          where: { id: sessionId },
           data: { syncedChats: i + 1, totalMessages, lastChatName: chatName },
         });
         this.io.to(userId).emit('sync_status', {
+          sessionId,
           status: 'RUNNING',
           totalChats: chats.length,
           syncedChats: i + 1,
@@ -321,63 +337,68 @@ export class WhatsAppSessionManager {
       }
 
       await db.whatsAppSyncState.update({
-        where: { userId },
+        where: { id: sessionId },
         data: { status: 'COMPLETED', totalMessages, finishedAt: new Date() },
       });
-      this.io.to(userId).emit('sync_status', { status: 'COMPLETED', totalMessages });
+      this.io.to(userId).emit('sync_status', { sessionId, status: 'COMPLETED', totalMessages });
     } catch (error: any) {
       await db.whatsAppSyncState.update({
-        where: { userId },
+        where: { id: sessionId },
         data: { status: 'FAILED', error: error?.message || String(error), finishedAt: new Date() },
       });
-      this.io.to(userId).emit('sync_status', { status: 'FAILED', error: error?.message || String(error) });
+      this.io.to(userId).emit('sync_status', { sessionId, status: 'FAILED', error: error?.message || String(error) });
       throw error;
     } finally {
-      this.activeSyncs.delete(userId);
+      this.activeSyncs.delete(sessionId);
     }
   }
 
   private async initialize() {
     console.log('Initializing WhatsApp Session Manager...');
     
-    // Always initialize the default 'mock-admin-user-id' client on startup
-    // to enable background automation processing even when the dashboard tab is closed.
-    console.log("Automatically starting default client: mock-admin-user-id");
-    this.createClient('mock-admin-user-id').catch(err => {
-      console.error("Failed to automatically start default client on startup:", err);
-    });
-
-    // Restore other existing connected sessions from DB
-    const sessions = await db.whatsAppSession.findMany({});
-    for (const session of sessions) {
-      if (session.userId !== 'mock-admin-user-id' && session.status === 'CONNECTED') {
-        console.log(`Restoring session for user: ${session.userId}`);
-        this.createClient(session.userId).catch(() => {});
+    // Restore existing connected sessions from DB.
+    try {
+      const sessions = await db.whatsAppSession.findMany({});
+      for (const session of sessions) {
+        if (session.status === 'CONNECTED' || session.status === 'AUTHENTICATED') {
+          console.log(`Restoring session for user: ${session.userId}, session: ${session.id || session._id}`);
+          this.createClient(session.id || session._id, session.userId).catch(() => {});
+        }
       }
+    } catch (error) {
+      console.error('Failed to restore sessions during SessionManager initialization:', error);
     }
   }
 
-  public async createClient(userId: string) {
-    if (this.clients.has(userId)) {
-      console.log(`Client for ${userId} already exists.`);
-      return this.clients.get(userId);
+  public async createClient(sessionId: string, userId?: string) {
+    if (this.clients.has(sessionId)) {
+      console.log(`Client for session ${sessionId} already exists.`);
+      return this.clients.get(sessionId);
     }
 
-    console.log(`Creating new WhatsApp client for user: ${userId}`);
+    let resolvedUserId = userId;
+    if (!resolvedUserId) {
+      const session = await db.whatsAppSession.findUnique({ where: { id: sessionId } });
+      if (session) {
+        resolvedUserId = session.userId;
+      } else {
+        resolvedUserId = sessionId; // legacy fallback
+      }
+    }
+
+    console.log(`Creating new WhatsApp client for session: ${sessionId} (user: ${resolvedUserId})`);
 
     // Ensure session directory exists
-    const sessionPath = path.join(process.cwd(), '.wwebjs_auth', `session-${userId}`);
+    const sessionPath = path.join(process.cwd(), '.wwebjs_auth', `session-${sessionId}`);
     if (!fs.existsSync(sessionPath)) {
       fs.mkdirSync(sessionPath, { recursive: true });
     }
 
-    // Clean up existing singleton lock files that might cause conflicts
-    // NOTE: Do NOT remove entire session directory to preserve auth data
     this.cleanupSingletonLocks(sessionPath);
 
     const client = new Client({
       authStrategy: new LocalAuth({
-        clientId: userId,
+        clientId: sessionId,
         dataPath: path.join(process.cwd(), '.wwebjs_auth')
       }),
       puppeteer: {
@@ -399,51 +420,50 @@ export class WhatsAppSessionManager {
       }
     });
 
-    // Set error handler to prevent crash
     client.on('error', (err: any) => {
       const message = err?.message ? String(err.message) : String(err);
-      console.error(`WhatsApp client error for ${userId}:`, message);
-      this.io.to(userId).emit('wa_error', { message });
-      this.io.to(userId).emit('error', { message });
-      this.updateSessionStatus(userId, 'ERROR', message).catch(() => { });
+      console.error(`WhatsApp client error for session ${sessionId}:`, message);
+      this.io.to(resolvedUserId!).emit('wa_error', { sessionId, message });
+      this.io.to(resolvedUserId!).emit('error', { sessionId, message });
+      this.updateSessionStatus(sessionId, 'ERROR', resolvedUserId!, message).catch(() => { });
     });
 
-    this.setupEventListeners(userId, client);
+    this.setupEventListeners(sessionId, client, resolvedUserId!);
     client.initialize().catch((err: any) => {
       const message = err?.message ? String(err.message) : String(err);
-      console.error(`Error initializing client for ${userId}:`, message);
-      this.io.to(userId).emit('wa_error', { message });
-      this.io.to(userId).emit('error', { message });
-      this.updateSessionStatus(userId, 'ERROR', message).catch(() => { });
+      console.error(`Error initializing client for session ${sessionId}:`, message);
+      this.io.to(resolvedUserId!).emit('wa_error', { sessionId, message });
+      this.io.to(resolvedUserId!).emit('error', { sessionId, message });
+      this.updateSessionStatus(sessionId, 'ERROR', resolvedUserId!, message).catch(() => { });
     });
 
-    this.clients.set(userId, client);
+    this.clients.set(sessionId, client);
     return client;
   }
 
-  public getClient(userId: string) {
-    return this.clients.get(userId);
+  public getClient(sessionId: string) {
+    return this.clients.get(sessionId);
   }
 
-  private setupEventListeners(userId: string, client: any) {
+  private setupEventListeners(sessionId: string, client: any, userId: string) {
     client.on('qr', (qr: any) => {
-      console.log(`QR Code generated for ${userId}`);
-      this.io.to(userId).emit('qr', { qr });
-      this.updateSessionStatus(userId, 'QR_READY');
+      console.log(`QR Code generated for session ${sessionId} (user ${userId})`);
+      this.io.to(userId).emit('qr', { sessionId, qr });
+      this.updateSessionStatus(sessionId, 'QR_READY', userId);
     });
 
     client.on('authenticated', () => {
-      console.log(`User ${userId} authenticated`);
-      this.io.to(userId).emit('authenticated');
-      this.updateSessionStatus(userId, 'AUTHENTICATED').catch(() => { });
+      console.log(`User ${userId} session ${sessionId} authenticated`);
+      this.io.to(userId).emit('authenticated', { sessionId });
+      this.updateSessionStatus(sessionId, 'AUTHENTICATED', userId).catch(() => { });
     });
 
     client.on('ready', async () => {
       const info = client.info;
-      console.log(`WhatsApp client ready for ${userId} (${info.wid.user})`);
+      console.log(`WhatsApp client ready for session ${sessionId} (${info.wid.user})`);
 
       await db.whatsAppSession.upsert({
-        where: { userId },
+        where: { id: sessionId },
         update: {
           status: 'CONNECTED',
           phoneNumber: info.wid.user,
@@ -453,7 +473,7 @@ export class WhatsAppSessionManager {
           lastErrorAt: null,
         },
         create: {
-          id: userId,
+          id: sessionId,
           userId,
           status: 'CONNECTED',
           phoneNumber: info.wid.user,
@@ -465,33 +485,32 @@ export class WhatsAppSessionManager {
       });
 
       this.io.to(userId).emit('ready', {
+        sessionId,
         phoneNumber: info.wid.user,
         pushName: info.pushname
       });
     });
 
     client.on('disconnected', async (reason: any) => {
-      console.log(`User ${userId} disconnected: ${reason}`);
-      await this.updateSessionStatus(userId, 'DISCONNECTED');
-      this.io.to(userId).emit('disconnected', { reason });
-      this.reconnectClient(userId).catch(() => { });
+      console.log(`User ${userId} session ${sessionId} disconnected: ${reason}`);
+      await this.updateSessionStatus(sessionId, 'DISCONNECTED', userId);
+      this.io.to(userId).emit('disconnected', { sessionId, reason });
+      this.reconnectClient(sessionId).catch(() => { });
 
-      // Clean up local auth files if it was a logout
       if (reason === 'NAVIGATION') {
-        this.destroyClient(userId);
+        this.destroyClient(sessionId);
       }
     });
 
     client.on('auth_failure', (msg: any) => {
-      console.error(`Auth failure for ${userId}: ${msg}`);
+      console.error(`Auth failure for session ${sessionId} user ${userId}: ${msg}`);
       const message = msg ? String(msg) : 'Authentication failed';
-      this.io.to(userId).emit('wa_error', { message });
-      this.io.to(userId).emit('error', { message });
-      this.updateSessionStatus(userId, 'ERROR', message);
+      this.io.to(userId).emit('wa_error', { sessionId, message });
+      this.io.to(userId).emit('error', { sessionId, message });
+      this.updateSessionStatus(sessionId, 'ERROR', userId, message);
     });
 
     client.on('message_ack', async (msg: any, ack: any) => {
-      // ack: 0=ERROR, 1=PENDING, 2=SENT, 3=DELIVERED, 4=READ
       const statusMap: Record<number, string> = {
         2: 'SENT',
         3: 'DELIVERED',
@@ -500,18 +519,18 @@ export class WhatsAppSessionManager {
 
       if (statusMap[ack]) {
         await db.messageLog.updateMany({
-          where: { messageId: msg.id._serialized },
+          where: { userId, messageId: msg.id._serialized },
           data: { status: statusMap[ack] }
         });
         await db.whatsAppMessage.updateMany({
-          where: { whatsappMessageId: msg.id._serialized },
+          where: { userId, sessionId, whatsappMessageId: msg.id._serialized },
           data: { status: statusMap[ack] }
         });
 
-        // Notify dashboard via socket
-        const log = await db.messageLog.findFirst({ where: { messageId: msg.id._serialized } });
+        const log = await db.messageLog.findFirst({ where: { userId, messageId: msg.id._serialized } });
         if (log) {
           this.io.to(userId).emit('message_status', {
+            sessionId,
             logId: log.id,
             status: statusMap[ack],
             leadId: log.leadId
@@ -520,65 +539,135 @@ export class WhatsAppSessionManager {
       }
     });
 
-    client.on('message', async (msg: any) => {
+    client.on('message_create', async (msg: any) => {
       if (msg.from.endsWith('@c.us') || msg.from.endsWith('@g.us') || msg.from.endsWith('@lid')) {
-        const phone = msg.from.split('@')[0];
-        console.log(`[Inbox] Incoming message from ${phone}: ${msg.body}`);
+        const phone = (msg.fromMe ? msg.to : msg.from).split('@')[0];
+        console.log(`[Message-Event] ${msg.fromMe ? 'Outgoing' : 'Incoming'} message for ${phone} in session ${sessionId}: ${msg.body?.substring(0, 30)}`);
+        
         const rawChat = typeof msg.getChat === 'function' ? await msg.getChat() : undefined;
-        const savedMessage = await this.persistWhatsAppMessage(msg, rawChat);
-
-        // 1. Find Lead
-        const lead = await db.lead.findFirst({
-          where: { phone: { contains: phone } }
-        });
-
-        if (lead) {
-          // 2. Save to MessageLog
-          const log = await db.messageLog.create({
-            data: {
-              leadId: lead.id,
-              content: msg.body,
-              direction: 'INCOMING',
-              status: 'READ', // WhatsApp web.js marks incoming as read when received in some contexts
-              messageId: msg.id._serialized
-            }
+        const savedMessage = await this.persistWhatsAppMessage(sessionId, userId, msg, rawChat);
+        
+        // Lead finding and automation logic ONLY for INCOMING messages
+        if (!msg.fromMe) {
+          const lead = await db.lead.findFirst({
+            where: { userId, phone: { contains: phone } }
           });
 
-          // 3. Reply Detection Logic: Stop active sequences
-          const activeSequences = await db.sequenceState.findMany({
-            where: { leadId: lead.id, status: 'ACTIVE' }
-          });
-
-          if (activeSequences.length > 0) {
-            await db.sequenceState.updateMany({
-              where: { leadId: lead.id, status: 'ACTIVE' },
-              data: { status: 'STOPPED_BY_REPLY' }
-            });
-
-            await db.activity.create({
+          if (lead) {
+            const log = await db.messageLog.create({
               data: {
                 leadId: lead.id,
-                type: 'AUTOMATION_STOPPED',
-                description: 'Sequence stopped automatically due to reply.'
+                userId,
+                content: msg.body,
+                direction: 'INCOMING',
+                status: 'READ',
+                messageId: msg.id._serialized
               }
             });
-          }
 
-          // 4. Notify Dashboard
-          this.io.to(userId).emit('incoming_message', {
-            leadId: lead.id,
-            businessName: lead.businessName,
-            content: msg.body,
-            timestamp: new Date()
-          });
+            const activeSequences = await db.sequenceState.findMany({
+              where: { userId, leadId: lead.id, status: 'ACTIVE' }
+            });
+
+            if (activeSequences.length > 0) {
+              for (const state of activeSequences) {
+                const sequence = await db.sequence.findUnique({ where: { id: state.sequenceId } });
+
+                if (sequence && sequence.aiReplyEnabled) {
+                  console.log(`[AI-Reply] Sequence ${sequence.id} has AI reply enabled for lead ${lead.id}. Generating response...`);
+                  try {
+                    const replyText = await generateAiReply(lead, msg.body, sequence.aiPrompt || '', userId);
+                    if (replyText) {
+                      await client.sendMessage(msg.from, replyText);
+                      await this.persistWhatsAppMessage(sessionId, userId, {
+                        fromMe: true,
+                        to: msg.from,
+                        body: replyText,
+                        timestamp: Math.floor(Date.now() / 1000),
+                        type: 'text',
+                        id: { _serialized: `ai-reply-${Date.now()}` }
+                      }, rawChat);
+
+                      await db.activity.create({
+                        data: {
+                          leadId: lead.id,
+                          userId,
+                          type: 'AI_REPLIED',
+                          description: `AI automatically replied to message: "${msg.body.substring(0, 30)}..."`
+                        }
+                      });
+                    }
+                    await db.sequenceState.update({
+                      where: { id: state.id },
+                      data: { status: 'STOPPED_BY_REPLY' }
+                    });
+                  } catch (err) {
+                    console.error('[AI-Reply] Error handling AI reply:', err);
+                  }
+                } else {
+                  await db.sequenceState.update({
+                    where: { id: state.id },
+                    data: { status: 'STOPPED_BY_REPLY' }
+                  });
+                }
+              }
+
+              await db.activity.create({
+                data: {
+                  leadId: lead.id,
+                  userId,
+                  type: 'AUTOMATION_STOPPED',
+                  description: 'Sequence stopped automatically due to reply.'
+                }
+              });
+            }
+            
+            this.io.to(userId).emit('incoming_message', {
+              sessionId,
+              leadId: lead.id,
+              businessName: lead.businessName,
+              content: msg.body,
+              timestamp: new Date()
+            });
+          }
         }
-        this.io.to(userId).emit('whatsapp_message', savedMessage);
+
+        this.io.to(userId).emit('whatsapp_message', { ...savedMessage, sessionId });
+      }
+    });
+
+    client.on('call', async (call: any) => {
+      console.log(`[Call] Incoming call from ${call.from} in session ${sessionId}`);
+      
+      const timestamp = new Date();
+      const messageId = `call-${call.id}-${timestamp.getTime()}`;
+      
+      try {
+        const chat = await this.getOrCreateChat(sessionId, userId, call.from);
+        
+        const savedMessage = await db.whatsAppMessage.create({
+          data: {
+            whatsappMessageId: messageId,
+            userId,
+            sessionId,
+            chatId: chat.jid || chat.id,
+            direction: 'INCOMING',
+            status: 'READ',
+            type: 'call',
+            body: 'Cevapsız Arama',
+            fromJid: call.from,
+            timestamp,
+          }
+        });
+
+        this.io.to(userId).emit('whatsapp_message', { ...savedMessage, sessionId });
+      } catch (err) {
+        console.error(`[Call] Error handling call event:`, err);
       }
     });
   }
 
-  private async updateSessionStatus(userId: string, status: string, errorMessage?: string) {
-    // Ensure user exists before creating session (foreign key constraint)
+  private async updateSessionStatus(sessionId: string, status: string, userId: string, errorMessage?: string) {
     await db.user.upsert({
       where: { id: userId },
       update: {},
@@ -614,45 +703,51 @@ export class WhatsAppSessionManager {
     }
 
     await db.whatsAppSession.upsert({
-      where: { userId },
+      where: { id: sessionId },
       update: updateData,
-      create: { ...createData, id: userId },
+      create: { ...createData, id: sessionId },
     });
   }
 
-  public async destroyClient(userId: string, forceLogout: boolean = false) {
-    const client = this.clients.get(userId);
+  public async destroyClient(sessionId: string, forceLogout: boolean = false) {
+    const client = this.clients.get(sessionId);
     if (client) {
       try {
         if (forceLogout) {
-          await this.safeCallClientMethod(userId, client, 'logout');
+          await this.safeCallClientMethod(sessionId, client, 'logout');
         }
-        await this.safeCallClientMethod(userId, client, 'destroy');
+        await this.safeCallClientMethod(sessionId, client, 'destroy');
       } catch (err) {
-        console.error(`Error destroying client for ${userId}:`, err);
+        console.error(`Error destroying client for session ${sessionId}:`, err);
       } finally {
-        this.clients.delete(userId);
+        this.clients.delete(sessionId);
       }
     }
-    await this.updateSessionStatus(userId, 'DISCONNECTED');
+
+    const sessionRecord = await db.whatsAppSession.findUnique({ where: { id: sessionId } });
+    const userId = sessionRecord ? sessionRecord.userId : sessionId;
+    await this.updateSessionStatus(sessionId, 'DISCONNECTED', userId);
   }
 
-  public getStatus(userId: string) {
-    const client = this.clients.get(userId);
+  public getStatus(sessionId: string) {
+    const client = this.clients.get(sessionId);
     if (!client) return 'DISCONNECTED';
     return client.getState();
   }
 
   public async sendMessage(
-    userId: string,
+    sessionId: string,
     to: string,
     content: string,
     media?: any
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    const client = this.clients.get(userId);
+    const client = this.clients.get(sessionId);
     if (!client) {
       return { success: false, error: 'WhatsApp client not connected' };
     }
+
+    const sessionRecord = await db.whatsAppSession.findUnique({ where: { id: sessionId } });
+    const userId = sessionRecord ? sessionRecord.userId : sessionId;
 
     try {
       let jid = to;
@@ -671,9 +766,13 @@ export class WhatsAppSessionManager {
         sentMessage = await client.sendMessage(jid, content);
       }
 
+      const chat = await this.getOrCreateChat(sessionId, userId, jid);
+
       await db.whatsAppMessage.create({
         data: {
-          chatId: (await this.getOrCreateChat(jid))?.id || '',
+          userId,
+          sessionId,
+          chatId: chat?.jid || chat?.id || '',
           direction: 'OUTGOING',
           status: 'SENT',
           type: media ? 'media' : 'text',
@@ -691,17 +790,21 @@ export class WhatsAppSessionManager {
     }
   }
 
-  private async getOrCreateChat(jid: string) {
+  private async getOrCreateChat(sessionId: string, userId: string, jid: string) {
     const phone = this.normalizePhone(jid);
-    const lead = await this.findLeadForJid(jid);
+    const lead = await this.findLeadForJid(userId, jid);
 
     return db.whatsAppChat.upsert({
-      where: { jid },
+      where: { userId, sessionId, jid },
       update: {
+        userId,
+        sessionId,
         lastMessageAt: new Date(),
       },
       create: {
-        id: jid,
+        id: `${userId}:${sessionId}:${jid}`,
+        userId,
+        sessionId,
         jid,
         name: phone || jid,
         isGroup: false,
@@ -716,24 +819,26 @@ export class WhatsAppSessionManager {
     });
   }
 
-  public async reconnectClient(userId: string): Promise<boolean> {
-    const attempts = this.reconnectionAttempts.get(userId) || 0;
+  public async reconnectClient(sessionId: string): Promise<boolean> {
+    const attempts = this.reconnectionAttempts.get(sessionId) || 0;
     if (attempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      console.log(`Max reconnection attempts reached for ${userId}`);
+      console.log(`Max reconnection attempts reached for session ${sessionId}`);
       return false;
     }
 
-    this.reconnectionAttempts.set(userId, attempts + 1);
-    console.log(`Attempting to reconnect ${userId} (attempt ${attempts + 1})`);
+    this.reconnectionAttempts.set(sessionId, attempts + 1);
+    console.log(`Attempting to reconnect session ${sessionId} (attempt ${attempts + 1})`);
 
     try {
-      await this.destroyClient(userId);
+      await this.destroyClient(sessionId);
       await new Promise(resolve => setTimeout(resolve, 2000));
-      await this.createClient(userId);
-      this.reconnectionAttempts.delete(userId);
+      const sessionRecord = await db.whatsAppSession.findUnique({ where: { id: sessionId } });
+      const userId = sessionRecord ? sessionRecord.userId : sessionId;
+      await this.createClient(sessionId, userId);
+      this.reconnectionAttempts.delete(sessionId);
       return true;
     } catch (error) {
-      console.error(`Reconnection failed for ${userId}:`, error);
+      console.error(`Reconnection failed for session ${sessionId}:`, error);
       return false;
     }
   }

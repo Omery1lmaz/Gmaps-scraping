@@ -24,49 +24,68 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+  --font-sans: 'Geist Variable', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --radius: 0.75rem;
+  /* Premium Obsidian & Glowing Neon-Emerald Theme matching Landing Page */
+  --background: #080b10;
+  --foreground: oklch(0.98 0.005 160);
+  
+  --card: #0c1220;
+  --card-foreground: oklch(0.98 0.005 160);
+  
+  --popover: #0c1220;
+  --popover-foreground: oklch(0.98 0.005 160);
+  
+  --primary: oklch(0.76 0.17 160);
+  --primary-foreground: oklch(1 0 0);
+  
+  --secondary: oklch(0.14 0.01 160);
+  --secondary-foreground: oklch(0.9 0.01 160);
+  
+  --muted: oklch(0.12 0.006 160);
+  --muted-foreground: oklch(0.65 0.01 160);
+  
+  --accent: oklch(0.76 0.17 160 / 12%);
+  --accent-foreground: oklch(0.76 0.17 160);
+  
+  --destructive: oklch(0.55 0.18 25);
+  
+  --border: rgba(255, 255, 255, 0.06);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: oklch(0.76 0.17 160);
+  --radius: 1rem;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /* Kept for backward compatibility if shadcn scripts force .dark class */
+  --background: #080b10;
+  --foreground: oklch(0.98 0.005 160);
+  
+  --card: #0c1220;
+  --card-foreground: oklch(0.98 0.005 160);
+  
+  --popover: #0c1220;
+  --popover-foreground: oklch(0.98 0.005 160);
+  
+  --primary: oklch(0.76 0.17 160);
+  --primary-foreground: oklch(1 0 0);
+  
+  --secondary: oklch(0.14 0.01 160);
+  --secondary-foreground: oklch(0.9 0.01 160);
+  
+  --muted: oklch(0.12 0.006 160);
+  --muted-foreground: oklch(0.65 0.01 160);
+  
+  --accent: oklch(0.76 0.17 160 / 12%);
+  --accent-foreground: oklch(0.76 0.17 160);
+  
+  --destructive: oklch(0.55 0.18 25);
+  
+  --border: rgba(255, 255, 255, 0.06);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: oklch(0.76 0.17 160);
 }
 
 @layer base {
@@ -77,4 +96,59 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  /* Premium scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.5 0 0 / 15%);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.5 0 0 / 25%);
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: oklch(0.9 0 0 / 10%);
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.9 0 0 / 20%);
+  }
+}
+
+/* Custom premium ambient glow spotlight classes */
+.glow-spotlight-green {
+  filter: blur(140px);
+  background: radial-gradient(circle, oklch(0.76 0.17 160 / 10%) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Pulse slow animation for ambient spotlights */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+.animate-pulse-slow {
+  animation: pulse-slow 8s ease-in-out infinite;
+}
+
+/* Dot & Grid background patterns matching landing page style */
+.bg-grid-pattern {
+  background-size: 50px 50px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
+.bg-dot-pattern {
+  background-size: 24px 24px;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+}
+.text-gradient-tw {
+  background-image: linear-gradient(to right, #10b981, #059669, #34d399);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }

@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ILead extends Document {
   id: string;
+  userId: string;
   externalId?: string;
   googleMapsUrl?: string;
   businessName: string;
@@ -25,7 +26,8 @@ export interface ILead extends Document {
 }
 
 const LeadSchema: Schema = new Schema({
-  externalId: { type: String, unique: true, sparse: true },
+  userId: { type: String, required: true, index: true },
+  externalId: { type: String, sparse: true },
   googleMapsUrl: { type: String },
   businessName: { type: String, required: true },
   phone: { type: String },
@@ -46,5 +48,7 @@ const LeadSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
+
+LeadSchema.index({ userId: 1, externalId: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model<ILead>('Lead', LeadSchema);

@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export type TaskStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'ERROR';
 
 export interface IScrapeTask extends Document {
+  userId: string;
   city: string;
   district: string;
   neighborhood: string;
@@ -16,6 +17,7 @@ export interface IScrapeTask extends Document {
 }
 
 const ScrapeTaskSchema: Schema = new Schema({
+  userId: { type: String, required: true, index: true },
   city: { type: String, required: true },
   district: { type: String, required: true },
   neighborhood: { type: String, required: true },
@@ -30,7 +32,7 @@ const ScrapeTaskSchema: Schema = new Schema({
   nextPageToken: { type: String },
 }, { timestamps: true });
 
-// Ensure unique tasks per combination to avoid duplicate queue items
-ScrapeTaskSchema.index({ city: 1, district: 1, neighborhood: 1, category: 1 }, { unique: true });
+// Ensure unique tasks per combination per user to avoid duplicate queue items
+ScrapeTaskSchema.index({ userId: 1, city: 1, district: 1, neighborhood: 1, category: 1 }, { unique: true });
 
 export default mongoose.model<IScrapeTask>('ScrapeTask', ScrapeTaskSchema);

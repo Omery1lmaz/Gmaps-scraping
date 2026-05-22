@@ -13,6 +13,7 @@ import MessageTemplate from './MessageTemplate.js';
 import Campaign from './Campaign.js';
 import CampaignLead from './CampaignLead.js';
 import Sequence from './Sequence.js';
+import WhatsAppMediaDLQ from './WhatsAppMediaDLQ.js';
 
 import SequenceState from './SequenceState.js';
 import MessageLog from './MessageLog.js';
@@ -30,6 +31,7 @@ export {
   WhatsAppChat,
   WhatsAppMessage,
   WhatsAppMedia,
+  WhatsAppMediaDLQ,
   MessageTemplate,
   Campaign,
   CampaignLead,

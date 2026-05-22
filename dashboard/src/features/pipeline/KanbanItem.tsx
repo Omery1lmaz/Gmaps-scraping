@@ -45,13 +45,13 @@ export function KanbanItem({ id, lead, isOverlay }: KanbanItemProps) {
       )}
     >
       <Card className={cn(
-        "border-none shadow-sm bg-white hover:shadow-md transition-shadow group overflow-hidden",
-        isOverlay && "shadow-xl ring-2 ring-blue-500/20"
+        "border border-white/5 bg-[#080b10]/80 hover:bg-white/5 hover:border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300 group overflow-hidden backdrop-blur-md",
+        isOverlay && "shadow-xl ring-2 ring-emerald-500/20"
       )}>
         <CardContent className="p-4 space-y-3">
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-slate-800 truncate flex-1">{lead.businessName}</h4>
+              <h4 className="text-sm font-bold text-slate-100 truncate flex-1">{lead.businessName}</h4>
               <div className="flex items-center gap-1 text-amber-500">
                 <Star className="size-3 fill-current" />
                 <span className="text-[10px] font-black">{lead.rating}</span>
@@ -72,7 +72,7 @@ export function KanbanItem({ id, lead, isOverlay }: KanbanItemProps) {
             ))}
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+          <div className="flex items-center justify-between pt-2 border-t border-white/5">
             <div className="flex items-center gap-3">
               {lead.phone && (
                 <div className="flex items-center gap-1 text-slate-400">
@@ -81,7 +81,7 @@ export function KanbanItem({ id, lead, isOverlay }: KanbanItemProps) {
                 </div>
               )}
               {lead._count?.notes > 0 && (
-                <div className="flex items-center gap-1 text-blue-500">
+                <div className="flex items-center gap-1 text-emerald-500">
                   <MessageSquare className="size-3" />
                   <span className="text-[10px] font-bold">{lead._count.notes}</span>
                 </div>

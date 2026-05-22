@@ -1,13 +1,28 @@
 import { globalStateMachine } from "../logic/StateMachine";
 import type { Lead, ScraperSettings } from "../types";
-import { API_BASE_URL, API_KEY } from "./config";
+import { API_BASE_URL } from "./config";
 
 let currentSettings: ScraperSettings = { scrapeDetails: false };
 
-const apiHeaders = (extra: Record<string, string> = {}): Record<string, string> => ({
+const apiHeaders = (token: string, extra: Record<string, string> = {}): Record<string, string> => ({
   'Content-Type': 'application/json',
-  'x-api-key': API_KEY,
+  Authorization: `Bearer ${token}`,
   ...extra,
+});
+
+const getAuthToken = () => new Promise<string | null>((resolve) => {
+  chrome.storage.local.get(["authToken"], (result: { [key: string]: any }) => {
+    resolve(result.authToken || null);
+  });
+});
+
+const getAuthData = () => new Promise<{ token: string | null; user: any | null }>((resolve) => {
+  chrome.storage.local.get(["authToken", "authUser"], (result: { [key: string]: any }) => {
+    resolve({
+      token: result.authToken || null,
+      user: result.authUser || null
+    });
+  });
 });
 
 chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
@@ -16,62 +31,172 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
     return false;
   }
 
+  if (message.type === "GET_AUTH") {
+    chrome.storage.local.get(["authToken", "authUser"], (result: { [key: string]: any }) => {
+      sendResponse({ token: result.authToken || null, user: result.authUser || null });
+    });
+    return true;
+  }
+
+  if (message.type === "AUTH_LOGIN") {
+    fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: message.email, password: message.password }),
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+        chrome.storage.local.set({ authToken: data.token, authUser: data.user }, () => {
+          sendResponse({ success: true, user: data.user });
+        });
+      })
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === "AUTH_LOGOUT") {
+    chrome.storage.local.remove(["authToken", "authUser"], () => sendResponse({ success: true }));
+    return true;
+  }
+
   if (message.type === "START_SCRAPING") {
     if (message.settings) {
       currentSettings = message.settings;
     }
 
-    // Fetch existing external IDs first to skip duplicates
-    fetch(`${API_BASE_URL}/api/leads/external-ids`, {
-      headers: apiHeaders()
+    // Fetch existing external IDs first to skip duplicates and read current plan details
+    getAuthData().then(({ token, user }) => {
+      if (!token) throw new Error("Please login before scraping.");
+      
+      const userPlan = user?.plan || 'free';
+      const userSubStatus = user?.subscriptionStatus || 'active';
+
+      return fetch(`${API_BASE_URL}/api/leads/external-ids`, {
+        headers: apiHeaders(token)
+      })
+      .then(res => res.json())
+      .then(existingIds => ({ existingIds, userPlan, userSubStatus }));
     })
-    .then(res => res.json())
-    .then(existingIds => {
+    .then(({ existingIds, userPlan, userSubStatus }) => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const activeTab = tabs[0];
         const tabId = activeTab?.id;
-        const url = activeTab?.url || "";
 
-        if (!url.includes("google.com/maps")) {
-          globalStateMachine.transition("failed", { error: "Open Google Maps results first." });
+        if (!tabId) {
+          globalStateMachine.transition("failed", { error: "No active browser tab found." });
           return;
         }
 
-        if (tabId) {
+        const executeScrapeFlow = (targetTabId: number, leadsDbIds: any[]) => {
           globalStateMachine.transition("scraping", { 
             leadsCount: 0, 
             pageIndex: 0, 
             lastLeads: [], 
-            activity: "Starting scraper...", 
+            activity: "Scraper is starting...", 
             detailProgress: undefined 
           });
-          
-          chrome.tabs.sendMessage(tabId, { 
-            type: "START_SCRAPING_CMD", 
-            scrapeDetails: currentSettings.scrapeDetails,
-            customCategory: currentSettings.customCategory,
-            existingIds: Array.isArray(existingIds) ? existingIds : []
-          }, (_response) => {
-            if (chrome.runtime.lastError) {
-              globalStateMachine.transition("failed", { error: "Please refresh the Google Maps page." });
-            }
-          });
-        }
+
+          // Check if user entered search criteria
+          if (currentSettings.searchKeyword) {
+            const keyword = currentSettings.searchKeyword;
+            const city = currentSettings.searchCity || "";
+            const country = currentSettings.searchCountry || "";
+            
+            const queryParts = [keyword];
+            if (city) queryParts.push(city);
+            if (country) queryParts.push(country);
+            
+            const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(queryParts.join(' '))}`;
+
+            globalStateMachine.updateProgress({ activity: "Navigating to Google Maps search..." });
+
+            chrome.tabs.update(targetTabId, { url: searchUrl }, (tab) => {
+              if (!tab) {
+                globalStateMachine.transition("failed", { error: "Could not navigate to search URL." });
+                return;
+              }
+
+              const onTabUpdated = (tabIdUpdated: number, changeInfo: any) => {
+                if (tabIdUpdated === targetTabId && changeInfo.status === 'complete') {
+                  chrome.tabs.onUpdated.removeListener(onTabUpdated);
+                  
+                  globalStateMachine.updateProgress({ activity: "Waiting for Maps feed to load..." });
+                  
+                  setTimeout(() => {
+                    chrome.tabs.sendMessage(targetTabId, { 
+                      type: "START_SCRAPING_CMD", 
+                      scrapeDetails: currentSettings.scrapeDetails,
+                      customCategory: currentSettings.customCategory,
+                      defaultCity: currentSettings.defaultCity,
+                      defaultCountry: currentSettings.defaultCountry,
+                      existingIds: Array.isArray(leadsDbIds) ? leadsDbIds : [],
+                      plan: userPlan,
+                      subscriptionStatus: userSubStatus
+                    }, (_response) => {
+                      if (chrome.runtime.lastError) {
+                        globalStateMachine.transition("failed", { error: "Failed to initialize content scraper. Refresh and try again." });
+                      }
+                    });
+                  }, 3000); // Wait 3 seconds for Google Maps client-side components to render fully
+                }
+              };
+
+              chrome.tabs.onUpdated.addListener(onTabUpdated);
+            });
+          } else {
+            // Legacy / Default behavior: scrape existing active maps results tab
+            chrome.tabs.get(targetTabId, (tab) => {
+              const url = tab?.url || "";
+              if (!url.includes("google.com/maps")) {
+                globalStateMachine.transition("failed", { error: "Open Google Maps results first or enter search criteria." });
+                return;
+              }
+
+              chrome.tabs.sendMessage(targetTabId, { 
+                type: "START_SCRAPING_CMD", 
+                scrapeDetails: currentSettings.scrapeDetails,
+                customCategory: currentSettings.customCategory,
+                defaultCity: currentSettings.defaultCity,
+                defaultCountry: currentSettings.defaultCountry,
+                existingIds: Array.isArray(leadsDbIds) ? leadsDbIds : [],
+                plan: userPlan,
+                subscriptionStatus: userSubStatus
+              }, (_response) => {
+                if (chrome.runtime.lastError) {
+                  globalStateMachine.transition("failed", { error: "Please refresh the Google Maps page." });
+                }
+              });
+            });
+          }
+        };
+
+        executeScrapeFlow(tabId, existingIds);
       });
     })
     .catch(err => {
       console.error("Failed to fetch existing IDs:", err);
-      // Proceed anyway, but without skipping
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const tabId = tabs[0]?.id;
-        if (tabId) {
-          chrome.tabs.sendMessage(tabId, { 
-            type: "START_SCRAPING_CMD", 
-            scrapeDetails: currentSettings.scrapeDetails,
-            customCategory: currentSettings.customCategory,
-            existingIds: []
-          });
-        }
+      if (String(err?.message || '').includes('login')) {
+        globalStateMachine.transition("failed", { error: "Please login before scraping." });
+        return;
+      }
+      // Proceed without deduplication
+      getAuthData().then(({ user }) => {
+        const userPlan = user?.plan || 'free';
+        const userSubStatus = user?.subscriptionStatus || 'active';
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          const tabId = tabs[0]?.id;
+          if (tabId) {
+            chrome.tabs.sendMessage(tabId, { 
+              type: "START_SCRAPING_CMD", 
+              scrapeDetails: currentSettings.scrapeDetails,
+              customCategory: currentSettings.customCategory,
+              existingIds: [],
+              plan: userPlan,
+              subscriptionStatus: userSubStatus
+            });
+          }
+        });
       });
     });
     return false;
@@ -96,10 +221,13 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
         return;
       }
 
-      fetch(`${API_BASE_URL}/api/leads`, {
-        method: 'POST',
-        headers: apiHeaders(),
-        body: JSON.stringify(leads)
+      getAuthToken().then((token) => {
+        if (!token) throw new Error("Not authenticated");
+        return fetch(`${API_BASE_URL}/api/leads`, {
+          method: 'POST',
+          headers: apiHeaders(token),
+          body: JSON.stringify(leads)
+        });
       })
       .then(res => res.json())
       .then(data => {
@@ -119,10 +247,13 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
     const leads: Lead[] = message.payload;
 
     // Sync with backend API
-    fetch(`${API_BASE_URL}/api/leads`, {
+    getAuthToken().then((token) => {
+      if (!token) throw new Error("Not authenticated");
+      return fetch(`${API_BASE_URL}/api/leads`, {
       method: 'POST',
-      headers: apiHeaders(),
+      headers: apiHeaders(token),
       body: JSON.stringify(leads)
+      });
     })
     .then(res => res.json())
     .then(data => {
@@ -165,10 +296,13 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
     });
 
     // Sync enriched lead to backend
-    fetch(`${API_BASE_URL}/api/leads`, {
+    getAuthToken().then((token) => {
+      if (!token) throw new Error("Not authenticated");
+      return fetch(`${API_BASE_URL}/api/leads`, {
       method: 'POST',
-      headers: apiHeaders(),
+      headers: apiHeaders(token),
       body: JSON.stringify([enrichedLead])
+      });
     }).catch(err => console.error('Enrichment sync failed:', err));
 
     return false;

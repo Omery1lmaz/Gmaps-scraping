@@ -4,13 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "NODE_OPTIONS='--loader ts-node/esm --no-warnings' ts-node-dev --respawn --transpile-only index.ts",
+    "dev": "tsx watch index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
+  "custom": {},
   "license": "ISC",
   "type": "module",
   "dependencies": {
@@ -20,6 +21,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^5.10.1",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.2",
     "puppeteer": "^24.43.1",
     "qrcode": "^1.5.4",
@@ -32,10 +34,12 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.8.0",
     "@types/qrcode": "^1.5.6",
     "@types/socket.io": "^3.0.1",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.19.2",
     "typescript": "^6.0.3"
   }
 }

@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IWhatsAppSyncState extends Document {
   id: string;
   userId: string;
+  sessionId?: string;
   status: string;
   totalChats: number;
   syncedChats: number;
@@ -17,7 +18,8 @@ export interface IWhatsAppSyncState extends Document {
 
 const WhatsAppSyncStateSchema: Schema = new Schema({
   _id: { type: String, required: true },
-  userId: { type: String, required: true, unique: true },
+  userId: { type: String, required: true, index: true },
+  sessionId: { type: String, index: true },
   status: { type: String, default: 'IDLE' },
   totalChats: { type: Number, default: 0 },
   syncedChats: { type: Number, default: 0 },

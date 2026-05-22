@@ -112,19 +112,19 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent 
         side="right" 
-        className="sm:!max-w-2xl flex flex-col h-full bg-slate-50/95 backdrop-blur-xl p-0 border-l border-slate-200/50 shadow-2xl"
+        className="sm:!max-w-2xl flex flex-col h-full bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-xl p-0 border-l border-slate-200/50 dark:border-slate-800 shadow-2xl"
       >
         {/* Header Section */}
-        <SheetHeader className="border-b border-slate-200/60 p-6 pb-5 bg-white/90 backdrop-blur-xs shrink-0">
+        <SheetHeader className="border-b border-slate-200/60 dark:border-slate-800 p-6 pb-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs shrink-0">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2.5 rounded-xl text-white shadow-md shadow-blue-500/20">
+            <div className="bg-emerald-500 p-2.5 rounded-xl text-black shadow-md shadow-emerald-500/20">
               <Plus className="size-5" />
             </div>
             <div>
-              <SheetTitle className="text-lg font-black text-slate-800 tracking-tight">
+              <SheetTitle className="text-lg font-black text-slate-800 dark:text-white dark:text-white tracking-tight">
                 Pipeline'a İşletme Ekle
               </SheetTitle>
-              <SheetDescription className="text-xs text-slate-500 font-bold mt-0.5">
+              <SheetDescription className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5">
                 Kriterlerinize uygun boştaki işletmeleri filtreleyin ve satış pipeline'ınıza topluca aktarın.
               </SheetDescription>
             </div>
@@ -133,17 +133,17 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
 
         {/* Dynamic Floating Filters Panel */}
         <div className="p-6 pb-4 shrink-0">
-          <div className="bg-white/90 rounded-2xl border border-slate-200/50 shadow-xs p-5 space-y-4">
+          <div className="bg-white/90 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800 shadow-xs p-5 space-y-4">
             {/* Row 1: Target Stage, Search, Min Rating */}
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest block">
                   Hedef Aşama
                 </label>
                 <select
                   value={targetStage}
                   onChange={(e) => setTargetStage(e.target.value)}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-slate-50/50 hover:bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer shadow-2xs"
+                  className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-2xs"
                 >
                   {STAGES.map((stage) => (
                     <option key={stage} value={stage}>
@@ -154,14 +154,14 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
               </div>
               
               <div className="space-y-1.5 col-span-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Metin Arama</label>
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest block">Metin Arama</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
                   <Input
                     placeholder="İşletme adı, adres veya anahtar kelime..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-10 rounded-xl border-slate-200 focus-visible:ring-4 focus-visible:ring-blue-500/10 focus-visible:border-blue-500 text-xs font-bold shadow-2xs bg-slate-50/30"
+                    className="pl-9 h-10 rounded-xl border-slate-200 dark:border-slate-700 focus-visible:ring-4 focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 text-xs font-bold shadow-2xs bg-slate-50/30 dark:bg-slate-800/50"
                   />
                 </div>
               </div>
@@ -176,7 +176,7 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                 <select
                   value={selectedCity}
                   onChange={(e) => setSelectedCity(e.target.value)}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-slate-50/50 hover:bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer shadow-2xs"
+                  className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-2xs"
                 >
                   <option value="">Tüm Şehirler</option>
                   {cities.map((city) => (
@@ -194,7 +194,7 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-slate-50/50 hover:bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer shadow-2xs"
+                  className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-2xs"
                 >
                   <option value="">Tüm Kategoriler</option>
                   {categories.map((cat) => (
@@ -212,7 +212,7 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                 <select
                   value={minRating}
                   onChange={(e) => setMinRating(e.target.value)}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-slate-50/50 hover:bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer shadow-2xs"
+                  className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-2xs"
                 >
                   <option value="">Fark Etmez</option>
                   <option value="3.0">3.0+ Yıldız</option>
@@ -231,7 +231,7 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                 <select
                   value={hasWebsite}
                   onChange={(e) => setHasWebsite(e.target.value)}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-slate-50/50 hover:bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer shadow-2xs"
+                  className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-2xs"
                 >
                   <option value="all">Fark Etmez (Hepsi)</option>
                   <option value="true">Sadece Web Sitesi Olanlar</option>
@@ -246,7 +246,7 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                 <select
                   value={hasPhone}
                   onChange={(e) => setHasPhone(e.target.value)}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-slate-50/50 hover:bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer shadow-2xs"
+                  className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-2xs"
                 >
                   <option value="all">Fark Etmez (Hepsi)</option>
                   <option value="true">Sadece Telefonu Olanlar</option>
@@ -257,20 +257,20 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
 
             {/* Premium Toolbar with Select All Action */}
             {unassignedLeads.length > 0 && (
-              <div className="flex items-center justify-between bg-blue-50/50 px-4 py-3 rounded-xl border border-blue-100/50 transition-all duration-300">
+              <div className="flex items-center justify-between bg-emerald-500/10 px-4 py-3 rounded-xl border border-emerald-500/20 transition-all duration-300">
                 <div className="flex items-center gap-3">
                   <Checkbox
                     id="select-all-checkbox"
                     checked={isAllSelected}
                     onCheckedChange={(checked) => toggleSelectAll(!!checked)}
-                    className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
+                    className="border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 rounded-md"
                   />
-                  <label htmlFor="select-all-checkbox" className="text-xs font-extrabold text-slate-700 cursor-pointer select-none">
+                  <label htmlFor="select-all-checkbox" className="text-xs font-extrabold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
                     Tümünü Seç ({unassignedLeads.length} İşletme)
                   </label>
                 </div>
                 {selectedIds.size > 0 && (
-                  <span className="text-[10px] font-black text-blue-700 bg-blue-100 px-3 py-1 rounded-full border border-blue-200/50 shadow-3xs animate-fade-in">
+                  <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-200/50 dark:border-emerald-500/30 shadow-3xs animate-fade-in">
                     {selectedIds.size} Seçili
                   </span>
                 )}
@@ -284,26 +284,26 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
               <div className="relative flex items-center justify-center">
-                <Loader2 className="animate-spin size-8 text-blue-600" />
-                <div className="absolute size-4 bg-blue-600/10 rounded-full animate-ping" />
+                <Loader2 className="animate-spin size-8 text-emerald-500" />
+                <div className="absolute size-4 bg-emerald-500/10 rounded-full animate-ping" />
               </div>
-              <span className="text-xs font-black tracking-wide text-slate-500 uppercase">İşletmeler Yükleniyor...</span>
+              <span className="text-xs font-black tracking-wide text-slate-500 dark:text-slate-400 uppercase">İşletmeler Yükleniyor...</span>
             </div>
           ) : unassignedLeads.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-4 text-slate-400 text-center px-4 bg-white/50 border border-slate-200/40 rounded-2xl shadow-3xs">
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-slate-400 text-center px-4 bg-white/50 dark:bg-slate-900/50 border border-slate-200/40 dark:border-slate-800 rounded-2xl shadow-3xs">
               <div className="bg-gradient-to-tr from-slate-100 to-slate-200/60 p-5 rounded-full shadow-3xs border border-slate-200/20">
                 <ShieldAlert className="size-10 text-slate-400" />
               </div>
               <div>
-                <p className="text-sm font-black text-slate-800">Uyumlu İşletme Bulunamadı</p>
-                <p className="text-xs text-slate-500 mt-1 max-w-[340px] font-semibold leading-relaxed">
+                <p className="text-sm font-black text-slate-800 dark:text-white dark:text-white">Uyumlu İşletme Bulunamadı</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[340px] font-semibold leading-relaxed">
                   Filtre koşullarınıza uyan ve pipeline dışı olan boştaki işletme bulunamadı. Kriterleri gevşetmeyi deneyebilirsiniz.
                 </p>
               </div>
             </div>
           ) : (
-            <ScrollArea className="h-full pr-3 border border-slate-200/40 rounded-2xl overflow-hidden bg-white/70 shadow-3xs">
-              <div className="divide-y divide-slate-100 p-2 space-y-1.5">
+            <ScrollArea className="h-full pr-3 border border-slate-200/40 dark:border-slate-800 rounded-2xl overflow-hidden bg-white/70 dark:bg-slate-900/50 shadow-3xs">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 p-2 space-y-1.5">
                 {unassignedLeads.map((lead) => {
                   const lid = lead._id || lead.id;
                   const isSelected = selectedIds.has(lid);
@@ -314,8 +314,8 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                       className={cn(
                         "flex items-start gap-4 p-4 rounded-xl border transition-all duration-300 cursor-pointer select-none",
                         isSelected 
-                          ? "bg-blue-50/30 border-blue-200/80 shadow-xs" 
-                          : "bg-white border-transparent hover:border-slate-200/60 hover:shadow-xs"
+                          ? "bg-emerald-500/10 border-emerald-500/30 shadow-xs" 
+                          : "bg-white dark:bg-slate-900/50 border-transparent hover:border-slate-200/60 dark:hover:border-slate-700 hover:shadow-xs"
                       )}
                     >
                       {/* Checkbox wrapper */}
@@ -323,13 +323,13 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={(checked) => toggleSelectLead(lid, !!checked)}
-                          className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
+                          className="border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 rounded-md"
                         />
                       </div>
 
                       {/* Content block */}
                       <div className="flex-1 min-w-0 space-y-1">
-                        <p className="text-xs font-black text-slate-800 truncate leading-snug group-hover:text-blue-600 transition-colors">
+                        <p className="text-xs font-black text-slate-800 dark:text-white dark:text-white truncate leading-snug group-hover:text-emerald-500 transition-colors">
                           {lead.businessName || lead.name}
                         </p>
                         
@@ -340,13 +340,13 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                         {/* Interactive Badges Grid */}
                         <div className="flex items-center gap-1.5 mt-2 flex-wrap pt-1">
                           {lead.category && (
-                            <span className="text-[9px] font-black uppercase text-slate-600 bg-slate-100/80 px-2 py-0.5 rounded border border-slate-200/20 flex items-center gap-1">
+                            <span className="text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200/20 dark:border-slate-700 flex items-center gap-1">
                               <Tag className="size-2.5 text-slate-400" /> {lead.category}
                             </span>
                           )}
                           {lead.city && (
-                            <span className="text-[9px] font-black uppercase text-blue-600 bg-blue-50/80 px-2 py-0.5 rounded flex items-center gap-1 border border-blue-100/50">
-                              <MapPin className="size-2.5 text-blue-400" /> {lead.city}
+                            <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded flex items-center gap-1 border border-emerald-500/20">
+                              <MapPin className="size-2.5 text-emerald-400" /> {lead.city}
                             </span>
                           )}
                           {lead.rating && (
@@ -381,11 +381,11 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
         </div>
 
         {/* Footer Section */}
-        <SheetFooter className="border-t border-slate-200/60 p-6 shrink-0 bg-white/90 backdrop-blur-xs">
+        <SheetFooter className="border-t border-slate-200/60 dark:border-slate-800 p-6 shrink-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs">
           <Button
             onClick={() => addLeadsMutation.mutate()}
             disabled={selectedIds.size === 0 || addLeadsMutation.isPending}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black h-12 rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:transform-none"
+            className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold h-12 rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none disabled:transform-none"
           >
             {addLeadsMutation.isPending ? (
               <>

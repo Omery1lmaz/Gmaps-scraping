@@ -18,6 +18,9 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { API_BASE_URL } from '../config';
+import { useT } from '../lib/i18n';
+import { useAuth } from '../lib/auth';
+import { Lock, Zap } from 'lucide-react';
 
 type Location = {
   _id: string;
@@ -47,6 +50,7 @@ type Task = {
 
 
 export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
+  const { user } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   
@@ -79,6 +83,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const shouldStopRef = useRef(false);
   const pollingIntervalRef = useRef<any>(null);
+  const t = useT();
 
   useEffect(() => {
     fetchInitialData();
@@ -172,7 +177,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
         setSelectedNeighborhoodId(null);
       } else {
         // Add all neighborhoods in the district
-        if (!confirm(`${district} ilçesine ait tüm mahalleleri (${neighborhoodsList.length} adet) eklemek istiyor musunuz?`)) return;
+        if (!confirm(t('as_confirm_neighborhoods', district, neighborhoodsList.length))) return;
         
         setIsPopulating(true);
         const results = await Promise.all(neighborhoodsList.map(async (n) => {
@@ -192,7 +197,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
         const successfulOnes = results.filter(r => r !== null);
         setLocations(prev => [...successfulOnes, ...prev]);
         setIsPopulating(false);
-        alert(`${successfulOnes.length} mahalle başarıyla eklendi.`);
+        alert(t('as_neighborhoods_added', successfulOnes.length));
       }
     } catch (err) {
       console.error('Failed to add location', err);
@@ -263,7 +268,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
   };
 
   const clearAllTasks = async () => {
-    if (!confirm('Are you sure you want to clear the entire queue?')) return;
+    if (!confirm(t('as_clear_confirm'))) return;
     try {
       await axios.delete(`${API_BASE_URL}/api/scrape-tasks/all`);
       setTasks([]);
@@ -304,7 +309,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
     if (selectedTasks.size === 0) return;
 
     
-    if (!confirm(`Are you sure you want to delete the ${selectedTasks.size} selected searches and any leads they found? This will remove everything from the database permanently.`)) return;
+    if (!confirm(t('as_confirm_delete_tasks', selectedTasks.size))) return;
     
     try {
       await axios.post(`${API_BASE_URL}/api/leads/delete-by-tasks`, { taskIds: Array.from(selectedTasks) });
@@ -411,27 +416,27 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
-          title="Total Leads" 
+          title={t('as_leads_title')} 
           value={scraperStats?.totalLeads || 0} 
           icon={<Database className="h-5 w-5 text-blue-500" />}
           color="blue"
         />
         <StatCard 
-          title="Queue Progress" 
+          title={t('as_progress_title')} 
           value={`${scraperStats?.tasks.completed || 0} / ${scraperStats?.tasks.total || 0}`} 
           icon={<Activity className="h-5 w-5 text-emerald-500" />}
           subValue={scraperStats?.tasks.total > 0 ? `${Math.round((scraperStats.tasks.completed / scraperStats.tasks.total) * 100)}% Complete` : '0%'}
           color="emerald"
         />
         <StatCard 
-          title="Active / Pending" 
+          title={t('as_active_pending')} 
           value={`${scraperStats?.tasks.running || 0} / ${scraperStats?.tasks.pending || 0}`} 
           icon={<Clock className="h-5 w-5 text-amber-500" />}
-          subValue="Tasks waiting"
+          subValue={t('as_tasks_waiting')}
           color="amber"
         />
         <StatCard 
-          title="Avg Efficiency" 
+          title={t('as_avg_efficiency')} 
           value={scraperStats?.tasks.avgLeads || 0} 
           icon={<BarChart3 className="h-5 w-5 text-indigo-500" />}
           subValue="Leads per search"
@@ -447,8 +452,8 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                 <Rocket className="h-5 w-5 rotate-180" />
               </Button>
               <div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-slate-50 tracking-tight">Auto Scraper</h2>
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Automated Bulk Extraction</p>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-slate-50 tracking-tight">{t('as_title')}</h2>
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mt-0.5">{t('as_subtitle')}</p>
               </div>
             </div>
             
@@ -460,7 +465,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                 disabled={locations.length === 0 || categories.length === 0 || isRunning}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Generate Queue
+                {t('as_generate_queue')}
               </Button>
               <Button 
                 onClick={resetTasks} 
@@ -469,7 +474,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                 disabled={isRunning || tasks.length === 0}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Reset Stuck
+                {t('as_reset_stuck')}
               </Button>
               <Button 
                 onClick={clearCompletedTasks} 
@@ -477,7 +482,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                 className="h-11 px-4 rounded-xl font-bold text-slate-500 hover:text-emerald-600 transition-all"
                 disabled={isRunning || !tasks.some(t => t.status === 'COMPLETED')}
               >
-                Clear Done
+                {t('as_clear_done')}
               </Button>
               <Button 
                 onClick={clearAllTasks} 
@@ -485,7 +490,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                 className="h-11 px-4 rounded-xl font-bold text-slate-500 hover:text-red-600 transition-all"
                 disabled={isRunning || tasks.length === 0}
               >
-                Clear All
+                {t('as_clear_all')}
               </Button>
               {!isRunning ? (
                 <Button 
@@ -494,7 +499,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                   disabled={tasks.filter(t => t.status !== 'COMPLETED').length === 0}
                 >
                   <Play className="h-4 w-4 mr-2" />
-                  Start Auto Scrape
+                  {t('as_start')}
                 </Button>
               ) : (
                 <Button 
@@ -502,7 +507,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                   className="h-11 px-8 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-500/25 transition-all"
                 >
                   <StopCircle className="h-4 w-4 mr-2" />
-                  Stop Sequence
+                  {t('as_stop')}
                 </Button>
               )}
             </div>
@@ -515,8 +520,8 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                   <Globe className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-slate-900 dark:text-slate-100">Websitesiz Olanları Al</div>
-                  <div className="text-[10px] text-slate-500">Sadece web sitesi bulunmayan işletmeleri toplar</div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-slate-100">{t('as_websitesiz_title')}</div>
+                  <div className="text-[10px] text-slate-500">{t('as_websitesiz_desc')}</div>
                 </div>
               </div>
               <Checkbox 
@@ -528,21 +533,31 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
 
             <Separator orientation="vertical" className="hidden md:block h-8 bg-blue-200 dark:bg-blue-800" />
 
-            <div className="flex-1 flex items-center gap-6">
+            <div className="flex-1 flex items-center gap-6 relative group/ai">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                   <Activity className="h-4 w-4 text-purple-600" />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-slate-900 dark:text-slate-100">AI Analizini Etkinleştir</div>
-                  <div className="text-[10px] text-slate-500">Her işletmeyi AI ile puanlar ve analiz eder</div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    {t('as_ai_title')}
+                    {user?.plan === 'free' && <Lock size={12} className="text-amber-500" />}
+                  </div>
+                  <div className="text-[10px] text-slate-500">{t('as_ai_desc')}</div>
                 </div>
               </div>
-              <Checkbox 
-                checked={useAI}
-                onCheckedChange={(checked) => setUseAI(!!checked)}
-                className="h-5 w-5 rounded-md border-purple-400 data-[state=checked]:bg-purple-600"
-              />
+              {user?.plan === 'free' ? (
+                 <div className="absolute right-0 flex items-center gap-2">
+                    <span className="text-[9px] font-black text-amber-600 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Starter</span>
+                    <Checkbox disabled className="h-5 w-5 rounded-md opacity-50 cursor-not-allowed shadow-none" />
+                 </div>
+              ) : (
+                <Checkbox 
+                  checked={useAI}
+                  onCheckedChange={(checked) => setUseAI(!!checked)}
+                  className="h-5 w-5 rounded-md border-purple-400 data-[state=checked]:bg-purple-600"
+                />
+              )}
             </div>
           </div>
 
@@ -552,10 +567,10 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-emerald-500" />
-                  Target Locations
+                  {t('as_target_locations')}
                 </h3>
                 <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 rounded-md font-bold">
-                  {locations.length} Locations
+                  {locations.length} {t('as_locations_suffix')}
                 </Badge>
               </div>
 
@@ -563,11 +578,11 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
               <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 space-y-3">
                 <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-2">
                   <Rocket className="h-3 w-3" />
-                  Şehri AI ile Otomatik Doldur
+                  {t('as_populate_city')}
                 </div>
                 <div className="flex gap-2">
                   <Input 
-                    placeholder="Şehir adı (örn: Ankara)" 
+                    placeholder={t('as_city_placeholder')} 
                     value={populatingCity}
                     onChange={e => setPopulatingCity(e.target.value)}
                     className="h-10 rounded-xl bg-white dark:bg-slate-900"
@@ -577,11 +592,11 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                     disabled={isPopulating || !populatingCity}
                     className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700"
                   >
-                    {isPopulating ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Ekle'}
+                    {isPopulating ? <RefreshCw className="h-4 w-4 animate-spin" /> : t('as_add')}
                   </Button>
                 </div>
                 <p className="text-[9px] text-emerald-600/70 font-medium italic">
-                  * Seçtiğiniz şehre ait tüm ilçe ve mahalleler otomatik olarak sisteme eklenir.
+                  {t('as_fill_note')}
                 </p>
               </div>
 
@@ -592,7 +607,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                     onValueChange={setSelectedCityId}
                   >
                     <SelectTrigger className="rounded-xl h-10 w-full">
-                      <SelectValue placeholder="City" />
+                      <SelectValue placeholder={t('as_city_select')} />
                     </SelectTrigger>
                     <SelectContent>
                       {cities.map(c => <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>)}
@@ -605,7 +620,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                     disabled={!selectedCityId}
                   >
                     <SelectTrigger className="rounded-xl h-10 w-full">
-                      <SelectValue placeholder="District" />
+                      <SelectValue placeholder={t('as_district_select')} />
                     </SelectTrigger>
                     <SelectContent>
                       {districts.map(d => <SelectItem key={d._id} value={d._id}>{d.name}</SelectItem>)}
@@ -618,7 +633,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                     disabled={!selectedDistrictId}
                   >
                     <SelectTrigger className="rounded-xl h-10 w-full">
-                      <SelectValue placeholder="Neighborhood (Optional)" />
+                      <SelectValue placeholder={t('as_neighborhood_select')} />
                     </SelectTrigger>
                     <SelectContent>
                       {neighborhoodsList.map(n => <SelectItem key={n._id} value={n._id}>{n.name}</SelectItem>)}
@@ -631,11 +646,11 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                   disabled={!selectedDistrictId || isPopulating}
                 >
                   {isPopulating ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-                  {selectedNeighborhoodId ? 'Add Selected Neighborhood' : 'Add ALL Neighborhoods in District'}
+                  {selectedNeighborhoodId ? t('as_add_selected_nb') : t('as_add_all_nb')}
                 </Button>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl max-h-48 overflow-y-auto border border-slate-100 dark:border-slate-800 p-2 space-y-2">
-                {locations.length === 0 && <div className="text-xs text-center text-slate-400 py-4">No locations added</div>}
+                {locations.length === 0 && <div className="text-xs text-center text-slate-400 py-4">{t('as_no_locations')}</div>}
                 {locations.map(loc => (
                   <div key={loc._id} className="flex items-center justify-between bg-white dark:bg-slate-900 p-2 px-3 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
                     <span className="text-xs font-bold text-slate-700">{loc.city} / {loc.district} / {loc.neighborhood}</span>
@@ -651,18 +666,18 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
             <div className="space-y-4">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Search className="h-4 w-4 text-blue-500" />
-                Target Categories
+                {t('as_target_cats')}
               </h3>
               <div className="flex gap-2">
                 <Input 
-                  placeholder="Category (e.g. Restaurants)" 
+                  placeholder={t('as_cat_placeholder')} 
                   value={newCategory} onChange={e => setNewCategory(e.target.value)}
                   className="rounded-xl"
                 />
-                <Button onClick={addCategory} className="rounded-xl shrink-0 bg-blue-600 hover:bg-blue-700">Add</Button>
+                <Button onClick={addCategory} className="rounded-xl shrink-0 bg-blue-600 hover:bg-blue-700">{t('as_cat_add')}</Button>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl max-h-48 overflow-y-auto border border-slate-100 dark:border-slate-800 p-2 space-y-2">
-                {categories.length === 0 && <div className="text-xs text-center text-slate-400 py-4">No categories added</div>}
+                {categories.length === 0 && <div className="text-xs text-center text-slate-400 py-4">{t('as_no_cats')}</div>}
                 {categories.map(cat => (
                   <div key={cat._id} className="flex items-center justify-between bg-white dark:bg-slate-900 p-2 px-3 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
                     <span className="text-xs font-bold text-slate-700">{cat.name}</span>
@@ -679,7 +694,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <Rocket className="h-4 w-4 text-purple-500" />
-                  AI Niche Suggester
+                  {t('as_ai_niche')}
                 </h3>
                 <Button 
                   variant="ghost" 
@@ -689,15 +704,15 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                   className="h-7 text-[10px] font-bold text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg px-3"
                 >
                   {isSuggesting ? <RefreshCw className="h-3 w-3 mr-1.5 animate-spin" /> : <Search className="h-3 w-3 mr-1.5" />}
-                  Generate Ideas
+                  {t('as_generate_ideas')}
                 </Button>
               </div>
               
               <div className="bg-purple-50/50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-900/30 p-4 min-h-[200px] flex flex-col items-center justify-center">
                 {aiSuggestions.length === 0 ? (
                   <div className="text-center space-y-2">
-                    <div className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">No suggestions yet</div>
-                    <p className="text-[11px] text-slate-500 max-w-[200px]">Click generate to find high-potential niches in your city</p>
+                    <div className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">{t('as_no_suggestions')}</div>
+                    <p className="text-[11px] text-slate-500 max-w-[200px]">{t('as_ideas_desc')}</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-2 w-full">
@@ -737,7 +752,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                   className="rounded-md border-slate-400 dark:border-slate-500 bg-white dark:bg-slate-900 shadow-sm"
                 />
                 <List className="h-4 w-4 text-indigo-500" />
-                Scraping Queue ({completedTasks} / {totalTasks})
+                {t('as_queue_title')} ({completedTasks} / {totalTasks})
                 
                 {!isRunning && (totalTasks - completedTasks) > 0 && (
                   <Button 
@@ -746,7 +761,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                     className="ml-4 h-7 px-4 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-widest shadow-md shadow-emerald-500/20 border-0 transition-all animate-in fade-in slide-in-from-left-2"
                   >
                     <Play className="h-3 w-3 mr-1.5 fill-current" />
-                    Resume Queue
+                    {t('as_resume_queue')}
                   </Button>
                 )}
               </CardTitle>
@@ -754,7 +769,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
               {selectedTasks.size > 0 && (
                 <div className="flex items-center gap-3 animate-in fade-in zoom-in duration-200">
                   <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-full">
-                    {selectedTasks.size} Selected
+                    {selectedTasks.size} {t('as_selected')}
                   </span>
                   <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                     <Button 
@@ -764,7 +779,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                       className="h-8 rounded-lg text-red-500 hover:text-red-600 hover:bg-white dark:hover:bg-slate-900 font-bold text-[10px] uppercase tracking-widest px-3"
                     >
                       <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                      Delete Search & Data
+                      {t('as_delete_data')}
                     </Button>
                   </div>
                 </div>
@@ -787,7 +802,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
             {totalPages > 1 && (
               <div className="flex items-center justify-between p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
                 <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-                  Showing <span className="text-slate-900 dark:text-slate-100">{tasks.length}</span> of <span className="text-slate-900 dark:text-slate-100">{totalTasks}</span> Tasks
+                  {t('as_showing')} <span className="text-slate-900 dark:text-slate-100">{tasks.length}</span> {t('as_of')} <span className="text-slate-900 dark:text-slate-100">{totalTasks}</span> {t('as_tasks_waiting')}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -797,7 +812,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                     onClick={() => setCurrentPage(prev => prev - 1)}
                     className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-widest border-slate-200 dark:border-slate-800"
                   >
-                    Previous
+                    {t('as_prev')}
                   </Button>
                   <div className="flex items-center gap-1">
                     {[...Array(Math.min(5, totalPages))].map((_, i) => {
@@ -828,7 +843,7 @@ export const AutoScraper = ({ onBack }: { onBack: () => void }) => {
                     onClick={() => setCurrentPage(prev => prev + 1)}
                     className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-widest border-slate-200 dark:border-slate-800"
                   >
-                    Next
+                    {t('as_next')}
                   </Button>
                 </div>
               </div>
@@ -881,6 +896,7 @@ const TaskItem = ({
   isSelected: boolean, 
   onToggle: () => void 
 }) => {
+  const t = useT();
   const [isExpanded, setIsExpanded] = useState(false);
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -965,7 +981,7 @@ const TaskItem = ({
           {task.status === 'ERROR' && <div className="h-3 w-3 rounded-full bg-red-500" />}
           
           <div className="flex flex-col text-left">
-            <span className="font-bold text-sm">{task.category} in {task.district} {task.neighborhood}</span>
+            <span className="font-bold text-sm">{task.category} {t('as_in')} {task.district} {task.neighborhood}</span>
             <span className="text-[10px] text-slate-400 uppercase tracking-widest">{task.city}</span>
           </div>
         </div>
@@ -973,7 +989,7 @@ const TaskItem = ({
         <div className="flex items-center gap-6">
           <div className="flex flex-col items-end">
             <span className="text-xs font-bold px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md">
-              {task.leadsFound} Leads
+              {task.leadsFound} {t('as_leads_suffix')}
             </span>
             {task.message && (
               <span className="text-[10px] text-slate-500 mt-1">{task.message}</span>
@@ -986,8 +1002,8 @@ const TaskItem = ({
       {isExpanded && (
         <div className="px-12 pb-6 pt-2 bg-slate-50/30 dark:bg-slate-900/30 animate-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              Found Leads Preview
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              {t('as_leads_preview')}
             </h4>
             {leads.length > 0 && !loading && (
               <Button 
@@ -997,15 +1013,15 @@ const TaskItem = ({
                 className="h-7 px-3 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 font-bold text-[9px] uppercase tracking-widest"
               >
                 <Trash2 className="h-3 w-3 mr-1.5" />
-                Clear All {leads.length}
+                {t('as_clear_all_n', leads.length)}
               </Button>
             )}
           </div>
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-4 custom-scrollbar">
             {loading ? (
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest animate-pulse py-4 text-center">Loading leads...</div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest animate-pulse py-4 text-center">{t('as_loading_leads')}</div>
             ) : leads.length === 0 ? (
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest py-4 text-center">No leads found in database for this criteria</div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest py-4 text-center">{t('as_no_leads_criteria')}</div>
             ) : (
               leads.map((l: any) => (
                 <div key={l._id} className="group flex items-center justify-between text-[11px] py-2 border-b border-slate-100 dark:border-slate-800/50 last:border-0 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 px-2 rounded-lg transition-all">

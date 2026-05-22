@@ -20,7 +20,13 @@ async function retry<T>(fn: () => Promise<T>, retries: number = 3, delayMs: numb
 
 chrome.runtime.onMessage.addListener((message: any) => {
   if (message.type === "START_SCRAPING_CMD") {
-    startScraping(message.scrapeDetails ?? false, message.customCategory);
+    startScraping(
+      message.scrapeDetails ?? false,
+      message.customCategory,
+      message.defaultCity,
+      message.defaultCountry,
+      message.plan || 'free'
+    );
   }
   if (message.type === "STOP_SCRAPING_CMD") {
     isScraping = false;
@@ -35,13 +41,19 @@ chrome.runtime.onMessage.addListener((message: any) => {
   }
 });
 
-async function startScraping(scrapeDetails: boolean, customCategory?: string) {
+async function startScraping(
+  scrapeDetails: boolean,
+  customCategory?: string,
+  defaultCity?: string,
+  defaultCountry?: string,
+  plan: string = 'free'
+) {
   if (isScraping) return;
   isScraping = true;
   seenIds.clear();
 
   try {
-    await scrapeLoop(scrapeDetails, customCategory);
+    await scrapeLoop(scrapeDetails, customCategory, defaultCity, defaultCountry, plan);
   } catch (error) {
     chrome.runtime.sendMessage({
       type: "SCRAPING_FAILED",
@@ -50,7 +62,13 @@ async function startScraping(scrapeDetails: boolean, customCategory?: string) {
   }
 }
 
-async function scrapeLoop(scrapeDetails: boolean, customCategory?: string) {
+async function scrapeLoop(
+  scrapeDetails: boolean,
+  customCategory?: string,
+  defaultCity?: string,
+  defaultCountry?: string,
+  plan: string = 'free'
+) {
   // Phase 1: Collect all basic leads from list view
   const allLeads: Lead[] = [];
 
@@ -64,10 +82,33 @@ async function scrapeLoop(scrapeDetails: boolean, customCategory?: string) {
       payload: "Extracting leads from current view...",
     });
 
-    const leads = extractLeads(customCategory);
-    const newLeads = leads.filter((lead) => !seenIds.has(lead.id));
+    const leads = extractLeads(customCategory, defaultCity, defaultCountry);
+    let newLeads = leads.filter((lead) => !seenIds.has(lead.id));
 
     if (newLeads.length > 0) {
+      if (plan === 'free' && allLeads.length + newLeads.length > 20) {
+        const allowedSpace = 20 - allLeads.length;
+        if (allowedSpace > 0) {
+          newLeads = newLeads.slice(0, allowedSpace);
+          newLeads.forEach((lead) => seenIds.add(lead.id));
+          allLeads.push(...newLeads);
+          chrome.runtime.sendMessage({ type: "LEADS_FOUND", payload: newLeads });
+        }
+        
+        chrome.runtime.sendMessage({
+          type: "UPDATE_ACTIVITY",
+          payload: "Ücretsiz plan limitine ulaşıldı (Maks. 20 kayıt).",
+        });
+
+        chrome.runtime.sendMessage({
+          type: "SCRAPING_FAILED",
+          error: "Ücretsiz plan limitine (oturum başı 20 kayıt) ulaştınız. Sınırsız arama ve bulut senkronizasyonu için lütfen planınızı PRO'ya yükseltin!"
+        });
+
+        isScraping = false;
+        break;
+      }
+
       newLeads.forEach((lead) => seenIds.add(lead.id));
       allLeads.push(...newLeads);
       chrome.runtime.sendMessage({ type: "LEADS_FOUND", payload: newLeads });
@@ -200,7 +241,7 @@ async function scrapeLoop(scrapeDetails: boolean, customCategory?: string) {
   }
 }
 
-function extractLeads(customCategory?: string): Lead[] {
+function extractLeads(customCategory?: string, defaultCity?: string, defaultCountry?: string): Lead[] {
   const leads: Lead[] = [];
   // Updated selectors for business items in the list
   const items = document.querySelectorAll('div[role="article"], div.Nv2Ybe, .fontBodyMedium.Q7S7S');
@@ -282,6 +323,8 @@ function extractLeads(customCategory?: string): Lead[] {
       reviews,
       category: customCategory || category.replace(/\s+/g, ' ').trim(),
       address: address.replace(/\s+/g, ' ').trim(),
+      city: defaultCity || undefined,
+      country: defaultCountry || undefined,
       phone: phone.replace(/\s+/g, ' ').trim(),
       website,
       url,

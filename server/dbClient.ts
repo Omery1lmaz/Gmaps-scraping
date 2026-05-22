@@ -15,6 +15,10 @@ import WhatsAppMedia from './models/WhatsAppMedia';
 import Template from './models/Template';
 import Sequence from './models/Sequence';
 import SequenceState from './models/SequenceState';
+import PipelineStage from './models/PipelineStage';
+import ScrapeTask from './models/ScrapeTask';
+import Meeting from './models/Meeting';
+import ScrapeCategory from './models/ScrapeCategory';
 
 let isConnected = false;
 
@@ -52,5 +56,9 @@ export {
   WhatsAppMedia,
   Template,
   Sequence,
-  SequenceState
+  SequenceState,
+  PipelineStage,
+  ScrapeTask,
+  Meeting,
+  ScrapeCategory
 };

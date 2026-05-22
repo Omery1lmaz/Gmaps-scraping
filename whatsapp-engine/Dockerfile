@@ -1,8 +1,10 @@
 FROM node:22-bookworm-slim
 
+ARG DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=${DEBIAN_FRONTEND}
+
 # Install Chrome/Chromium dependencies + core tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Chromium deps
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     chromium \
     libnss3 \
     libnss3-tools \
@@ -31,9 +33,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xdg-utils \
     wget \
     gnupg \
-    # Fix: Rosetta compatibility symlink for x86_64 emulation on Apple Silicon
-    && mkdir -p /lib64 && ln -sf /lib/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true \
-    && rm -rf /var/lib/apt/lists/*
+ && mkdir -p /lib64 && ln -sf /lib/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

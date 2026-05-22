@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IActivity extends Document {
   id: string;
+  userId: string;
   type: string;
   description: string;
   leadId: string;
@@ -10,6 +11,7 @@ export interface IActivity extends Document {
 
 const ActivitySchema: Schema = new Schema({
   _id: { type: String, required: true },
+  userId: { type: String, required: true, index: true },
   type: { type: String, required: true },
   description: { type: String, required: true },
   leadId: { type: String, required: true, index: true },

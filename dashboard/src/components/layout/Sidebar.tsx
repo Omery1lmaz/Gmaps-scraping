@@ -1,15 +1,27 @@
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
   Layout, 
-  BarChart3, 
   Zap,
   MessageCircle,
   FileText,
-  Settings
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  Command,
+  CreditCard,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useLocation, Link } from '../../lib/router';
+import { useAuth } from '../../lib/auth';
+import { Avatar, AvatarFallback } from '../ui/avatar';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '../ui/dropdown-menu';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../ui/tooltip';
+import { useNavigate } from '../../lib/router';
+import { useT } from '../../lib/i18n';
 
 const menuItems = [
   { id: 'overview', path: '/overview', icon: LayoutDashboard, label: 'Dashboard' },
@@ -17,56 +29,235 @@ const menuItems = [
   { id: 'pipeline', path: '/pipeline', icon: Layout, label: 'Pipeline' },
   { id: 'templates', path: '/templates', icon: FileText, label: 'WP Şablonlar' },
   { id: 'sequences', path: '/sequences', icon: Zap, label: 'WP Otomasyon' },
-  { id: 'whatsapp', path: '/whatsapp', icon: MessageCircle, label: 'WhatsApp Web' },
+  { 
+    id: 'whatsapp_dropdown', 
+    icon: MessageCircle, 
+    label: 'WhatsApp',
+    isDropdown: true,
+    children: [
+      { id: 'whatsapp_web', path: '/whatsapp', label: 'Web' },
+      { id: 'whatsapp_accounts', path: '/whatsapp/accounts', label: 'Hesaplar' },
+    ]
+  },
+  { id: 'billing', path: '/billing', icon: CreditCard, label: 'Abonelik & Ödeme' },
 ];
 
 export function Sidebar() {
   const { pathname } = useLocation();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const t = useT();
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  
+  // Collapsible state initialized from localStorage for persistence
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem('sidebar-collapsed') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-collapsed', String(isCollapsed));
+  }, [isCollapsed]);
+
+  // Extract initials for the avatar
+  const userInitials = React.useMemo(() => {
+    if (!user?.name) return 'LD';
+    return user.name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  }, [user]);
 
   return (
-    <aside className="w-64 border-r border-border bg-white flex flex-col h-screen shrink-0">
-      <div className="p-6 border-b border-slate-50 flex items-center gap-3">
-        <div className="bg-blue-600 size-8 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-200">
-          <LayoutDashboard size={20} />
-        </div>
-        <span className="font-black text-lg tracking-tight text-slate-800">LeadSystem <span className="text-blue-600 text-[10px] align-top ml-1">PRO</span></span>
-      </div>
-      
-      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-        {menuItems.map((item) => {
-          const isActive = pathname === item.path || (pathname === '/' && item.path === '/leads');
-          return (
-            <Link
-              key={item.id}
-              to={item.path}
-              className={cn(
-                "w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group",
-                isActive
-                  ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-100" 
-                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-800 border border-transparent"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <item.icon size={18} className={cn(isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600")} />
-                <span className="text-sm font-bold">{item.label}</span>
-              </div>
-              {isActive && <div className="size-1.5 rounded-full bg-blue-600" />}
-            </Link>
-          );
-        })}
-      </nav>
+    <TooltipProvider>
+      <aside 
+        className={cn(
+          "border-r border-slate-100/5 dark:border-slate-800/50 bg-white/5 dark:bg-slate-900/70 backdrop-blur-md flex flex-col h-screen shrink-0 relative transition-all duration-300 ease-in-out z-30 shadow-[4px_0_24px_rgba(0,0,0,0.5)]",
+          isCollapsed ? "w-20" : "w-64"
+        )}
+      >
+        {/* Floating Collapse Toggle Button */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute right-[-14px] top-10 size-7 bg-[#0c1220] border border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:scale-110 shadow-sm cursor-pointer z-50 transition-all duration-200"
+          title={isCollapsed ? t('expand_menu') : t('collapse_menu')}
+        >
+          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
 
-      <div className="p-4 border-t border-slate-50">
-        <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
-          <div className="flex items-center gap-3">
-            <img src="https://github.com/shadcn.png" className="size-10 rounded-full border-2 border-white shadow-sm" alt="Avatar" />
-            <div className="min-w-0">
-              <div className="text-sm font-black text-slate-800 truncate">Heaven Admin</div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">Kurucu Ortak</div>
-            </div>
+        {/* Logo Section */}
+        <div className={cn(
+          "p-5 border-b border-white/5 flex items-center gap-3 h-16 transition-all duration-300",
+          isCollapsed ? "justify-center" : "px-6"
+        )}>
+          <div className="bg-gradient-to-tr from-emerald-500 to-green-600 size-9 rounded-xl flex items-center justify-center text-black shadow-lg shadow-emerald-500/20 hover:rotate-12 transition-transform duration-300">
+            <Command size={18} className="animate-pulse" />
           </div>
+          {!isCollapsed && (
+            <div className="flex flex-col">
+              <span className="font-extrabold text-sm tracking-tight text-slate-100 flex items-center gap-1.5">
+                WPAIFlow 
+                <span className="bg-gradient-to-r from-emerald-500 to-green-600 text-black text-[9px] font-extrabold px-1.5 py-0.5 rounded-full shadow-sm">
+                  PRO
+                </span>
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mt-0.5">
+                Gmaps Scraper
+              </span>
+            </div>
+          )}
         </div>
-      </div>
-    </aside>
+        
+        {/* Navigation Items */}
+        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto scrollbar-thin">
+          {menuItems.map((item) => {
+            if (item.isDropdown) {
+              const isDropdownOpen = openDropdown === item.id;
+              const isActive = item.children?.some(child => pathname === child.path);
+
+              return (
+                <div key={item.id} className="space-y-1">
+                  <button
+                    onClick={() => setOpenDropdown(isDropdownOpen ? null : item.id)}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all duration-200 group border border-transparent",
+                      isActive ? "bg-white/10 text-white font-extrabold" : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                    )}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <item.icon size={19} className={cn("transition-transform duration-200", isActive ? "text-emerald-400" : "text-slate-400")} />
+                      {!isCollapsed && <span className="text-sm font-extrabold tracking-tight">{item.label}</span>}
+                    </div>
+                    {!isCollapsed && (isDropdownOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                  </button>
+                  {isDropdownOpen && !isCollapsed && item.children?.map(child => (
+                    <Link
+                      key={child.id}
+                      to={child.path || '#'}
+                      className={cn(
+                        "block w-full px-12 py-2 text-xs font-semibold rounded-xl transition-colors",
+                        pathname === child.path ? "text-emerald-400" : "text-slate-500 hover:text-slate-300"
+                      )}
+                    >
+                      {child.label}
+                    </Link>
+                  ))}
+                </div>
+              );
+            }
+
+            const isActive = pathname === item.path || (pathname === '/' && item.path === '/leads');
+            const linkContent = (
+              <Link
+                key={item.id}
+                to={item.path || '#'}
+                className={cn(
+                  "w-full flex items-center px-3.5 py-3 rounded-xl transition-all duration-200 group relative border border-transparent",
+                  isActive
+                    ? "bg-gradient-to-r from-emerald-500 to-green-600 text-black font-extrabold shadow-[0_4px_20px_rgba(16,185,129,0.25)] border-0" 
+                    : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                )}
+              >
+                <div className={cn("flex items-center gap-3.5", isCollapsed && "mx-auto")}>
+                  <item.icon size={19} className={cn("transition-transform duration-200 group-hover:scale-110", isActive ? "text-black" : "text-slate-400 group-hover:text-slate-300")} />
+                  {!isCollapsed && <span className="text-sm font-extrabold tracking-tight">{t(item.id)}</span>}
+                </div>
+              </Link>
+            );
+
+            if (isCollapsed) {
+              return (
+                <Tooltip key={item.id}>
+                  <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+                  <TooltipContent side="right" className="font-bold text-xs bg-slate-950 dark:bg-white text-white dark:text-slate-950 border-0 shadow-lg px-2.5 py-1.5 rounded-lg">
+                    {t(item.id)}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return linkContent;
+          })}
+        </nav>
+
+        {/* Footer Area: Unified Profile & Dropdown */}
+        <div className="p-4 border-t border-white/5">
+          <DropdownMenu>
+            <DropdownMenuTrigger className="w-full outline-none">
+              {isCollapsed ? (
+                <div className="flex justify-center cursor-pointer group">
+                  <Avatar className="size-10 border-2 border-white dark:border-slate-800 shadow-md shadow-emerald-500/5 bg-gradient-to-tr from-emerald-500 to-green-600 text-black font-extrabold group-hover:scale-105 transition-transform">
+                    <AvatarFallback className="bg-transparent text-black text-xs font-black">{userInitials}</AvatarFallback>
+                  </Avatar>
+                </div>
+              ) : (
+                <div className="bg-[#0c1220]/80 rounded-2xl p-4 border border-white/5 hover:bg-white/5 transition-all duration-200 shadow-xl backdrop-blur-sm group cursor-pointer text-left">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="size-10 border-2 border-white dark:border-slate-800 shadow-md shadow-emerald-500/5 bg-gradient-to-tr from-emerald-500 to-green-600 text-black font-extrabold group-hover:scale-105 transition-transform">
+                      <AvatarFallback className="bg-transparent text-black text-xs font-black">{userInitials}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-black text-slate-100 truncate flex items-center gap-1">
+                        {user?.name || 'Heaven Admin'}
+                        <Sparkles size={11} className="text-amber-500 fill-amber-500 shrink-0" />
+                      </div>
+                      <div className="text-[10px] font-bold text-slate-400 truncate">
+                        {user?.email || 'admin@leadflow.pro'}
+                      </div>
+                      <div className="mt-1.5 flex items-center gap-1">
+                        <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          {user?.plan ? `${user.plan.toUpperCase()} PLAN` : 'FREE PLAN'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent 
+              side={isCollapsed ? "right" : "top"} 
+              align={isCollapsed ? "end" : "center"}
+              sideOffset={isCollapsed ? 12 : 8}
+              className="w-56 p-1.5 border border-white/10 bg-[#0c1220]/95 backdrop-blur-md shadow-2xl rounded-2xl z-50"
+            >
+              <div className="p-2.5 flex flex-col gap-0.5">
+                <span className="text-xs font-black text-slate-200">{user?.name}</span>
+                <span className="text-[10px] font-bold text-slate-500">{user?.email}</span>
+              </div>
+              
+              <DropdownMenuSeparator className="bg-white/5" />
+              
+              <DropdownMenuItem 
+                onClick={() => navigate('/overview')}
+                className="flex items-center gap-2 p-2 text-xs font-extrabold text-slate-300 hover:text-emerald-400 focus:bg-emerald-500/10 focus:text-emerald-400 rounded-xl cursor-pointer transition-colors"
+              >
+                <LayoutDashboard size={14} />
+                {t('overview')}
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem 
+                onClick={() => navigate('/whatsapp')}
+                className="flex items-center gap-2 p-2 text-xs font-extrabold text-slate-300 hover:text-emerald-400 focus:bg-emerald-500/10 focus:text-emerald-400 rounded-xl cursor-pointer transition-colors"
+              >
+                <MessageCircle size={14} />
+                {t('whatsapp')}
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator className="bg-white/5" />
+              
+              <DropdownMenuItem 
+                onClick={() => logout()} 
+                className="flex items-center gap-2 p-2 text-xs font-extrabold text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10 rounded-xl cursor-pointer transition-colors"
+              >
+                <Zap size={14} className="rotate-180" />
+                {t('logout')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </aside>
+    </TooltipProvider>
   );
 }

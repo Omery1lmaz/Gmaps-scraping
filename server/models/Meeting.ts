@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IMeeting extends Document {
-  workspaceId: string;
+  userId: string;
   title: string;
   date: Date;
   relatedLeads: mongoose.Types.ObjectId[];
@@ -10,7 +10,7 @@ export interface IMeeting extends Document {
 }
 
 const MeetingSchema: Schema = new Schema({
-  workspaceId: { type: String, default: 'default' },
+  userId: { type: String, required: true, index: true },
   title: { type: String, required: true },
   date: { type: Date, required: true },
   relatedLeads: [{ type: Schema.Types.ObjectId, ref: 'Lead' }],

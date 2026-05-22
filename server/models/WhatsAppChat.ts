@@ -2,6 +2,8 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IWhatsAppChat extends Document {
   id: string;
+  userId: string;
+  sessionId?: string;
   jid: string;
   name?: string;
   isGroup: boolean;
@@ -19,7 +21,9 @@ export interface IWhatsAppChat extends Document {
 
 const WhatsAppChatSchema: Schema = new Schema({
   _id: { type: String, required: true },
-  jid: { type: String, required: true, unique: true },
+  userId: { type: String, required: true, index: true },
+  sessionId: { type: String, index: true },
+  jid: { type: String, required: true },
   name: { type: String },
   isGroup: { type: Boolean, default: false },
   isArchived: { type: Boolean, default: false },
@@ -33,5 +37,7 @@ const WhatsAppChatSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
+
+WhatsAppChatSchema.index({ userId: 1, sessionId: 1, jid: 1 }, { unique: true });
 
 export default mongoose.model<IWhatsAppChat>('WhatsAppChat', WhatsAppChatSchema);

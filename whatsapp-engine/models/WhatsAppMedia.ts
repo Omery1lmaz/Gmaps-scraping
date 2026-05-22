@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IWhatsAppMedia extends Document {
   id: string;
+  userId: string;
   messageId: string;
   fileName?: string;
   mimeType: string;
@@ -14,6 +15,7 @@ export interface IWhatsAppMedia extends Document {
 
 const WhatsAppMediaSchema: Schema = new Schema({
   _id: { type: String, required: true },
+  userId: { type: String, required: true, index: true },
   messageId: { type: String, required: true, index: true },
   fileName: { type: String },
   mimeType: { type: String, required: true },

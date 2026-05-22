@@ -74,6 +74,7 @@ export class AIService {
     lead: any, 
     template: string, 
     tone: string, 
+    userId: string,
     previousMessages: string[] = []
   ) {
     const provider = this.providers.get(this.defaultProvider);
@@ -124,6 +125,7 @@ export class AIService {
 
     // Save to MongoDB
     const generation = await AIGeneration.create({
+      userId,
       leadId: lead._id || lead.id,
       originalText: template,
       generatedText,
@@ -138,7 +140,7 @@ export class AIService {
     return generation;
   }
 
-  public async analyzeLead(lead: any) {
+  public async analyzeLead(lead: any, userId: string) {
     const provider = this.providers.get(this.defaultProvider);
     if (!provider) throw new Error('No AI provider configured');
 
@@ -162,7 +164,7 @@ export class AIService {
     const analysis = JSON.parse(result.text.match(/\{.*\}/s)?.[0] || '{}');
 
     return Lead.findOneAndUpdate(
-      { externalId: lead.externalId || lead.id },
+      { userId, _id: lead._id || lead.id },
       {
         aiQualityScore: analysis.quality,
         aiResponseLikelihood: analysis.likelihood,
@@ -204,6 +206,32 @@ export class AIService {
       4. Çift tırnak içerisine alma, sadece göndereceğimiz mesajın kendisini dön.
       
       Önerilen Yanıt:
+    `;
+
+    const result = await provider.generateText(prompt);
+    return result.text.trim();
+  }
+
+  public async generateSequenceAIResponse(lead: any, lastMessage: string, aiPrompt: string): Promise<string> {
+    const provider = this.providers.get(this.defaultProvider);
+    if (!provider) throw new Error('No AI provider configured');
+
+    const prompt = `
+      Sen bir B2B otomasyon asistanısın. Müşteri bir otomasyon dizisi içindeyken mesaj gönderdi.
+      
+      Müşteri Bilgileri:
+      - Adı: ${lead.businessName || lead.name}
+      - Kategori: ${lead.category || 'Belirtilmemiş'}
+      
+      AI Talimatların (Önemli):
+      "${aiPrompt || 'Nazik ve profesyonel ol, randevu almaya çalış.'}"
+      
+      Müşterinin son mesajı:
+      "${lastMessage}"
+      
+      GÖREV:
+      Bu mesaja yukarıdaki talimatların doğrultusunda, profesyonel, yardımsever ve kısa bir yanıt yaz. 
+      WhatsApp formatına uygun olsun. Sadece mesajın kendisini dön.
     `;
 
     const result = await provider.generateText(prompt);

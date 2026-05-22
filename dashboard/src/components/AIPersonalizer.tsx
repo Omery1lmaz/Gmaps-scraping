@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '../lib/api';
 import { 
   Sparkles, 
   RefreshCcw, 
@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 
-const API_URL = 'http://localhost:3001/api';
+
 
 const tones = [
   { id: 'PROFESSIONAL', label: 'Profesyonel' },
@@ -44,7 +44,7 @@ export function AIPersonalizer({ leadId, templateContent, onVariationGenerated }
 
   const personalizeMutation = useMutation({
     mutationFn: async () => {
-      const res = await axios.post(`${API_URL}/ai/personalize`, {
+      const res = await api.post('/ai/personalize', {
         leadId,
         template: templateContent,
         tone

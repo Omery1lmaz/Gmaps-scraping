@@ -78,6 +78,7 @@ class MongoService {
   get whatsAppChat() { return this.createModelApi(Models.WhatsAppChat); }
   get whatsAppMessage() { return this.createModelApi(Models.WhatsAppMessage); }
   get whatsAppMedia() { return this.createModelApi(Models.WhatsAppMedia); }
+  get whatsAppMediaDLQ() { return this.createModelApi(Models.WhatsAppMediaDLQ); }
   get messageTemplate() { return this.createModelApi(Models.MessageTemplate); }
   get campaign() { return this.createModelApi(Models.Campaign); }
   get campaignLead() { return this.createModelApi(Models.CampaignLead); }
@@ -157,28 +158,57 @@ class MongoService {
         await ensureConnected();
         const filter = buildFilter(args.where);
 
-        const existing = await model.findOne(filter);
-        if (existing) {
-          const updateData: any = {};
-          for (const [key, value] of Object.entries(args.update)) {
-            if (value !== undefined) updateData[key] = value;
+        const updateData: any = {};
+        for (const [key, value] of Object.entries(args.update)) {
+          if (value !== undefined) updateData[key] = value;
+        }
+
+        const createData: any = {};
+        for (const [key, value] of Object.entries(args.create)) {
+          if (value !== undefined) createData[key === 'id' ? '_id' : key] = value;
+        }
+        
+        if (!createData._id) {
+          if (filter._id && typeof filter._id === 'string') {
+            createData._id = filter._id;
+          } else {
+            createData._id = generateId();
           }
-          const doc = await model.findOneAndUpdate(filter, { $set: updateData }, { returnDocument: 'after' }).lean();
+        }
+
+        // To avoid 'ConflictingUpdateOperators', a field cannot be in both $set and $setOnInsert.
+        // Logic:
+        // 1. All fields in 'update' go to $set (applied on update AND on insert).
+        // 2. All fields in 'create' that are NOT in 'update' go to $setOnInsert (applied ONLY on insert).
+        const setOnInsertData: any = {};
+        for (const [key, value] of Object.entries(createData)) {
+          if (!(key in updateData)) {
+            setOnInsertData[key] = value;
+          }
+        }
+
+        try {
+          const doc = await model.findOneAndUpdate(
+            filter,
+            { 
+              $set: updateData,
+              $setOnInsert: setOnInsertData
+            },
+            { upsert: true, returnDocument: 'after', lean: true }
+          );
           return { ...doc, id: (doc as any)._id };
-        } else {
-          const createData: any = {};
-          for (const [key, value] of Object.entries(args.create)) {
-            if (value !== undefined) createData[key === 'id' ? '_id' : key] = value;
-          }
-          if (!createData._id) {
-            if (filter._id && typeof filter._id === 'string') {
-              createData._id = filter._id;
-            } else {
-              createData._id = generateId();
+        } catch (error: any) {
+          if (error.code === 11000) {
+            // If we still get a duplicate key error, it might be due to a race condition on a unique index 
+            // that is NOT part of the filter, or the filter itself if multiple upserts happen simultaneously.
+            // In case of E11000, we try one more time by finding and updating.
+            const existing = await model.findOne(filter).lean();
+            if (existing) {
+              const doc = await model.findOneAndUpdate(filter, { $set: updateData }, { returnDocument: 'after', lean: true });
+              return { ...doc, id: (doc as any)._id };
             }
           }
-          const doc = await model.create(createData);
-          return { ...doc.toObject(), id: doc._id };
+          throw error;
         }
       },
 

@@ -11,7 +11,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - WHATSAPP_MEDIA_DIR=/app/media/whatsapp
       - MONGODB_URL=mongodb://mongo:27017/gmaps-lead-scraper
-      - API_KEY=AIzaSyAZ7I8BW1Lpli58sLnmCE05Bbvyv7OrJ0g
+      - JWT_SECRET=${JWT_SECRET:-dev-change-me}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
       - NODE_ENV=development
     volumes:
       - ${HOST_PROJECT_DIR}/server:/app
@@ -33,7 +34,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - WHATSAPP_MEDIA_DIR=/app/media/whatsapp
       - MONGODB_URL=mongodb://mongo:27017/gmaps-lead-scraper
-      - API_KEY=AIzaSyAZ7I8BW1Lpli58sLnmCE05Bbvyv7OrJ0g
+      - JWT_SECRET=${JWT_SECRET:-dev-change-me}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
       - NODE_ENV=production
     volumes:
       - wa_media:/app/media/whatsapp
@@ -42,7 +44,7 @@ services:
         condition: service_started
       redis:
         condition: service_healthy
-    profiles: ["production"]
+    profiles: [ "production" ]
 
   wa-engine:
     build: ./whatsapp-engine
@@ -54,19 +56,21 @@ services:
       - REDIS_URL=redis://redis:6379
       - WHATSAPP_MEDIA_DIR=/app/media/whatsapp
       - MONGODB_URL=mongodb://mongo:27017/gmaps-lead-scraper
-      - API_KEY=AIzaSyAZ7I8BW1Lpli58sLnmCE05Bbvyv7OrJ0g
+      - JWT_SECRET=${JWT_SECRET:-dev-change-me}
+      - NODE_ENV=development
+    command: sh -c "npm install --legacy-peer-deps && npm run dev"
     volumes:
       - ${HOST_PROJECT_DIR}/whatsapp-engine:/app
       - /app/node_modules
       - ${HOST_PROJECT_DIR}/whatsapp-engine/.wwebjs_auth:/app/.wwebjs_auth
-      - ${HOST_PROJECT_DIR}/whatsapp-engine/media:/app/media/whatsapp
+      - wa_media:/app/media/whatsapp
     depends_on:
       mongo:
         condition: service_started
       redis:
         condition: service_healthy
     shm_size: '2gb'
-
+ 
   redis:
     image: redis:alpine
     healthcheck:
@@ -96,15 +100,14 @@ services:
     environment:
       - VITE_API_URL=http://localhost:3001/api
       - VITE_WA_ENGINE_URL=http://localhost:3002
-      - VITE_API_KEY=AIzaSyAZ7I8BW1Lpli58sLnmCE05Bbvyv7OrJ0g
       - CHOKIDAR_USEPOLLING=true
-    command: npm run dev -- --host 0.0.0.0
-    depends_on:
-      wa-engine:
-        condition: service_started
+    command: sh -c "npm install --legacy-peer-deps && npm run dev -- --host 0.0.0.0"
     volumes:
       - ${HOST_PROJECT_DIR}/dashboard:/app
       - /app/node_modules
+    depends_on:
+      wa-engine:
+        condition: service_started
 
   dashboard-prod:
     build:
@@ -118,7 +121,7 @@ services:
     depends_on:
       - api-prod
       - wa-engine
-    profiles: ["production"]
+    profiles: [ "production" ]
 
 volumes:
   wa_engine_auth:

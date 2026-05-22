@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IAIGeneration {
+  userId: string;
   leadId: mongoose.Types.ObjectId;
   originalText: string;
   generatedText: string;
@@ -14,6 +15,7 @@ export interface IAIGeneration {
 }
 
 const AIGenerationSchema: Schema = new Schema({
+  userId: { type: String, required: true, index: true },
   leadId: { type: Schema.Types.ObjectId, ref: 'Lead', required: true, index: true },
   originalText: { type: String, required: true },
   generatedText: { type: String, required: true },

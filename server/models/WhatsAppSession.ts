@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IWhatsAppSession extends Document {
   id: string;
   userId: string;
+  sessionName?: string;
   status: string;
   phoneNumber?: string;
   pushName?: string;
@@ -15,7 +16,8 @@ export interface IWhatsAppSession extends Document {
 
 const WhatsAppSessionSchema: Schema = new Schema({
   _id: { type: String, required: true },
-  userId: { type: String, required: true, unique: true },
+  userId: { type: String, required: true, index: true },
+  sessionName: { type: String, default: 'WhatsApp Hesabı' },
   status: { type: String, default: 'DISCONNECTED' },
   phoneNumber: { type: String },
   pushName: { type: String },

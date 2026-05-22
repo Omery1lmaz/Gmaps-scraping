@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IMessageLog extends Document {
   id: string;
+  userId: string;
   leadId: string;
   campaignLeadId?: string;
   aiGenerationId?: string;
@@ -17,6 +18,7 @@ export interface IMessageLog extends Document {
 
 const MessageLogSchema: Schema = new Schema({
   _id: { type: String, required: true },
+  userId: { type: String, required: true, index: true },
   leadId: { type: String, required: true },
   campaignLeadId: { type: String },
   aiGenerationId: { type: String },

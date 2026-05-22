@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IWhatsAppContact extends Document {
   id: string;
+  userId: string;
   jid: string;
   phone?: string;
   name?: string;
@@ -16,7 +17,8 @@ export interface IWhatsAppContact extends Document {
 
 const WhatsAppContactSchema: Schema = new Schema({
   _id: { type: String, required: true },
-  jid: { type: String, required: true, unique: true },
+  userId: { type: String, required: true, index: true },
+  jid: { type: String, required: true, index: true },
   phone: { type: String, index: true },
   name: { type: String },
   pushName: { type: String },
@@ -27,5 +29,7 @@ const WhatsAppContactSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
+
+WhatsAppContactSchema.index({ userId: 1, jid: 1 }, { unique: true });
 
 export default mongoose.model<IWhatsAppContact>('WhatsAppContact', WhatsAppContactSchema);

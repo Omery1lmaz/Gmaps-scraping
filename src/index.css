@@ -128,10 +128,16 @@
   }
   body {
     @apply bg-background text-foreground;
-    width: 400px;
-    height: 600px;
+    width: 400px !important;
+    min-width: 400px !important;
+    height: 600px !important;
+    min-height: 600px !important;
+    overflow-x: hidden;
   }
   html {
     @apply font-sans;
+    width: 400px !important;
+    height: 600px !important;
+    overflow-x: hidden;
   }
 }

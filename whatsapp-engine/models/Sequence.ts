@@ -9,7 +9,7 @@ export interface ISequence extends Document {
   name: string;
   steps: ISequenceStep[];
   isActive: boolean;
-  userId?: string;
+  userId: string;
   sendTimeStart: string;
   sendTimeEnd: string;
   activeDays: number[];
@@ -22,7 +22,7 @@ export interface ISequence extends Document {
 }
 
 const SequenceStepSchema: Schema = new Schema({
-  templateId: { type: Schema.Types.ObjectId, ref: 'MessageTemplate', required: true },
+  templateId: { type: Schema.Types.ObjectId, ref: 'Template', required: true },
   delayHours: { type: Number, required: true, default: 24 },
 });
 
@@ -30,7 +30,7 @@ const SequenceSchema: Schema = new Schema({
   name: { type: String, required: true },
   steps: [SequenceStepSchema],
   isActive: { type: Boolean, default: true },
-  userId: { type: String },
+  userId: { type: String, required: true, index: true },
   sendTimeStart: { type: String, default: '09:00' },
   sendTimeEnd: { type: String, default: '18:00' },
   activeDays: { type: [Number], default: [1, 2, 3, 4, 5] },

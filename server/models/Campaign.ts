@@ -9,7 +9,7 @@ export interface ICampaign extends Document {
     category?: string;
     minRating?: string;
   };
-  userId?: string;
+  userId: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,7 +23,7 @@ const CampaignSchema: Schema = new Schema({
     category: { type: String },
     minRating: { type: String },
   },
-  userId: { type: String },
+  userId: { type: String, required: true, index: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

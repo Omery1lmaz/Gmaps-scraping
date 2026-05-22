@@ -1,14 +1,14 @@
 import axios, { type AxiosInstance } from 'axios';
-import { API_KEY } from '../config';
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
   baseURL: 'http://localhost:3001/api',
 });
 
-// Add API key to every request
+// Add JWT auth to every request
 api.interceptors.request.use((config) => {
-  config.headers['x-api-key'] = API_KEY;
+  const token = localStorage.getItem('leadflow_auth_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -144,5 +144,21 @@ export const deleteSequence = (id: string) => api.delete(`/sequences/${id}`).the
 export const enrollLeadInSequence = (leadId: string, sequenceId: string) => api.post(`/leads/${leadId}/sequences`, { sequenceId }).then(res => res.data);
 export const updateSequenceState = (stateId: string, status: string, additionalData: any = {}) => api.patch(`/sequences/states/${stateId}`, { status, ...additionalData }).then(res => res.data);
 export const deleteSequenceState = (stateId: string) => api.delete(`/sequences/states/${stateId}`).then(res => res.data);
+export const pauseSequence = (id: string) => api.post(`/sequences/${id}/pause`).then(res => res.data);
+export const resumeSequence = (id: string) => api.post(`/sequences/${id}/resume`).then(res => res.data);
+export const restartSequence = (id: string) => api.post(`/sequences/${id}/restart`).then(res => res.data);
+export const clearSequence = (id: string) => api.post(`/sequences/${id}/clear`).then(res => res.data);
 
-export { api };
+// Create waApi instance for WhatsApp Engine requests
+const waApi: AxiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_WA_ENGINE_URL || 'http://localhost:3002',
+});
+
+// Add JWT auth to every request
+waApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('leadflow_auth_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+export { api, waApi };

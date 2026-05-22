@@ -9,14 +9,25 @@ interface KanbanColumnProps {
   items: any[];
 }
 
+const STAGE_LABELS: Record<string, string> = {
+  NEW: 'YENİ',
+  CONTACTED: 'İLETİŞİME GEÇİLDİ',
+  FOLLOW_UP: 'TAKİP EDİLİYOR',
+  MEETING_BOOKED: 'TOPLANTI AYARLANDI',
+  CLOSED: 'KAZANILDI',
+  REJECTED: 'REDDEDİLDİ'
+};
+
 export function KanbanColumn({ id, title, items }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({ id });
 
+  const displayTitle = STAGE_LABELS[id] || title;
+
   return (
-    <div className="flex flex-col w-80 shrink-0 bg-slate-100/50 rounded-2xl border border-slate-200/60 p-4 space-y-4">
+    <div className="flex flex-col w-80 shrink-0 bg-[#0c1220]/50 rounded-2xl border border-white/5 p-4 space-y-4 backdrop-blur-md shadow-xl">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">{title}</h3>
-        <span className="text-[11px] font-black text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-full tabular-nums">
+        <h3 className="text-sm font-black text-slate-100 uppercase tracking-widest">{displayTitle}</h3>
+        <span className="text-[11px] font-black text-slate-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full tabular-nums">
           {items.length}
         </span>
       </div>
@@ -28,7 +39,7 @@ export function KanbanColumn({ id, title, items }: KanbanColumnProps) {
           ))}
         </SortableContext>
         {items.length === 0 && (
-          <div className="h-24 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center text-[11px] font-bold text-slate-300 uppercase tracking-widest">
+          <div className="h-24 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center text-[11px] font-bold text-slate-500 uppercase tracking-widest">
             Boş
           </div>
         )}

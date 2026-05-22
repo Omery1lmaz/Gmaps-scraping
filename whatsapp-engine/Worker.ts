@@ -1,11 +1,23 @@
 import { Worker, Job, Queue } from 'bullmq';
 import crypto from 'crypto';
 import Redis from 'ioredis';
+import fs from 'fs';
+import type { Redis as RedisType } from 'ioredis';
 import { WhatsAppSessionManager } from './SessionManager.js';
 import { WhatsAppService, formatPhoneToJid } from './WhatsAppService.js';
 import { AntiBanService } from './AntiBan.js';
 import db from './mongoService.js';
 import whatsappWeb from 'whatsapp-web.js';
+import type { BaseMessageJob, MediaMessageJob } from './types.js';
+import { WhatsAppClient } from './WhatsAppClient.js';
+import { MediaPreprocessor } from './MediaPreprocessor.js';
+import { IdempotencyManager } from './IdempotencyManager.js';
+import { CircuitBreaker } from './CircuitBreaker.js';
+import { AdaptiveRetryEngine } from './AdaptiveRetryEngine.js';
+import { MediaCacheService } from './MediaCacheService.js';
+import { MetricsService } from './MetricsService.js';
+import { LatencyController } from './LatencyController.js';
+
 const { MessageMedia } = whatsappWeb as any;
 const IORedis = (Redis as any).default || Redis;
 
@@ -36,24 +48,36 @@ const RATE_LIMIT_WINDOW_MS = 60000;
 
 const rateLimitStore = new Map<string, { count: number; timestamps: number[] }>();
 
-function checkRateLimit(userId: string): boolean {
+/**
+ * In-memory sliding window rate limiter.
+ * Keyed by sessionIdOrUserId for multi-account isolation.
+ */
+function checkRateLimit(sessionIdOrUserId: string): boolean {
   const now = Date.now();
-  const userRecord = rateLimitStore.get(userId);
+  const record = rateLimitStore.get(sessionIdOrUserId);
   
-  if (!userRecord) {
-    rateLimitStore.set(userId, { count: 1, timestamps: [now] });
+  if (!record) {
+    rateLimitStore.set(sessionIdOrUserId, { count: 1, timestamps: [now] });
     return true;
   }
   
-  userRecord.timestamps = userRecord.timestamps.filter(ts => now - ts < RATE_LIMIT_WINDOW_MS);
+  record.timestamps = record.timestamps.filter(ts => now - ts < RATE_LIMIT_WINDOW_MS);
   
-  if (userRecord.timestamps.length >= RATE_LIMIT_MAX_MESSAGES) {
+  if (record.timestamps.length >= RATE_LIMIT_MAX_MESSAGES) {
     return false;
   }
   
-  userRecord.count = userRecord.timestamps.length + 1;
-  userRecord.timestamps.push(now);
+  record.count = record.timestamps.length + 1;
+  record.timestamps.push(now);
   return true;
+}
+
+async function recordMetric(redis: RedisType, metric: string, value: number = 1) {
+  try {
+    await redis.hincrby('whatsapp_media_metrics', metric, value);
+  } catch (err) {
+    console.error('Failed to update Redis metric:', err);
+  }
 }
 
 export function setupWorkers(sessionManager: WhatsAppSessionManager) {
@@ -64,6 +88,9 @@ export function setupWorkers(sessionManager: WhatsAppSessionManager) {
 
   // 1. Single Message Worker (High Priority)
   const singleWorker = new Worker('single-messages', async (job: Job) => {
+    if (job.name === 'send-media-job') {
+      return processMessageJob(job, sessionManager, redisConnection);
+    }
     if (job.name === 'send-whatsapp-chat-message') {
       return processWhatsAppChatMessage(job, sessionManager, service);
     }
@@ -71,7 +98,78 @@ export function setupWorkers(sessionManager: WhatsAppSessionManager) {
       return service.syncHistory(job.data.userId);
     }
     return processSendMessage(job, sessionManager, service);
-  }, { connection: redisConnection, concurrency: 1 });
+  }, {
+    connection: redisConnection,
+    concurrency: 5,
+    settings: {
+      backoffStrategies: {
+        adaptive: async (attemptsMade: number, type: string, err: Error, job: Job) => {
+          const queue = new Queue(job.queueName, { connection: redisConnection });
+          const waitingJobs = await queue.getJobs(['waiting'], 0, 0, true);
+          let queueLag = 0;
+          if (waitingJobs.length > 0) {
+            queueLag = Date.now() - (waitingJobs[0]?.timestamp || Date.now());
+          }
+          
+          const retryEngine = new AdaptiveRetryEngine(redisConnection);
+          const sessionId = job.data.sessionId || 'default';
+          const delay = await retryEngine.calculateDelay(attemptsMade, sessionId, queueLag);
+          console.log(`[Worker] Job ${job.id} failed (attempt ${attemptsMade}). Calculated adaptive retry backoff delay: ${delay}ms`);
+          return delay;
+        }
+      }
+    }
+  } as any);
+
+  // ─── Closed-Loop Latency Controller (Control Theory) ───
+  // Replaces the naive threshold-based backpressure with a damped control loop
+  // that uses EMA smoothing and hysteresis state transitions.
+  const latencyController = new LatencyController(redisConnection);
+  let lastJobCompletionTime = 0;
+  let lastAckLatency = 0;
+
+  // Track worker execution metrics for the control loop
+  singleWorker.on('completed', (_job: Job) => {
+    lastJobCompletionTime = Date.now();
+  });
+
+  setInterval(async () => {
+    try {
+      const queue = new Queue('single-messages', { connection: redisConnection });
+      const waitingJobs = await queue.getJobs(['waiting'], 0, 0, true);
+      let queueLag = 0;
+      if (waitingJobs.length > 0) {
+        queueLag = Date.now() - (waitingJobs[0]?.timestamp || Date.now());
+      }
+
+      // Compute worker execution time from latest latency metrics
+      const latencies = await redisConnection.lrange('whatsapp_latency:media_send_latency_ms', 0, 4);
+      const avgExecTime = latencies.length > 0
+        ? latencies.map(Number).reduce((a: number, b: number) => a + b, 0) / latencies.length
+        : 0;
+
+      // Ack latency = time since last job completed (proxy for responsiveness)
+      lastAckLatency = lastJobCompletionTime > 0 ? Date.now() - lastJobCompletionTime : 0;
+
+      const output = await latencyController.update({
+        queueLagMs: queueLag,
+        workerExecutionTimeMs: avgExecTime,
+        ackLatencyMs: lastAckLatency,
+        loadFactor: AntiBanService.getSystemLoadFactor()
+      });
+
+      // Apply the controller's recommended concurrency
+      if (singleWorker.concurrency !== output.recommendedConcurrency) {
+        console.log(
+          `[LatencyController] Adjusting single-messages worker concurrency: ` +
+          `${singleWorker.concurrency} → ${output.recommendedConcurrency} (state: ${output.state})`
+        );
+        singleWorker.concurrency = output.recommendedConcurrency;
+      }
+    } catch (err) {
+      console.error('[LatencyController] Control loop tick failed:', err);
+    }
+  }, 5000);
 
   // 2. Campaign Management Worker
   const campaignMgmtWorker = new Worker('campaign-messages', async (job: Job) => {
@@ -90,7 +188,15 @@ export function setupWorkers(sessionManager: WhatsAppSessionManager) {
       });
 
       const campaignQueue = new Queue('campaign-messages', { connection: redisConnection });
+      const resolvedUserId = campaign.userId?.toString();
+      if (!resolvedUserId) throw new Error(`Campaign ${campaignId} is missing userId`);
 
+      // Resolve active session for this user to isolate anti-ban per session
+      const resolvedCampaignClient = await resolveClientForUser(resolvedUserId, sessionManager);
+      const targetSessionId = resolvedCampaignClient?.sessionId || resolvedUserId;
+      console.log(`[CampaignMgmt] Using session ${targetSessionId} for campaign stagger delays`);
+
+      let index = 0;
       for (const cl of pendingLeads) {
         // Update to QUEUED
         await db.campaignLead.update({
@@ -98,14 +204,23 @@ export function setupWorkers(sessionManager: WhatsAppSessionManager) {
           data: { status: 'QUEUED' }
         });
 
-        // Add individual send job
+        // Calculate native staggered delay using resolved sessionId for per-session reputation
+        const staggerDelay = await AntiBanService.getCampaignStaggerDelay(index, targetSessionId);
+        console.log(`[CampaignMgmt] Queuing lead ${cl.leadId} with staggered delay: ${staggerDelay}ms (session: ${targetSessionId})`);
+
+        // Add individual send job with native delay
         await campaignQueue.add('send-campaign-message', {
           campaignLeadId: cl.id,
           campaignId: cl.campaignId,
           leadId: cl.leadId,
           templateId: campaign.templateId,
-          userId: campaign.userId
+          userId: resolvedUserId,
+          sessionId: targetSessionId
+        }, {
+          delay: staggerDelay
         });
+
+        index++;
       }
     }
 
@@ -151,6 +266,47 @@ function isWithinSequenceSchedule(sequence: any, isForced?: boolean): boolean {
   return true;
 }
 
+/**
+ * Resolves the best available WhatsApp client for a user.
+ * Supports multi-session: tries specific sessionId first, then falls back
+ * to any active CONNECTED session, then any session, then legacy userId key.
+ */
+async function resolveClientForUser(
+  userId: string,
+  sessionManager: WhatsAppSessionManager,
+  jobSessionId?: string
+): Promise<{ client: any; sessionId: string } | null> {
+  // 1. If a specific sessionId was provided, try it first
+  if (jobSessionId) {
+    const client = sessionManager.getClient(jobSessionId);
+    if (client) return { client, sessionId: jobSessionId };
+  }
+
+  // 2. Find an active CONNECTED session for this user
+  const activeSession = await db.whatsAppSession.findFirst({
+    where: { userId, status: 'CONNECTED' }
+  });
+  if (activeSession) {
+    const client = sessionManager.getClient(activeSession.id);
+    if (client) return { client, sessionId: activeSession.id };
+  }
+
+  // 3. Try any session belonging to this user
+  const anySession = await db.whatsAppSession.findFirst({
+    where: { userId }
+  });
+  if (anySession) {
+    const client = sessionManager.getClient(anySession.id);
+    if (client) return { client, sessionId: anySession.id };
+  }
+
+  // 4. Legacy fallback: try userId as sessionId
+  const legacyClient = sessionManager.getClient(userId);
+  if (legacyClient) return { client: legacyClient, sessionId: userId };
+
+  return null;
+}
+
 async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionManager, service: WhatsAppService) {
   const { leadSequenceStateId } = job.data;
   console.log(`[SequenceWorker] === STARTING processSequenceStep for state: ${leadSequenceStateId} ===`);
@@ -182,24 +338,24 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
 
     console.log(`[SequenceWorker] Fetching sequence ${sequenceIdStr} and lead ${leadIdStr}`);
     const sequence = await db.sequence.findUnique({ where: { id: sequenceIdStr } });
-    const lead = await db.lead.findUnique({ where: { id: leadIdStr } });
 
     if (!sequence) {
       console.error(`[SequenceWorker] Sequence ${sequenceIdStr} not found for state ${state.id}! Cleaning up orphaned state.`);
       await db.sequenceState.delete({ where: { id: state.id } });
       return;
     }
+    const resolvedUserId = sequence.userId?.toString();
+    if (!resolvedUserId) throw new Error(`Sequence ${sequenceIdStr} is missing userId`);
+    const lead = await db.lead.findFirst({ where: { id: leadIdStr, userId: resolvedUserId } });
     if (!lead) {
       console.error(`[SequenceWorker] Lead ${leadIdStr} not found for state ${state.id}! Cleaning up orphaned state.`);
       await db.sequenceState.delete({ where: { id: state.id } });
       return;
     }
-    
+
     console.log(`[SequenceWorker] Sequence: ${sequence.name}, Lead: ${lead.businessName || lead.name}`);
     const steps = sequence.steps || [];
     console.log(`[SequenceWorker] Total steps in sequence: ${steps.length}`);
-
-    const resolvedUserId = sequence.userId ? sequence.userId.toString() : 'mock-admin-user-id';
 
     // Check Sequence Schedule
     console.log(`[SequenceWorker] Checking schedule constraints`);
@@ -212,9 +368,19 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
       return;
     }
 
-    console.log(`[SequenceWorker] Checking rate limits for user ${resolvedUserId}`);
-    if (!checkRateLimit(resolvedUserId)) {
-      console.warn(`[SequenceWorker] Rate limited for user ${resolvedUserId}. Re-scheduling sequence step in DB.`);
+    // Resolve WhatsApp client early to obtain session ID for isolated rate limiting
+    console.log(`[SequenceWorker] Resolving WA client for user: ${resolvedUserId}`);
+    const targetSessionId = sequence.whatsappSessionId || job.data.sessionId;
+    const resolved = await resolveClientForUser(resolvedUserId, sessionManager, targetSessionId);
+    if (!resolved) {
+      console.error(`[SequenceWorker] WhatsApp client not found for user: ${resolvedUserId} (targetSessionId: ${targetSessionId})`);
+      throw new Error('WhatsApp Client offline');
+    }
+    const { client, sessionId: resolvedSessionId } = resolved;
+
+    console.log(`[SequenceWorker] Checking rate limits for session ${resolvedSessionId}`);
+    if (!checkRateLimit(resolvedSessionId)) {
+      console.warn(`[SequenceWorker] Rate limited for session ${resolvedSessionId}. Re-scheduling sequence step in DB.`);
       await db.sequenceState.update({
         where: { id: state.id },
         data: { nextRunAt: new Date(Date.now() + 60000), status: 'ACTIVE' }
@@ -235,13 +401,7 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
       return;
     }
 
-    // 1. Send Message (Reuse logic or similar)
-    console.log(`[SequenceWorker] Getting WA client for user: ${resolvedUserId}`);
-    const client = sessionManager.getClient(resolvedUserId);
-    if (!client) {
-      console.error(`[SequenceWorker] WhatsApp client not found for user: ${resolvedUserId}`);
-      throw new Error('WhatsApp Client offline');
-    }
+    // Client already resolved above for rate limiting
 
     console.log(`[SequenceWorker] Fetching message template ${nextStep.templateId}`);
     const template = await db.messageTemplate.findUnique({ where: { id: nextStep.templateId } });
@@ -263,11 +423,14 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
       content = content.replace(new RegExp(`{${key}}`, 'g'), value);
     });
 
-    const delay = AntiBanService.getRandomDelay();
-    console.log(`[SequenceWorker] Waiting ${delay}ms (Anti-Ban delay) before sending...`);
+    // Dynamic Anti-Ban delay and strict cooldown spacing
+    const delay = await AntiBanService.getDelayForType('SEQUENCE', resolvedSessionId);
+    console.log(`[SequenceWorker] Dynamic Anti-Ban delay: ${delay}ms before sending (session: ${resolvedSessionId})...`);
     await new Promise(resolve => setTimeout(resolve, delay));
 
-    let targetJid = formatPhoneToJid(lead.phone || '');
+    await AntiBanService.enforceCooldown(resolvedSessionId);
+
+    let targetJid = formatPhoneToJid(lead.phone || '', lead.country || undefined);
     console.log(`[SequenceWorker] Formatted phone to targetJid: ${targetJid}`);
     if (targetJid.endsWith('@c.us')) {
       const numberToResolve = targetJid.split('@')[0];
@@ -285,8 +448,46 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
       }
     }
 
+    // Smart Typing Simulation
+    try {
+      const chat = await client.getChatById(targetJid);
+      await chat.sendStateTyping();
+      const typingTime = Math.min(3500, Math.max(1200, content.length * 40));
+      console.log(`[SequenceWorker] Simulating human typing for ${typingTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, typingTime));
+      await chat.clearState();
+    } catch (typingErr) {
+      console.warn(`[SequenceWorker] Typing simulation failed (ignoring):`, extractErrorMessage(typingErr));
+    }
+
     console.log(`[SequenceWorker] Sending message to ${targetJid} with content preview: "${content.substring(0, 30)}..."`);
-    const message = await client.sendMessage(targetJid, content);
+    let message;
+    if (template.hasMedia && template.mediaUrl) {
+      console.log(`[SequenceWorker] Sending ${template.mediaType} media from ${template.mediaUrl}`);
+      const clientAdapter = new WhatsAppClient(client);
+      const mediaInfo = await MediaPreprocessor.downloadAndValidate(
+        (template.mediaType as any) || 'IMAGE',
+        template.mediaUrl,
+        template.mimeType,
+        template.fileName || 'media_file'
+      );
+      if (template.mediaType === 'IMAGE') {
+        message = await clientAdapter.sendImage(targetJid, mediaInfo, content);
+      } else if (template.mediaType === 'VIDEO') {
+        message = await clientAdapter.sendVideo(targetJid, mediaInfo, content);
+      } else if (template.mediaType === 'DOCUMENT') {
+        message = await clientAdapter.sendDocument(targetJid, mediaInfo, template.fileName || 'document');
+        if (content && content.trim().length > 0) {
+          // Send caption as a separate message for documents
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await client.sendMessage(targetJid, content);
+        }
+      } else {
+        message = await client.sendMessage(targetJid, content);
+      }
+    } else {
+      message = await client.sendMessage(targetJid, content);
+    }
     console.log(`[SequenceWorker] Message sent successfully! ID: ${message.id._serialized}`);
 
     // 2. Update State
@@ -318,6 +519,7 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
     console.log(`[SequenceWorker] Creating message log entry...`);
     await db.messageLog.create({
       data: {
+        userId: resolvedUserId,
         leadId: state.leadId,
         content,
         status: 'SENT',
@@ -329,14 +531,18 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
     try {
       const messageIdObj = crypto.randomUUID();
       await db.whatsAppChat.upsert({
-        where: { jid: targetJid },
+        where: { userId: resolvedUserId, sessionId: resolvedSessionId, jid: targetJid },
         update: {
+          userId: resolvedUserId,
+          sessionId: resolvedSessionId,
           lastMessageAt: new Date(),
           lastMessagePreview: content,
           leadId: lead.id,
         },
         create: {
           id: crypto.randomUUID(),
+          userId: resolvedUserId,
+          sessionId: resolvedSessionId,
           jid: targetJid,
           name: lead.businessName || targetJid,
           unreadCount: 0,
@@ -349,6 +555,8 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
       await db.whatsAppMessage.create({
         data: {
           id: messageIdObj,
+          userId: resolvedUserId,
+          sessionId: resolvedSessionId,
           chatId: targetJid,
           direction: 'OUTGOING',
           status: 'SENT',
@@ -366,7 +574,10 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
     try {
       await db.sequenceState.update({
         where: { id: leadSequenceStateId },
-        data: { status: 'FAILED' }
+        data: { 
+          status: 'FAILED',
+          lastError: error instanceof Error ? error.message : String(error)
+        }
       });
     } catch (dbErr) {
       console.error(`[SequenceWorker] Failed to update sequence state to FAILED:`, dbErr);
@@ -379,10 +590,16 @@ async function processSendMessage(job: Job, sessionManager: WhatsAppSessionManag
   const { logId, leadId, content, userId } = job.data;
   console.log(`[SingleWorker] Processing job ${job.id} for lead ${leadId}`);
 
-  const resolvedUserId = userId || 'mock-admin-user-id';
+  const resolvedUserId = userId;
+  if (!resolvedUserId) throw new Error('WhatsApp message job is missing userId');
+
+  // Resolve client first to obtain session ID for isolated rate limiting
+  const resolved = await resolveClientForUser(resolvedUserId, sessionManager, job.data.sessionId);
+  if (!resolved) throw new Error(`Client not found for ${resolvedUserId}`);
+  const { client, sessionId: resolvedSessionId } = resolved;
   
-  if (!checkRateLimit(resolvedUserId)) {
-    console.warn(`[SingleWorker] Rate limited for user ${resolvedUserId}. Re-queuing job ${job.id}`);
+  if (!checkRateLimit(resolvedSessionId)) {
+    console.warn(`[SingleWorker] Rate limited for session ${resolvedSessionId}. Re-queuing job ${job.id}`);
     const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
       maxRetriesPerRequest: null,
     });
@@ -392,13 +609,10 @@ async function processSendMessage(job: Job, sessionManager: WhatsAppSessionManag
   }
   
   try {
-    const client = sessionManager.getClient(resolvedUserId);
-    if (!client) throw new Error(`Client not found for ${resolvedUserId}`);
-
-    const lead = await db.lead.findUnique({ where: { id: leadId } });
+    const lead = await db.lead.findFirst({ where: { id: leadId, userId: resolvedUserId } });
     if (!lead?.phone) throw new Error('No phone number');
 
-    let targetJid = formatPhoneToJid(lead.phone);
+    let targetJid = formatPhoneToJid(lead.phone, lead.country || undefined);
     if (targetJid.endsWith('@c.us')) {
       const numberToResolve = targetJid.split('@')[0];
       try {
@@ -413,8 +627,24 @@ async function processSendMessage(job: Job, sessionManager: WhatsAppSessionManag
       }
     }
 
-    // Anti-ban: Small random delay
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 5000 + 2000));
+    // Dynamic single message delay and strict cooldown spacing (session-isolated)
+    const delay = await AntiBanService.getDelayForType('DIRECT', resolvedSessionId);
+    console.log(`[SingleWorker] Dynamic Anti-Ban delay: ${delay}ms before sending (session: ${resolvedSessionId})...`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+
+    await AntiBanService.enforceCooldown(resolvedSessionId);
+
+    // Smart Typing Simulation
+    try {
+      const chat = await client.getChatById(targetJid);
+      await chat.sendStateTyping();
+      const typingTime = Math.min(2500, Math.max(1000, content.length * 30));
+      console.log(`[SingleWorker] Simulating human typing for ${typingTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, typingTime));
+      await chat.clearState();
+    } catch (typingErr) {
+      // Ignore typing errors for direct messages
+    }
 
     const message = await client.sendMessage(targetJid, content);
     
@@ -438,10 +668,18 @@ async function processWhatsAppChatMessage(job: Job, sessionManager: WhatsAppSess
   const { whatsAppMessageId, chatJid, content, userId, mediaPath, mediaMimeType, mediaFileName } = job.data;
   console.log(`[WhatsAppChatWorker] Processing job ${job.id} for chat ${chatJid}, messageId=${whatsAppMessageId}, userId=${userId}`);
 
-  const resolvedUserId = userId || 'mock-admin-user-id';
+  const resolvedUserId = userId;
+  if (!resolvedUserId) throw new Error('WhatsApp chat message job is missing userId');
 
-  if (!checkRateLimit(resolvedUserId)) {
-    console.warn(`[WhatsAppChatWorker] Rate limited for user ${resolvedUserId}. Re-queuing job ${job.id}`);
+  // Resolve client first to obtain session ID for isolated rate limiting
+  const resolved = await resolveClientForUser(resolvedUserId, sessionManager, job.data.sessionId);
+  if (!resolved) {
+    throw new Error(`WhatsApp istemcisi bağlı değil (userId: ${resolvedUserId}). Lütfen önce WhatsApp bağlantınızı kontrol edin.`);
+  }
+  const { client, sessionId: resolvedSessionId } = resolved;
+
+  if (!checkRateLimit(resolvedSessionId)) {
+    console.warn(`[WhatsAppChatWorker] Rate limited for session ${resolvedSessionId}. Re-queuing job ${job.id}`);
     const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
       maxRetriesPerRequest: null,
     });
@@ -451,10 +689,6 @@ async function processWhatsAppChatMessage(job: Job, sessionManager: WhatsAppSess
   }
 
   try {
-    const client = sessionManager.getClient(resolvedUserId);
-    if (!client) {
-      throw new Error(`WhatsApp istemcisi bağlı değil (userId: ${resolvedUserId}). Lütfen önce WhatsApp bağlantınızı kontrol edin.`);
-    }
 
     // Update message status to SENDING
     try {
@@ -490,6 +724,11 @@ async function processWhatsAppChatMessage(job: Job, sessionManager: WhatsAppSess
     console.log(`[WhatsAppChatWorker] Sending message to ${targetJid}...`);
     let sentMessage;
     if (mediaPath) {
+      console.log(`[WhatsAppChatWorker] Loading media from: ${mediaPath}`);
+      if (!fs.existsSync(mediaPath)) {
+        console.error(`[WhatsAppChatWorker] Media file not found: ${mediaPath}`);
+        throw new Error(`Media file not found at ${mediaPath}`);
+      }
       const media = MessageMedia.fromFilePath(mediaPath);
       if (mediaMimeType) media.mimetype = mediaMimeType;
       if (mediaFileName) media.filename = mediaFileName;
@@ -507,28 +746,33 @@ async function processWhatsAppChatMessage(job: Job, sessionManager: WhatsAppSess
         whatsappMessageId: sentMessage?.id?._serialized || null,
         timestamp: new Date(),
         chatId: targetJid, // Ensure the message points to the correct JID
+        sessionId: resolvedSessionId,
       },
     });
 
     try {
       // If the JID was resolved to a different format (like @lid), update the DB to prevent duplicate chats
       if (targetJid !== chatJid) {
-        const existingTarget = await db.whatsAppChat.findFirst({ where: { jid: targetJid } });
+        const existingTarget = await db.whatsAppChat.findFirst({ where: { userId: resolvedUserId, sessionId: resolvedSessionId, jid: targetJid } });
         if (existingTarget) {
-           await db.whatsAppChat.deleteMany({ where: { jid: chatJid } });
+           await db.whatsAppChat.deleteMany({ where: { userId: resolvedUserId, sessionId: resolvedSessionId, jid: chatJid } });
         } else {
-           await db.whatsAppChat.updateMany({ where: { jid: chatJid }, data: { jid: targetJid } });
+           await db.whatsAppChat.updateMany({ where: { userId: resolvedUserId, sessionId: resolvedSessionId, jid: chatJid }, data: { jid: targetJid } });
         }
       }
 
       await db.whatsAppChat.upsert({
-        where: { jid: targetJid },
+        where: { userId: resolvedUserId, sessionId: resolvedSessionId, jid: targetJid },
         update: {
+          userId: resolvedUserId,
+          sessionId: resolvedSessionId,
           lastMessageAt: updated?.timestamp || new Date(),
           lastMessagePreview: content || mediaFileName || 'Media',
         },
         create: {
-          id: require('crypto').randomUUID(),
+          id: crypto.randomUUID(),
+          userId: resolvedUserId,
+          sessionId: resolvedSessionId,
           jid: targetJid,
           name: targetJid.split('@')[0],
           unreadCount: 0,
@@ -561,10 +805,16 @@ async function processCampaignSend(job: Job, sessionManager: WhatsAppSessionMana
   const { campaignLeadId, campaignId, leadId, templateId, userId } = job.data;
   console.log(`[CampaignWorker] Processing campaign message for lead ${leadId}`);
 
-  const resolvedUserId = userId || 'mock-admin-user-id';
+  const resolvedUserId = userId;
+  if (!resolvedUserId) throw new Error('Campaign message job is missing userId');
 
-  if (!checkRateLimit(resolvedUserId)) {
-    console.warn(`[CampaignWorker] Rate limited for user ${resolvedUserId}. Re-queuing campaign job ${job.id}`);
+  // Resolve client first to obtain session ID for isolated rate limiting and anti-ban
+  const resolved = await resolveClientForUser(resolvedUserId, sessionManager, job.data.sessionId);
+  if (!resolved) throw new Error('WhatsApp Client offline');
+  const { client, sessionId: resolvedSessionId } = resolved;
+
+  if (!checkRateLimit(resolvedSessionId)) {
+    console.warn(`[CampaignWorker] Rate limited for session ${resolvedSessionId}. Re-queuing campaign job ${job.id}`);
     const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
       maxRetriesPerRequest: null,
     });
@@ -575,32 +825,28 @@ async function processCampaignSend(job: Job, sessionManager: WhatsAppSessionMana
 
   try {
     // 1. Check Campaign Status (Stop if paused/stopped)
-    const campaign = await db.campaign.findUnique({ where: { id: campaignId } });
+    const campaign = await db.campaign.findFirst({ where: { id: campaignId, userId: resolvedUserId } });
     if (!campaign || campaign.status !== 'RUNNING') {
       console.log(`[CampaignWorker] Campaign ${campaignId} is not RUNNING. Skipping.`);
       return;
     }
 
-    // 2. Anti-Ban Checks
-    const canSend = await AntiBanService.checkDailyLimit(resolvedUserId);
+    // 2. Anti-Ban Checks (session-isolated)
+    const canSend = await AntiBanService.checkDailyLimit(resolvedSessionId);
     if (!canSend) {
-      console.log(`[CampaignWorker] Daily limit reached for ${resolvedUserId}. Pausing campaign.`);
+      console.log(`[CampaignWorker] Daily limit reached for session ${resolvedSessionId}. Pausing campaign.`);
       await db.campaign.update({ where: { id: campaignId }, data: { status: 'PAUSED' } });
       return;
     }
 
-    const health = await AntiBanService.getHealthScore(resolvedUserId);
+    const health = await AntiBanService.getHealthScore(resolvedSessionId);
     if (health < 40) {
-      console.log(`[CampaignWorker] Low health score (${health}). Pausing campaign.`);
+      console.log(`[CampaignWorker] Low health score (${health}) for session ${resolvedSessionId}. Pausing campaign.`);
       await db.campaign.update({ where: { id: campaignId }, data: { status: 'PAUSED' } });
       return;
     }
 
-    // 3. Client Check
-    const client = sessionManager.getClient(resolvedUserId);
-    if (!client) throw new Error('WhatsApp Client offline');
-
-    const lead = await db.lead.findUnique({ where: { id: leadId } });
+    const lead = await db.lead.findFirst({ where: { id: leadId, userId: resolvedUserId } });
     const template = await db.messageTemplate.findUnique({ where: { id: templateId } });
     if (!lead?.phone || !template) throw new Error('Lead or template missing');
 
@@ -618,13 +864,11 @@ async function processCampaignSend(job: Job, sessionManager: WhatsAppSessionMana
       content = content.replace(new RegExp(`{${key}}`, 'g'), value);
     });
 
-    // 5. Randomized Delay (Anti-Ban v2)
-    const delay = AntiBanService.getRandomDelay();
-    console.log(`[CampaignWorker] Safe delay: ${delay}ms`);
-    await new Promise(resolve => setTimeout(resolve, delay));
+    // Enforce safe cooldown space since the queue itself is already staggered natively (session-isolated)
+    await AntiBanService.enforceCooldown(resolvedSessionId);
 
     // 6. Send
-    let targetJid = formatPhoneToJid(lead.phone);
+    let targetJid = formatPhoneToJid(lead.phone, lead.country || undefined);
     if (targetJid.endsWith('@c.us')) {
       const numberToResolve = targetJid.split('@')[0];
       try {
@@ -639,21 +883,50 @@ async function processCampaignSend(job: Job, sessionManager: WhatsAppSessionMana
       }
     }
     
-    // Typing simulation
+    // Smart Typing Simulation based on message length
     try {
       const chat = await client.getChatById(targetJid);
       await chat.sendStateTyping();
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      const typingTime = Math.min(4000, Math.max(1500, content.length * 40));
+      console.log(`[CampaignWorker] Simulating human typing for ${typingTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, typingTime));
       await chat.clearState();
     } catch(err) {
       // ignore typing errors
     }
 
-    const message = await client.sendMessage(targetJid, content);
+    let message;
+    if (template.hasMedia && template.mediaUrl) {
+      console.log(`[CampaignWorker] Sending ${template.mediaType} media from ${template.mediaUrl}`);
+      const clientAdapter = new WhatsAppClient(client);
+      const mediaInfo = await MediaPreprocessor.downloadAndValidate(
+        (template.mediaType as any) || 'IMAGE',
+        template.mediaUrl,
+        template.mimeType,
+        template.fileName || 'media_file'
+      );
+      if (template.mediaType === 'IMAGE') {
+        message = await clientAdapter.sendImage(targetJid, mediaInfo, content);
+      } else if (template.mediaType === 'VIDEO') {
+        message = await clientAdapter.sendVideo(targetJid, mediaInfo, content);
+      } else if (template.mediaType === 'DOCUMENT') {
+        message = await clientAdapter.sendDocument(targetJid, mediaInfo, template.fileName || 'document');
+        if (content && content.trim().length > 0) {
+          // Send caption as a separate message for documents
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await client.sendMessage(targetJid, content);
+        }
+      } else {
+        message = await client.sendMessage(targetJid, content);
+      }
+    } else {
+      message = await client.sendMessage(targetJid, content);
+    }
 
     // 7. Success Logging
     const log = await db.messageLog.create({
       data: {
+        userId: resolvedUserId,
         leadId,
         campaignLeadId,
         content,
@@ -671,14 +944,18 @@ async function processCampaignSend(job: Job, sessionManager: WhatsAppSessionMana
     try {
       const messageIdObj = crypto.randomUUID();
       await db.whatsAppChat.upsert({
-        where: { jid: targetJid },
+        where: { userId: resolvedUserId, sessionId: resolvedSessionId, jid: targetJid },
         update: {
+          userId: resolvedUserId,
+          sessionId: resolvedSessionId,
           lastMessageAt: new Date(),
           lastMessagePreview: content,
           leadId: lead.id,
         },
         create: {
           id: crypto.randomUUID(),
+          userId: resolvedUserId,
+          sessionId: resolvedSessionId,
           jid: targetJid,
           name: lead.businessName || targetJid,
           unreadCount: 0,
@@ -691,6 +968,8 @@ async function processCampaignSend(job: Job, sessionManager: WhatsAppSessionMana
       await db.whatsAppMessage.create({
         data: {
           id: messageIdObj,
+          userId: resolvedUserId,
+          sessionId: resolvedSessionId,
           chatId: targetJid,
           direction: 'OUTGOING',
           status: 'SENT',
@@ -711,5 +990,281 @@ async function processCampaignSend(job: Job, sessionManager: WhatsAppSessionMana
       data: { status: 'FAILED', error: errorMsg }
     });
     throw error;
+  }
+}
+
+async function processMessageJob(
+  job: Job<BaseMessageJob | MediaMessageJob>,
+  sessionManager: WhatsAppSessionManager,
+  redis: RedisType
+) {
+  const startTime = Date.now();
+  const jobData = job.data;
+  console.log(`[MediaWorker] Processing job ${job.id} of type ${jobData.type} for session ${jobData.sessionId}`);
+
+  // Register Redis connection with ChaosEngine under Chaos Mode
+  if (process.env.CHAOS_MODE === 'true') {
+    try {
+      const { ChaosEngine } = await import('./ChaosEngine.js');
+      ChaosEngine.registerRedis(redis as any);
+
+      // 1. Worker Crash simulation
+      const crashIntensity = await ChaosEngine.getFailureIntensity('WORKER_CRASH');
+      if (crashIntensity > 0 && Math.random() < crashIntensity) {
+        console.warn(`[ChaosEngine] WORKER_CRASH chaos active. Injecting simulated mid-job crash for job ${job.id}.`);
+        throw new Error('WORKER_CRASHED: Chaos Engine worker crash injection simulation');
+      }
+    } catch (e: any) {
+      if (e.message?.includes('WORKER_CRASHED')) throw e;
+    }
+  }
+
+  // Resolve WhatsApp Client
+  let rawClient = sessionManager.getClient(jobData.sessionId);
+
+  if (process.env.CHAOS_MODE === 'true') {
+    try {
+      const { ChaosEngine } = await import('./ChaosEngine.js');
+      // 2. WhatsApp Disconnect simulation
+      const disconnectIntensity = await ChaosEngine.getFailureIntensity('WHATSAPP_DISCONNECT');
+      if (disconnectIntensity > 0 && Math.random() < disconnectIntensity) {
+        console.warn(`[ChaosEngine] WHATSAPP_DISCONNECT chaos active. Simulating disconnected client session.`);
+        rawClient = null;
+      }
+    } catch (e) {}
+  }
+  
+  // If it's a TEXT message, delegate to standard text sending (preserve existing logic)
+  if (jobData.type === 'TEXT') {
+    if (!rawClient) {
+      throw new Error('SESSION_INVALID: Client not connected for session');
+    }
+    try {
+      await rawClient.sendMessage(jobData.chatId, jobData.caption || '');
+      console.log(`[MediaWorker] Text job ${job.id} completed successfully`);
+      return;
+    } catch (err) {
+      throw new Error(`SEND_FAILED: ${extractErrorMessage(err)}`);
+    }
+  }
+
+  const mediaJob = jobData as MediaMessageJob;
+  const idempotency = new IdempotencyManager(redis);
+  const cb = new CircuitBreaker(redis, mediaJob.sessionId);
+  const cache = new MediaCacheService(redis);
+  const metrics = new MetricsService(redis);
+
+  // 1. Idempotency Check
+  let lockStatus = await idempotency.checkAndLock(job.id!, mediaJob.sessionId, mediaJob.mediaUrl);
+  
+  if (process.env.CHAOS_MODE === 'true') {
+    try {
+      const { ChaosEngine } = await import('./ChaosEngine.js');
+      // 3. Duplication Attack simulation
+      if (await ChaosEngine.isFailureActive('DUPLICATION')) {
+        console.log(`[ChaosEngine] DUPLICATION chaos active. Bypassing idempotency lock check.`);
+        lockStatus = 'PROCEED';
+      }
+    } catch (e) {}
+  }
+
+  if (lockStatus === 'SKIP') {
+    console.log(`[Idempotency] Duplicate media send detected for job ${job.id}. Skipping execution.`);
+    return;
+  }
+
+  try {
+    // 2. Circuit Breaker Check
+    const cbState = await cb.checkState();
+    if (cbState === 'OPEN') {
+      console.warn(`[CircuitBreaker] Circuit for session ${mediaJob.sessionId} is OPEN. Failing job ${job.id} immediately.`);
+      await metrics.increment('circuit_breaker_open_total', 1);
+      throw new Error('SESSION_INVALID: Circuit Breaker is OPEN');
+    }
+
+    if (!rawClient) {
+      throw new Error('SESSION_INVALID: Client not connected');
+    }
+    const clientAdapter = new WhatsAppClient(rawClient);
+
+    // 3. Resolve Media (Cache or Preprocess)
+    let mediaInfo;
+    let downloadDurationMs = 0;
+    const preprocessStart = Date.now();
+    
+    const cachedMedia = await cache.get(mediaJob.mediaUrl);
+    if (cachedMedia) {
+      console.log(`[MediaCache] Cache hit for URL: ${mediaJob.mediaUrl}`);
+      mediaInfo = cachedMedia;
+      await metrics.increment('media_cache_hit_total', 1);
+    } else {
+      console.log(`[MediaCache] Cache miss for URL: ${mediaJob.mediaUrl}. Downloading...`);
+      const downloadStart = Date.now();
+      mediaInfo = await MediaPreprocessor.downloadAndValidate(
+        mediaJob.type,
+        mediaJob.mediaUrl,
+        mediaJob.mimeType,
+        mediaJob.fileName
+      );
+      downloadDurationMs = Date.now() - downloadStart;
+      await metrics.recordLatency('media_download_latency_ms', downloadDurationMs);
+      
+      const toCache: any = {
+        mimeType: mediaInfo.mimeType,
+        fileName: mediaInfo.fileName
+      };
+      if (mediaInfo.bufferBase64) toCache.bufferBase64 = mediaInfo.bufferBase64;
+      if (mediaInfo.localPath) toCache.localPath = mediaInfo.localPath;
+      await cache.set(mediaJob.mediaUrl, toCache);
+    }
+
+    const processingDuration = Date.now() - preprocessStart;
+    await metrics.recordLatency('media_processing_duration_ms', processingDuration);
+
+    // 4. Dispatch Media
+    console.log(`[MediaWorker] Sending ${mediaJob.type} to ${mediaJob.chatId}`);
+    const sendStart = Date.now();
+    
+    if (mediaJob.type === 'IMAGE') {
+      await clientAdapter.sendImage(mediaJob.chatId, mediaInfo, mediaJob.caption);
+    } else if (mediaJob.type === 'VIDEO') {
+      await clientAdapter.sendVideo(mediaJob.chatId, mediaInfo, mediaJob.caption);
+    } else if (mediaJob.type === 'DOCUMENT') {
+      await clientAdapter.sendDocument(mediaJob.chatId, mediaInfo, mediaJob.fileName);
+    }
+
+    const sendLatency = Date.now() - sendStart;
+    await metrics.recordLatency('media_send_latency_ms', sendLatency);
+    await metrics.increment('media_send_success_total', 1);
+    
+    // Record Success
+    await cb.recordSuccess();
+    await idempotency.markSuccess(job.id!, mediaJob.sessionId, mediaJob.mediaUrl);
+
+    // Structured Telemetry Log
+    const totalDuration = Date.now() - startTime;
+    console.log(JSON.stringify({
+      jobId: job.id,
+      type: mediaJob.type,
+      mediaType: mediaJob.type,
+      duration: totalDuration,
+      status: 'SUCCESS'
+    }));
+
+    // Chaos Mode Structured Observability Logging
+    if (process.env.CHAOS_MODE === 'true') {
+      try {
+        const { ChaosEngine } = await import('./ChaosEngine.js');
+        const scenario = await ChaosEngine.getScenario();
+        console.log(JSON.stringify({
+          eventType: 'JOB_PROCESSED',
+          jobId: job.id,
+          latency: totalDuration,
+          queueLag: Date.now() - job.timestamp,
+          systemMode: scenario,
+          chaosActive: true
+        }));
+      } catch (e) {}
+    }
+
+  } catch (error: any) {
+    const totalDuration = Date.now() - startTime;
+    await metrics.increment('media_send_failure_total', 1);
+    await metrics.recordLatency('media_total_pipeline_latency_ms', totalDuration);
+
+    // Record Circuit Breaker Failure
+    await cb.recordFailure();
+
+    // Release Lock
+    await idempotency.markFailed(job.id!, mediaJob.sessionId, mediaJob.mediaUrl);
+
+    const errorMsg = error.message || String(error);
+    let failureReason = 'UNKNOWN_ERROR';
+    if (errorMsg.includes('DOWNLOAD_FAILED')) failureReason = 'DOWNLOAD_FAILED';
+    else if (errorMsg.includes('UNSUPPORTED_FORMAT') || errorMsg.includes('limit')) failureReason = 'VALIDATION_FAILED';
+    else if (errorMsg.includes('SESSION_INVALID') || errorMsg.includes('Circuit Breaker is OPEN') || errorMsg.includes('not connected')) failureReason = 'WHATSAPP_SESSION_INVALID';
+    else if (errorMsg.includes('TIMEOUT') || errorMsg.includes('timeout')) failureReason = 'SEND_TIMEOUT';
+
+    console.error(JSON.stringify({
+      jobId: job.id,
+      type: mediaJob.type,
+      mediaType: mediaJob.type,
+      duration: totalDuration,
+      status: 'FAILED',
+      errorCode: failureReason
+    }));
+
+    // Chaos Mode Structured Observability Logging
+    if (process.env.CHAOS_MODE === 'true') {
+      try {
+        const { ChaosEngine } = await import('./ChaosEngine.js');
+        const scenario = await ChaosEngine.getScenario();
+        console.log(JSON.stringify({
+          eventType: 'JOB_FAILED',
+          jobId: job.id,
+          failureType: failureReason,
+          latency: totalDuration,
+          queueLag: Date.now() - job.timestamp,
+          systemMode: scenario,
+          chaosActive: true
+        }));
+      } catch (e) {}
+    }
+
+    // Record Telemetry
+    await metrics.increment('media_retry_total', 1);
+
+    const maxAttempts = job.opts.attempts || 1;
+    const currentAttempt = job.attemptsMade + 1;
+
+    if (currentAttempt >= maxAttempts) {
+      console.warn(`[MediaWorker] Job ${job.id} failed after maximum retry attempts (${maxAttempts}). Routing to DLQ.`);
+      
+      const queue = new Queue(job.queueName, { connection: redis });
+      const waitingJobs = await queue.getJobs(['waiting'], 0, 0, true);
+      let queueLag = 0;
+      if (waitingJobs.length > 0) {
+        queueLag = Date.now() - (waitingJobs[0]?.timestamp || Date.now());
+      }
+
+      try {
+        await metrics.increment('media_dlq_total', 1);
+        await metrics.recordDLQSpike();
+
+        // MongoDB DLQ Enrichment
+        await db.whatsAppMediaDLQ.create({
+          data: {
+            id: crypto.randomUUID(),
+            jobId: job.id!,
+            sessionId: mediaJob.sessionId,
+            mediaType: mediaJob.type,
+            failureReason,
+            stackTrace: error.stack || errorMsg,
+            retryCount: job.attemptsMade,
+            lastKnownLatency: totalDuration,
+            queueLagSnapshot: queueLag,
+            timestamp: new Date()
+          }
+        });
+
+        // Backward compatibility whatsAppMessage logging
+        await db.whatsAppMessage.create({
+          data: {
+            userId: mediaJob.sessionId,
+            chatId: mediaJob.chatId,
+            direction: 'OUTGOING',
+            status: 'FAILED',
+            type: mediaJob.type.toLowerCase(),
+            body: `[Media send failed]: ${errorMsg}`,
+            error: failureReason,
+            timestamp: new Date()
+          }
+        });
+      } catch (dbErr) {
+        console.error('Failed to log DLQ message in database:', dbErr);
+      }
+    }
+
+    throw new Error(`${failureReason}: ${errorMsg}`);
   }
 }
