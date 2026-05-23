@@ -1,3 +1,28 @@
-2026/05/22-17:47:08.385 ca Reusing MANIFEST /app/.wwebjs_auth/session-6a0c6ac58de13e5ccfb1e1ea/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/05/22-17:47:08.386 ca Recovering log #301
-2026/05/22-17:47:08.414 ca Reusing old log /app/.wwebjs_auth/session-6a0c6ac58de13e5ccfb1e1ea/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000301.log 
+2026/05/23-11:45:54.236 122 Reusing MANIFEST /app/.wwebjs_auth/session-6a0c6ac58de13e5ccfb1e1ea/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/05/23-11:45:54.246 122 Recovering log #472
+2026/05/23-11:45:54.296 122 Reusing old log /app/.wwebjs_auth/session-6a0c6ac58de13e5ccfb1e1ea/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000472.log 
+2026/05/23-11:45:57.729 11c Level-0 table #485: started
+2026/05/23-11:45:57.816 11c Level-0 table #485: 1198975 bytes OK
+2026/05/23-11:45:57.817 11c Delete type=0 #472
+2026/05/23-11:45:58.344 11c Compacting 1@1 + 9@2 files
+2026/05/23-11:45:58.452 11c Generated table #486@1: 32797 keys, 2164585 bytes
+2026/05/23-11:45:58.574 11c Generated table #487@1: 105938 keys, 2256584 bytes
+2026/05/23-11:45:58.678 11c Generated table #488@1: 88334 keys, 2239011 bytes
+2026/05/23-11:45:58.792 11c Generated table #489@1: 65194 keys, 2331995 bytes
+2026/05/23-11:45:58.865 11c Generated table #490@1: 6786 keys, 2154810 bytes
+2026/05/23-11:45:58.929 11c Generated table #491@1: 3046 keys, 2145650 bytes
+2026/05/23-11:45:59.006 11c Generated table #492@1: 3877 keys, 2169825 bytes
+2026/05/23-11:45:59.311 11c Generated table #493@1: 35706 keys, 2246557 bytes
+2026/05/23-11:45:59.410 11c Generated table #494@1: 22387 keys, 1997344 bytes
+2026/05/23-11:45:59.410 11c Compacted 1@1 + 9@2 files => 19706361 bytes
+2026/05/23-11:45:59.410 11c compacted to: files[ 0 0 9 0 0 0 0 ]
+2026/05/23-11:45:59.411 11c Delete type=2 #474
+2026/05/23-11:45:59.411 11c Delete type=2 #475
+2026/05/23-11:45:59.411 11c Delete type=2 #477
+2026/05/23-11:45:59.412 11c Delete type=2 #476
+2026/05/23-11:45:59.412 11c Delete type=2 #485
+2026/05/23-11:45:59.412 11c Delete type=2 #478
+2026/05/23-11:45:59.412 11c Delete type=2 #479
+2026/05/23-11:45:59.412 11c Delete type=2 #482
+2026/05/23-11:45:59.412 11c Delete type=2 #481
+2026/05/23-11:45:59.412 11c Delete type=2 #480

@@ -401,6 +401,46 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
       return;
     }
 
+    if (nextStep.type === 'BOOK_MEETING') {
+      console.log(`[SequenceWorker] Step type is BOOK_MEETING. Creating meeting record...`);
+      const meetingDate = new Date();
+      meetingDate.setDate(meetingDate.getDate() + 1); // Default to tomorrow
+      
+      const newMeeting = await db.meeting.create({
+        data: {
+          userId: resolvedUserId,
+          title: nextStep.meetingTitle || `Meeting with ${lead.businessName || lead.name}`,
+          date: meetingDate,
+          relatedLeads: [lead.id],
+          notes: `Automatically scheduled via sequence ${sequence.name}`,
+          status: 'PENDING'
+        }
+      });
+      
+      console.log(`[SequenceWorker] Meeting created: ${newMeeting.id}`);
+      
+      // Update State and finish
+      const nextStepIndex = currentStepIndex + 1;
+      const hasMoreSteps = steps.length > nextStepIndex;
+      let nextRunAt = null;
+      if (hasMoreSteps) {
+        const nextDelayStep = steps[nextStepIndex];
+        const delayMs = (nextDelayStep?.delayHours || 24) * 3600000;
+        nextRunAt = new Date(Date.now() + delayMs);
+      }
+
+      await db.sequenceState.update({
+        where: { id: state.id },
+        data: {
+          currentStepIndex: nextStepIndex,
+          status: hasMoreSteps ? 'ACTIVE' : 'COMPLETED',
+          nextRunAt,
+          lastRunAt: new Date()
+        }
+      });
+      return;
+    }
+
     // Client already resolved above for rate limiting
 
     console.log(`[SequenceWorker] Fetching message template ${nextStep.templateId}`);

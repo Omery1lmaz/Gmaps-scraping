@@ -149,6 +149,18 @@ export const resumeSequence = (id: string) => api.post(`/sequences/${id}/resume`
 export const restartSequence = (id: string) => api.post(`/sequences/${id}/restart`).then(res => res.data);
 export const clearSequence = (id: string) => api.post(`/sequences/${id}/clear`).then(res => res.data);
 
+// Meetings
+export const getMeetings = () => api.get('/meetings').then(res => res.data);
+export const createMeeting = (data: any) => api.post('/meetings', data).then(res => res.data);
+
+// Calendar Integrations
+export const getGoogleAuthUrl = () => api.get('/calendar/google/auth').then(res => res.data);
+export const connectGoogleCalendar = (code: string) => api.post('/calendar/google/connect', { code }).then(res => res.data);
+export const getCalendarConnections = () => api.get('/calendar/connections').then(res => res.data);
+export const deleteCalendarConnection = (provider: string) => api.delete(`/calendar/connections/${provider}`).then(res => res.data);
+export const getCalendarEvents = () => api.get('/calendar/events').then(res => res.data);
+export const syncCalendar = () => api.post('/calendar/sync').then(res => res.data);
+
 // Create waApi instance for WhatsApp Engine requests
 const waApi: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_WA_ENGINE_URL || 'http://localhost:3002',

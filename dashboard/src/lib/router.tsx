@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface RouterContextType {
   pathname: string;
-  navigate: (path: string) => void;
+  search: string;
+  navigate: (path: string, options?: { replace?: boolean }) => void;
   params: Record<string, string>;
 }
 
@@ -10,15 +11,18 @@ const RouterContext = createContext<RouterContextType | null>(null);
 
 export function BrowserRouter({ children }: { children: React.ReactNode }) {
   const [pathname, setPathname] = useState(window.location.pathname);
+  const [search, setSearch] = useState(window.location.search);
 
   useEffect(() => {
     const handlePopState = () => {
       setPathname(window.location.pathname);
+      setSearch(window.location.search);
     };
     window.addEventListener('popstate', handlePopState);
     
     const handleCustomNavigate = () => {
       setPathname(window.location.pathname);
+      setSearch(window.location.search);
     };
     window.addEventListener('pushstate-changed', handleCustomNavigate);
     window.addEventListener('replacestate-changed', handleCustomNavigate);
@@ -30,15 +34,20 @@ export function BrowserRouter({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const navigate = (path: string) => {
-    if (window.location.pathname !== path) {
-      window.history.pushState(null, '', path);
-      window.dispatchEvent(new Event('pushstate-changed'));
+  const navigate = (path: string, options?: { replace?: boolean }) => {
+    if (window.location.pathname + window.location.search !== path) {
+      if (options?.replace) {
+        window.history.replaceState(null, '', path);
+        window.dispatchEvent(new Event('replacestate-changed'));
+      } else {
+        window.history.pushState(null, '', path);
+        window.dispatchEvent(new Event('pushstate-changed'));
+      }
     }
   };
 
   return (
-    <RouterContext.Provider value={{ pathname, navigate, params: {} }}>
+    <RouterContext.Provider value={{ pathname, search, navigate, params: {} }}>
       {children}
     </RouterContext.Provider>
   );
@@ -49,7 +58,7 @@ export function useLocation() {
   if (!context) {
     throw new Error('useLocation must be used within a BrowserRouter');
   }
-  return { pathname: context.pathname };
+  return { pathname: context.pathname, search: context.search };
 }
 
 export function useNavigate() {

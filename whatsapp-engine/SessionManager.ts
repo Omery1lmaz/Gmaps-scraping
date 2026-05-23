@@ -19,6 +19,25 @@ export class WhatsAppSessionManager {
   constructor(io: Server) {
     this.io = io;
     this.initialize();
+    this.startBackgroundSync();
+  }
+
+  private startBackgroundSync() {
+    // Run every 15 minutes
+    setInterval(async () => {
+      console.log('[Background-Sync] Starting periodic sync for all active sessions...');
+      for (const [sessionId, client] of this.clients.entries()) {
+        try {
+          const state = await client.getState();
+          if (state === 'CONNECTED') {
+            console.log(`[Background-Sync] Syncing session: ${sessionId}`);
+            this.syncHistory(sessionId).catch(err => console.error(`Sync failed for ${sessionId}:`, err));
+          }
+        } catch (e) {
+          console.error(`[Background-Sync] Failed to check status for ${sessionId}:`, e);
+        }
+      }
+    }, 15 * 60 * 1000);
   }
 
   private cleanupSingletonLocks(sessionPath: string) {
@@ -549,9 +568,34 @@ export class WhatsAppSessionManager {
         
         // Lead finding and automation logic ONLY for INCOMING messages
         if (!msg.fromMe) {
-          const lead = await db.lead.findFirst({
+          let lead = await db.lead.findFirst({
             where: { userId, phone: { contains: phone } }
           });
+
+          // AUTO-DISCOVERY FOR UNKNOWN NUMBERS
+          if (!lead) {
+            console.log(`[Auto-Discovery] Unknown contact detected: ${phone}. Calling discovery endpoint...`);
+            try {
+              const axios = (await import('axios')).default;
+              const serverUrl = process.env.SERVER_URL || 'http://api:3001';
+              const apiKey = process.env.API_KEY;
+
+              const discRes = await axios.post(`${serverUrl}/api/leads/discover`, {
+                phone,
+                message: msg.body,
+                sessionId
+              }, {
+                headers: { 'x-api-key': apiKey }
+              });
+
+              if (discRes.data.success) {
+                lead = discRes.data.lead;
+                console.log(`[Auto-Discovery] New lead created: ${lead!.id}`);
+              }
+            } catch (discErr) {
+              console.error('[Auto-Discovery] Error discovering lead:', discErr);
+            }
+          }
 
           if (lead) {
             const log = await db.messageLog.create({
@@ -629,6 +673,35 @@ export class WhatsAppSessionManager {
               content: msg.body,
               timestamp: new Date()
             });
+
+            // TRIGGER AI INTENT ANALYSIS
+            try {
+              // We call the backend via fetch or axios to analyze intent
+              // Since the server is likely at localhost:3001
+              const axios = (await import('axios')).default;
+              const serverUrl = process.env.SERVER_URL || 'http://api:3001';
+              const apiKey = process.env.API_KEY;
+
+              const analysisRes = await axios.post(`${serverUrl}/api/whatsapp/analyze-intent`, {
+                leadId: lead.id,
+                message: msg.body
+              }, {
+                headers: { 'x-api-key': apiKey }
+              });
+
+              const analysis = analysisRes.data;
+              console.log(`[AI-Intent] Analyzed message for ${lead.businessName}: ${analysis.intent}`);
+
+              if (analysis.intent !== 'UNKNOWN') {
+                this.io.to(userId).emit('intent_detected', {
+                  leadId: lead.id,
+                  businessName: lead.businessName,
+                  ...analysis
+                });
+              }
+            } catch (intentErr) {
+              console.error('[AI-Intent] Error analyzing intent:', intentErr);
+            }
           }
         }
 

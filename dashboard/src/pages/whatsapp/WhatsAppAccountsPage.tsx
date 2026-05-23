@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, waApi } from '../../lib/api';
 import { toast } from 'sonner';
+import { useWhatsApp } from '../../features/whatsapp/WhatsAppProvider';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import {
@@ -81,7 +82,7 @@ export function WhatsAppAccountsPage() {
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
 
   // Socket & real-time state
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const { socket } = useWhatsApp();
   const [sessionStatuses, setSessionStatuses] = useState<Record<string, string>>({});
   const [sessionQrs, setSessionQrs] = useState<Record<string, string | null>>({});
   const [sessionInfos, setSessionInfos] = useState<Record<string, any>>({});
@@ -158,32 +159,30 @@ export function WhatsAppAccountsPage() {
 
   // Socket connection for real-time updates
   useEffect(() => {
-    const newSocket = io(WA_ENGINE_URL);
-    setSocket(newSocket);
+    if (!socket) return;
 
-    newSocket.on('connect', () => {
-      newSocket.emit('join', { userId, token });
+    if (socket.connected) {
       sessions.forEach((s: any) => {
         fetchSessionStatus(s._id).catch(() => {});
       });
-    });
+    }
 
-    newSocket.on('qr', (data: { sessionId?: string; qr: string }) => {
+    const onQr = (data: { sessionId?: string; qr: string }) => {
       const sId = data.sessionId || userId;
       setSessionQrs(prev => ({ ...prev, [sId]: data.qr }));
       setSessionStatuses(prev => ({ ...prev, [sId]: 'QR_READY' }));
       setSessionErrors(prev => ({ ...prev, [sId]: null }));
       // Auto-expand the card that received QR
       setExpandedSessionId(sId);
-    });
+    };
 
-    newSocket.on('authenticated', (data: { sessionId?: string }) => {
+    const onAuthenticated = (data: { sessionId?: string }) => {
       const sId = data.sessionId || userId;
       setSessionStatuses(prev => ({ ...prev, [sId]: 'AUTHENTICATED' }));
       setSessionQrs(prev => ({ ...prev, [sId]: null }));
-    });
+    };
 
-    newSocket.on('ready', (data: any) => {
+    const onReady = (data: any) => {
       const sId = data.sessionId || userId;
       setSessionStatuses(prev => ({ ...prev, [sId]: 'CONNECTED' }));
       setSessionInfos(prev => ({ ...prev, [sId]: data }));
@@ -192,9 +191,9 @@ export function WhatsAppAccountsPage() {
       setExpandedSessionId(null);
       refetchSessions();
       toast.success('WhatsApp başarıyla bağlandı!');
-    });
+    };
 
-    newSocket.on('disconnected', (data: { sessionId?: string }) => {
+    const onDisconnected = (data: { sessionId?: string }) => {
       const sId = data.sessionId || userId;
       setSessionStatuses(prev => ({ ...prev, [sId]: 'DISCONNECTED' }));
       setSessionInfos(prev => {
@@ -204,21 +203,30 @@ export function WhatsAppAccountsPage() {
       });
       setSessionQrs(prev => ({ ...prev, [sId]: null }));
       refetchSessions();
-    });
+    };
 
-    newSocket.on('wa_error', (data: any) => {
+    const onWaError = (data: any) => {
       const sId = data.sessionId || userId;
       const message = data?.message || 'WhatsApp hatası oluştu';
       setSessionStatuses(prev => ({ ...prev, [sId]: 'ERROR' }));
       setSessionErrors(prev => ({ ...prev, [sId]: message }));
       toast.error(message);
-    });
+    };
+
+    socket.on('qr', onQr);
+    socket.on('authenticated', onAuthenticated);
+    socket.on('ready', onReady);
+    socket.on('disconnected', onDisconnected);
+    socket.on('wa_error', onWaError);
 
     return () => {
-      newSocket.disconnect();
+      socket.off('qr', onQr);
+      socket.off('authenticated', onAuthenticated);
+      socket.off('ready', onReady);
+      socket.off('disconnected', onDisconnected);
+      socket.off('wa_error', onWaError);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, token, sessions.length]);
+  }, [socket, userId, refetchSessions, sessions]);
 
   // --- Mutations ---
 

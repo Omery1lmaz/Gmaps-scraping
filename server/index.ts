@@ -27,6 +27,7 @@ import {
   Tag
 } from './dbClient';
 import { aiService } from './AIService';
+import { CalendarService } from './CalendarService';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
@@ -652,6 +653,44 @@ app.get('/api/leads', authenticateApiKey, async (req: Request, res: Response) =>
   }
 });
 
+app.post('/api/leads/discover', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const { phone, message } = req.body;
+    const userId = getUserId(req);
+
+    // Clean phone number for matching
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+
+    // Check if lead already exists
+    let lead = await Lead.findOne({ userId, phone: { $regex: cleanPhone } });
+    if (lead) return res.json({ success: true, lead, alreadyExisted: true });
+
+    // Create new lead
+    lead = await Lead.create({
+      userId,
+      externalId: `discover-${Date.now()}`,
+      name: `WhatsApp Lead (${phone})`,
+      businessName: `Bilinmeyen İşletme (${phone})`,
+      phone,
+      status: 'NEW',
+      url: 'https://whatsapp.com',
+      activities: [{
+        id: new mongoose.Types.ObjectId().toString(),
+        type: 'LEAD_DISCOVERED',
+        description: `WhatsApp üzerinden yeni iletişim keşfedildi. İlk mesaj: "${message?.substring(0, 50)}..."`,
+        createdAt: new Date()
+      }]
+    });
+
+    // Trigger AI analysis in background
+    aiService.analyzeLead(lead, userId).catch(e => console.error('Auto-analysis failed:', e));
+
+    res.json({ success: true, lead });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to discover lead' });
+  }
+});
+
 // Fetch unique categories for the filter dropdown
 app.get('/api/categories', authenticateApiKey, async (req: Request, res: Response) => {
   try {
@@ -1161,11 +1200,99 @@ app.get('/api/meetings', authenticateApiKey, async (req: Request, res: Response)
 
 app.post('/api/meetings', authenticateApiKey, async (req: Request, res: Response) => {
   try {
-    const meeting = new Meeting({ ...req.body, userId: getUserId(req) });
+    const userId = getUserId(req);
+    const meeting = new Meeting({ ...req.body, userId });
     await meeting.save();
+
+    // Try to sync with calendar if user has connection
+    try {
+      const user = await User.findById(userId);
+      if (user?.calendarConnections?.some(c => c.provider === 'google' && c.isActive)) {
+        await CalendarService.createEvent(userId, meeting._id.toString());
+      }
+    } catch (syncError) {
+      console.error('Failed to sync meeting with calendar:', syncError);
+      // We don't fail the whole request if sync fails
+    }
+
     res.status(201).json(meeting);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create meeting' });
+  }
+});
+
+// Calendar Integrations
+app.get('/api/calendar/google/auth', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const url = await CalendarService.getGoogleAuthUrl();
+    res.json({ url });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/calendar/google/callback', async (req: Request, res: Response) => {
+  try {
+    const { code } = req.query;
+    if (!code) {
+      return res.redirect(`${process.env.DASHBOARD_URL || 'http://localhost:5173'}/settings?error=no_code`);
+    }
+    // Redirect back to dashboard with the code
+    res.redirect(`${process.env.DASHBOARD_URL || 'http://localhost:5173'}/settings?google_code=${code}`);
+  } catch (error: any) {
+    res.redirect(`${process.env.DASHBOARD_URL || 'http://localhost:5173'}/settings?error=auth_failed`);
+  }
+});
+
+app.post('/api/calendar/google/connect', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const { code } = req.body;
+    const userId = getUserId(req);
+    const connection = await CalendarService.handleGoogleCallback(code, userId);
+    res.json({ success: true, connection });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/calendar/connections', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(getUserId(req));
+    res.json(user?.calendarConnections || []);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch connections' });
+  }
+});
+
+app.delete('/api/calendar/connections/:provider', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const { provider } = req.params;
+    const user = await User.findById(getUserId(req));
+    if (user) {
+      user.calendarConnections = user.calendarConnections?.filter(c => c.provider !== provider);
+      await user.save();
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete connection' });
+  }
+});
+
+app.get('/api/calendar/events', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const events = await CalendarService.listEvents(getUserId(req));
+    res.json(events);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/calendar/sync', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const count = await CalendarService.syncEventsFromGoogle(getUserId(req));
+    res.json({ success: true, count });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -1547,6 +1674,50 @@ app.get('/api/whatsapp/chats', authenticateApiKey, async (req: Request, res: Res
     res.json(chats);
   } catch (error: any) {
     res.status(500).json({ error: error?.message || 'Failed to fetch WhatsApp chats' });
+  }
+});
+
+app.get('/api/whatsapp/unread-count', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const chats = await WhatsAppChat.find({ userId });
+    const totalUnread = chats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
+    res.json({ count: totalUnread });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to fetch unread count' });
+  }
+});
+
+app.post('/api/whatsapp/analyze-intent', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const { leadId, message } = req.body;
+    const userId = getUserId(req);
+    
+    const lead = await Lead.findOne({ userId, _id: leadId });
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+
+    const analysis = await aiService.analyzeMessageIntent(lead, message);
+    
+    // Auto-update status if AI suggests it and it's a significant change
+    if (analysis.suggestedStatus && analysis.suggestedStatus !== lead.status) {
+      const oldStatus = lead.status;
+      lead.status = analysis.suggestedStatus;
+      
+      // Log as activity
+      lead.activities = lead.activities || [];
+      lead.activities.push({
+        id: new mongoose.Types.ObjectId().toString(),
+        type: 'STATUS_CHANGED',
+        description: `Yapay Zekâ niyet tespiti (${analysis.intent}): Durum ${oldStatus} -> ${analysis.suggestedStatus} olarak güncellendi. Nedeni: ${analysis.reasoning}`,
+        createdAt: new Date()
+      });
+      
+      await lead.save();
+    }
+
+    res.json(analysis);
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to analyze intent' });
   }
 });
 

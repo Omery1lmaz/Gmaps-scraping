@@ -1,28 +1,3 @@
-2026/05/22-17:51:12.555 133 Reusing MANIFEST /app/.wwebjs_auth/session-6a0c6ac58de13e5ccfb1e1ea/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/05/22-17:51:12.569 133 Recovering log #301
-2026/05/22-17:51:12.679 133 Reusing old log /app/.wwebjs_auth/session-6a0c6ac58de13e5ccfb1e1ea/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000301.log 
-2026/05/22-17:57:49.417 135 Level-0 table #314: started
-2026/05/22-17:57:49.501 135 Level-0 table #314: 1295195 bytes OK
-2026/05/22-17:57:49.505 135 Delete type=0 #301
-2026/05/22-17:57:57.280 135 Compacting 1@1 + 9@2 files
-2026/05/22-17:57:57.559 135 Generated table #315@1: 39655 keys, 2173302 bytes
-2026/05/22-17:57:57.728 135 Generated table #316@1: 106528 keys, 2258844 bytes
-2026/05/22-17:57:57.875 135 Generated table #317@1: 90298 keys, 2242235 bytes
-2026/05/22-17:57:57.989 135 Generated table #318@1: 32937 keys, 2290397 bytes
-2026/05/22-17:57:58.071 135 Generated table #319@1: 3514 keys, 2146820 bytes
-2026/05/22-17:57:58.156 135 Generated table #320@1: 3420 keys, 2155734 bytes
-2026/05/22-17:57:58.266 135 Generated table #321@1: 21725 keys, 2203082 bytes
-2026/05/22-17:57:58.411 135 Generated table #322@1: 29006 keys, 2240260 bytes
-2026/05/22-17:57:58.435 135 Generated table #323@1: 7517 keys, 566789 bytes
-2026/05/22-17:57:58.435 135 Compacted 1@1 + 9@2 files => 18277463 bytes
-2026/05/22-17:57:58.436 135 compacted to: files[ 0 0 9 0 0 0 0 ]
-2026/05/22-17:57:58.438 135 Delete type=2 #314
-2026/05/22-17:57:58.438 135 Delete type=2 #303
-2026/05/22-17:57:58.438 135 Delete type=2 #306
-2026/05/22-17:57:58.438 135 Delete type=2 #307
-2026/05/22-17:57:58.438 135 Delete type=2 #305
-2026/05/22-17:57:58.438 135 Delete type=2 #311
-2026/05/22-17:57:58.438 135 Delete type=2 #310
-2026/05/22-17:57:58.438 135 Delete type=2 #304
-2026/05/22-17:57:58.438 135 Delete type=2 #309
-2026/05/22-17:57:58.438 135 Delete type=2 #308
+2026/05/23-11:46:39.565 175 Reusing MANIFEST /app/.wwebjs_auth/session-6a0c6ac58de13e5ccfb1e1ea/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/05/23-11:46:39.570 175 Recovering log #484
+2026/05/23-11:46:39.586 175 Reusing old log /app/.wwebjs_auth/session-6a0c6ac58de13e5ccfb1e1ea/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000484.log 

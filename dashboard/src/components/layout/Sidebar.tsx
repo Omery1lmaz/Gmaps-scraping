@@ -12,11 +12,14 @@ import {
   Command,
   CreditCard,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Calendar,
+  Settings
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useLocation, Link } from '../../lib/router';
 import { useAuth } from '../../lib/auth';
+import { useWhatsApp } from '../../features/whatsapp/WhatsAppProvider';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../ui/tooltip';
@@ -29,6 +32,7 @@ const menuItems = [
   { id: 'pipeline', path: '/pipeline', icon: Layout, label: 'Pipeline' },
   { id: 'templates', path: '/templates', icon: FileText, label: 'WP Şablonlar' },
   { id: 'sequences', path: '/sequences', icon: Zap, label: 'WP Otomasyon' },
+  { id: 'calendar', path: '/calendar', icon: Calendar, label: 'Takvim' },
   { 
     id: 'whatsapp_dropdown', 
     icon: MessageCircle, 
@@ -40,11 +44,13 @@ const menuItems = [
     ]
   },
   { id: 'billing', path: '/billing', icon: CreditCard, label: 'Abonelik & Ödeme' },
+  { id: 'settings', path: '/settings', icon: Settings, label: 'Ayarlar' },
 ];
 
 export function Sidebar() {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
+  const { unreadCount } = useWhatsApp();
   const navigate = useNavigate();
   const t = useT();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -136,11 +142,16 @@ export function Sidebar() {
                       key={child.id}
                       to={child.path || '#'}
                       className={cn(
-                        "block w-full px-12 py-2 text-xs font-semibold rounded-xl transition-colors",
+                        "flex items-center justify-between w-full px-12 py-2 text-xs font-semibold rounded-xl transition-colors",
                         pathname === child.path ? "text-emerald-400" : "text-slate-500 hover:text-slate-300"
                       )}
                     >
-                      {child.label}
+                      <span>{child.label}</span>
+                      {child.id === 'whatsapp_web' && unreadCount > 0 && (
+                        <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-lg shadow-rose-500/20">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
                     </Link>
                   ))}
                 </div>
@@ -153,16 +164,34 @@ export function Sidebar() {
                 key={item.id}
                 to={item.path || '#'}
                 className={cn(
-                  "w-full flex items-center px-3.5 py-3 rounded-xl transition-all duration-200 group relative border border-transparent",
+                  "w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all duration-200 group relative border border-transparent",
                   isActive
                     ? "bg-gradient-to-r from-emerald-500 to-green-600 text-black font-extrabold shadow-[0_4px_20px_rgba(16,185,129,0.25)] border-0" 
                     : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
                 )}
               >
                 <div className={cn("flex items-center gap-3.5", isCollapsed && "mx-auto")}>
-                  <item.icon size={19} className={cn("transition-transform duration-200 group-hover:scale-110", isActive ? "text-black" : "text-slate-400 group-hover:text-slate-300")} />
+                  <div className="relative">
+                    <item.icon size={19} className={cn("transition-transform duration-200 group-hover:scale-110", isActive ? "text-black" : "text-slate-400 group-hover:text-slate-300")} />
+                    {item.id === 'whatsapp_dropdown' && isCollapsed && unreadCount > 0 && (
+                      <span className="absolute -top-2 -right-2 flex h-4 w-4">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] font-black text-white items-center justify-center">
+                          {unreadCount > 9 ? '!' : unreadCount}
+                        </span>
+                      </span>
+                    )}
+                  </div>
                   {!isCollapsed && <span className="text-sm font-extrabold tracking-tight">{t(item.id)}</span>}
                 </div>
+                {!isCollapsed && item.id === 'whatsapp_dropdown' && unreadCount > 0 && (
+                  <span className={cn(
+                    "text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-lg",
+                    isActive ? "bg-black text-white" : "bg-rose-500 text-white shadow-rose-500/20"
+                  )}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </Link>
             );
 

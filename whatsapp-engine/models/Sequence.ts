@@ -1,8 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISequenceStep {
-  templateId: string | mongoose.Types.ObjectId;
+  type: 'SEND_MESSAGE' | 'BOOK_MEETING';
+  templateId?: string | mongoose.Types.ObjectId;
   delayHours: number;
+  meetingTitle?: string;
+  meetingDuration?: number;
 }
 
 export interface ISequence extends Document {
@@ -22,8 +25,11 @@ export interface ISequence extends Document {
 }
 
 const SequenceStepSchema: Schema = new Schema({
-  templateId: { type: Schema.Types.ObjectId, ref: 'Template', required: true },
+  type: { type: String, enum: ['SEND_MESSAGE', 'BOOK_MEETING'], default: 'SEND_MESSAGE' },
+  templateId: { type: Schema.Types.ObjectId, ref: 'Template', required: false },
   delayHours: { type: Number, required: true, default: 24 },
+  meetingTitle: { type: String },
+  meetingDuration: { type: Number, default: 60 },
 });
 
 const SequenceSchema: Schema = new Schema({

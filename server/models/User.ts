@@ -13,6 +13,14 @@ export interface IUser extends Document {
   stripeSubscriptionId?: string;
   leadsScrapedLimit: number;
   totalLeadsLimit: number;
+  calendarConnections?: Array<{
+    provider: 'google' | 'outlook';
+    accessToken: string;
+    refreshToken: string;
+    expiryDate: Date;
+    email: string;
+    isActive: boolean;
+  }>;
 }
 
 const UserSchema: Schema = new Schema({
@@ -28,6 +36,14 @@ const UserSchema: Schema = new Schema({
   stripeSubscriptionId: { type: String },
   leadsScrapedLimit: { type: Number, default: 20 },
   totalLeadsLimit: { type: Number, default: 100 },
+  calendarConnections: [{
+    provider: { type: String, enum: ['google', 'outlook'] },
+    accessToken: String,
+    refreshToken: String,
+    expiryDate: Date,
+    email: String,
+    isActive: { type: Boolean, default: true }
+  }]
 });
 
 export default mongoose.model<IUser>('User', UserSchema);

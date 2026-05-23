@@ -14,10 +14,13 @@ import { VisualSequenceBuilder } from './pages/VisualSequenceBuilder';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { CreateTemplatePage } from './pages/CreateTemplatePage';
 import { BillingPage } from './pages/BillingPage'; 
+import { CalendarPage } from './pages/CalendarPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { LeadDrawer } from './features/leads/LeadDrawer';
 import { AppProvider } from './lib/context';
 import { LanguageProvider } from './lib/language';
 import { AuthProvider, useAuth } from './lib/auth';
+import { WhatsAppProvider } from './features/whatsapp/WhatsAppProvider';
 import { Routes, Route, Navigate } from './lib/router';
 import { AuthPage } from './pages/AuthPage';
 
@@ -49,7 +52,9 @@ function ProtectedApp() {
           <Route path="/whatsapp/chats" element={<ChatListPage />} />
           <Route path="/whatsapp/accounts" element={<WhatsAppAccountsPage />} />
           <Route path="/whatsapp/:chatId" element={<ChatViewPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/billing" element={<BillingPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Layout>
       <LeadDrawer />
@@ -62,7 +67,9 @@ function App() {
     <AppProvider>
       <LanguageProvider>
         <AuthProvider>
-          <ProtectedApp />
+          <WhatsAppProvider>
+            <ProtectedApp />
+          </WhatsAppProvider>
         </AuthProvider>
       </LanguageProvider>
     </AppProvider>

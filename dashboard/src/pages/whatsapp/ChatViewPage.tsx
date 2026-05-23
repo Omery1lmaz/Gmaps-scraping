@@ -31,6 +31,7 @@ import { Settings2, Sparkles } from 'lucide-react';
 
 // Utils
 import { displayName, fileToDataUrl } from '../../features/whatsapp/whatsapp-utils';
+import { useWhatsApp } from '../../features/whatsapp/WhatsAppProvider';
 
 const WA_ENGINE_URL = import.meta.env.VITE_WA_ENGINE_URL || 'http://localhost:3002';
 const MESSAGES_PER_PAGE = 50;
@@ -51,7 +52,7 @@ export function ChatViewPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const selectedChatIdRef = useRef<string | null>(null);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const { socket } = useWhatsApp();
   
   // Multi-session state mappings
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(() => {
@@ -329,27 +330,28 @@ export function ChatViewPage() {
   };
 
   useEffect(() => {
-    const newSocket = io(WA_ENGINE_URL);
-    setSocket(newSocket);
+    if (!socket) return;
 
-    newSocket.on('connect', () => {
-      newSocket.emit('join', { userId, token });
+    if (socket.connected) {
       sessions.forEach((s: any) => {
         fetchSessionStatus(s._id).catch(() => {});
       });
-    });
-    newSocket.on('qr', (data: { sessionId?: string; qr: string }) => {
+    }
+
+    const onQr = (data: { sessionId?: string; qr: string }) => {
       const sId = data.sessionId || selectedSessionId || userId;
       setSessionQrs((prev) => ({ ...prev, [sId]: data.qr }));
       setSessionStatuses((prev) => ({ ...prev, [sId]: 'QR_READY' }));
       setSessionErrors((prev) => ({ ...prev, [sId]: null }));
-    });
-    newSocket.on('authenticated', (data: { sessionId?: string }) => {
+    };
+
+    const onAuthenticated = (data: { sessionId?: string }) => {
       const sId = data.sessionId || selectedSessionId || userId;
       setSessionStatuses((prev) => ({ ...prev, [sId]: 'AUTHENTICATED' }));
       setSessionQrs((prev) => ({ ...prev, [sId]: null }));
-    });
-    newSocket.on('ready', (data: any) => {
+    };
+
+    const onReady = (data: any) => {
       const sId = data.sessionId || selectedSessionId || userId;
       setSessionStatuses((prev) => ({ ...prev, [sId]: 'CONNECTED' }));
       setSessionInfos((prev) => ({ ...prev, [sId]: data }));
@@ -358,8 +360,9 @@ export function ChatViewPage() {
       queryClient.invalidateQueries({ queryKey: ['wa-chats'] });
       refetchSessions();
       toast.success('WhatsApp başarıyla bağlandı');
-    });
-    newSocket.on('disconnected', (data: { sessionId?: string }) => {
+    };
+
+    const onDisconnected = (data: { sessionId?: string }) => {
       const sId = data.sessionId || selectedSessionId || userId;
       setSessionStatuses((prev) => ({ ...prev, [sId]: 'DISCONNECTED' }));
       setSessionInfos((prev) => {
@@ -369,37 +372,56 @@ export function ChatViewPage() {
       });
       setSessionQrs((prev) => ({ ...prev, [sId]: null }));
       refetchSessions();
-    });
-    newSocket.on('wa_error', (data: any) => {
+    };
+
+    const onWaError = (data: any) => {
       const sId = data.sessionId || selectedSessionId || userId;
       const message = data?.message || 'WhatsApp hatası oluştu';
       setSessionStatuses((prev) => ({ ...prev, [sId]: 'ERROR' }));
       setSessionErrors((prev) => ({ ...prev, [sId]: message }));
       toast.error(message);
-    });
-    newSocket.on('whatsapp_message', () => {
+    };
+
+    const onWhatsappMessage = () => {
       queryClient.invalidateQueries({ queryKey: ['wa-chats'] });
       const currentChatId = selectedChatIdRef.current;
       if (currentChatId) {
         queryClient.invalidateQueries({ queryKey: ['wa-messages', currentChatId] });
       }
-    });
-    newSocket.on('message_status', () => {
+    };
+
+    const onMessageStatus = () => {
       const currentChatId = selectedChatIdRef.current;
       if (currentChatId) {
         queryClient.invalidateQueries({ queryKey: ['wa-messages', currentChatId] });
       }
-    });
-    newSocket.on('sync_status', () => {
+    };
+
+    const onSyncStatus = () => {
       queryClient.invalidateQueries({ queryKey: ['wa-sync-status'] });
       queryClient.invalidateQueries({ queryKey: ['wa-chats'] });
-    });
+    };
+
+    socket.on('qr', onQr);
+    socket.on('authenticated', onAuthenticated);
+    socket.on('ready', onReady);
+    socket.on('disconnected', onDisconnected);
+    socket.on('wa_error', onWaError);
+    socket.on('whatsapp_message', onWhatsappMessage);
+    socket.on('message_status', onMessageStatus);
+    socket.on('sync_status', onSyncStatus);
 
     return () => {
-      newSocket.disconnect();
+      socket.off('qr', onQr);
+      socket.off('authenticated', onAuthenticated);
+      socket.off('ready', onReady);
+      socket.off('disconnected', onDisconnected);
+      socket.off('wa_error', onWaError);
+      socket.off('whatsapp_message', onWhatsappMessage);
+      socket.off('message_status', onMessageStatus);
+      socket.off('sync_status', onSyncStatus);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryClient, token, userId, sessions.length]);
+  }, [socket, selectedSessionId, userId, queryClient, refetchSessions, sessions]);
 
   const { data: rawChats = [], isLoading: chatsLoading } = useQuery({
     queryKey: ['wa-chats', search, filter, selectedSessionId],
@@ -776,8 +798,8 @@ export function ChatViewPage() {
             connected={connected}
             socketConnected={!!socket?.connected}
             onSync={() => syncMutation.mutate()} 
-            onLogout={() => logoutMutation.mutate()} 
-            onRestart={() => connectMutation.mutate()}
+            onLogout={() => logoutMutation.mutate(undefined)} 
+            onRestart={() => connectMutation.mutate(undefined)}
             syncPending={syncMutation.isPending}
             logoutPending={logoutMutation.isPending}
             restartPending={connectMutation.isPending}
@@ -793,7 +815,7 @@ export function ChatViewPage() {
 
         {/* Right Panel Trigger (Sheet) */}
         <Sheet>
-          <SheetTrigger asChild>
+          <SheetTrigger>
             <Button variant="outline" className="h-14 w-14 rounded-3xl border-white/5 bg-[#0c1220]/60 backdrop-blur-xl shadow-2xl hover:bg-white/10 transition-all active:scale-90 flex items-center justify-center shrink-0">
               <Sparkles className="size-6 text-amber-500" />
             </Button>

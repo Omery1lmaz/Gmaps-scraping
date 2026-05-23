@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '../lib/router';
-import { createSequence, getSequenceDetails, updateSequence, getTemplates } from '../lib/api';
+import { api, createSequence, getSequenceDetails, updateSequence, getTemplates } from '../lib/api';
 import { toast } from 'sonner';
 import { useT } from '../lib/i18n';
 
@@ -45,12 +45,31 @@ import { TriggerNode } from '../components/nodes/TriggerNode';
 import { SendMessageNode } from '../components/nodes/SendMessageNode';
 import { TimeDelayNode } from '../components/nodes/TimeDelayNode';
 import { ConditionNode } from '../components/nodes/ConditionNode';
+import { MeetingNode } from '../components/nodes/MeetingNode';
+
+const ICON_MAP: Record<string, any> = {
+  messagesquare: MessageSquare,
+  clock: Clock,
+  gitfork: GitFork,
+  zap: Zap,
+  calendar: Calendar,
+  sparkles: Sparkles,
+  star: Star,
+  target: Target,
+  heart: Heart,
+  smile: Smile,
+  compass: Compass,
+  send: Send,
+  tag: Tag,
+  mappin: MapPin
+};
 
 const nodeTypes = {
   trigger: TriggerNode,
   sendMessage: SendMessageNode,
   timeDelay: TimeDelayNode,
   condition: ConditionNode,
+  meeting: MeetingNode,
 };
 
 function Flow() {
@@ -960,7 +979,16 @@ function Flow() {
           return null;
         }
         steps.push({
+          type: 'SEND_MESSAGE',
           templateId,
+          delayHours: currentDelay
+        });
+        currentDelay = 0;
+      } else if (nextNode.type === 'meeting') {
+        steps.push({
+          type: 'BOOK_MEETING',
+          meetingTitle: nextNode.data?.title || '',
+          meetingDuration: nextNode.data?.duration || 60,
           delayHours: currentDelay
         });
         currentDelay = 0;
@@ -1050,7 +1078,14 @@ function Flow() {
       id: `${type}-${Date.now()}`,
       type,
       position: menuProjectedPos,
-      data: { label: `${type} node`, delayHours: 24, templateId: '', conditionType: 'hasReplied' },
+      data: { 
+        label: `${type} node`, 
+        delayHours: 24, 
+        templateId: '', 
+        conditionType: 'hasReplied',
+        title: type === 'meeting' ? 'Demo Toplantısı' : '',
+        duration: 60
+      },
     };
 
     setNodes([...nodes, newNode]);
@@ -1130,7 +1165,7 @@ function Flow() {
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-      
+
       const type = event.dataTransfer.getData('application/reactflow');
       if (!type) return;
 
@@ -1138,12 +1173,19 @@ function Flow() {
         x: event.clientX - 320,
         y: event.clientY - 120,
       };
-      
-      const newNode = {
+
+      const newNode: any = {
         id: `${type}-${Date.now()}`,
         type,
         position,
-        data: { label: `${type} node`, delayHours: 24, templateId: '', conditionType: 'hasReplied' },
+        data: { 
+          label: `${type} node`, 
+          delayHours: 24, 
+          templateId: '', 
+          conditionType: 'hasReplied',
+          title: type === 'meeting' ? 'Demo Toplantısı' : '',
+          duration: 60,
+        },
       };
 
       setNodes([...nodes, newNode]);
@@ -1151,6 +1193,28 @@ function Flow() {
     [nodes, setNodes],
   );
 
+  // Injected Actions Synchronizer
+  useEffect(() => {
+    let changed = false;
+    const nextNodes = nodes.map(node => {
+      // Avoid re-assigning if already present to prevent unnecessary re-renders
+      if (node.data.onUpdate && node.data.onDelete) return node;
+
+      changed = true;
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          onUpdate: (newData: any) => updateNodeData(node.id, newData),
+          onDelete: () => setNodes(nodes.filter(n => n.id !== node.id))
+        }
+      };
+    });
+
+    if (changed) {
+      setNodes(nextNodes);
+    }
+  }, [nodes, setNodes]); // Re-run when nodes change to ensure all have functions
   // Dynamic Class Resolvers for Canvas Themes
   const getCanvasBgClass = () => {
     switch (canvasTheme) {
@@ -1288,9 +1352,9 @@ function Flow() {
               {[
                 { type: 'sendMessage', label: t('vsb_node_send_message'), desc: t('vsb_node_send_message_desc'), icon: MessageSquare, color: 'text-blue-400 bg-blue-500/10' },
                 { type: 'timeDelay', label: t('vsb_node_time_delay'), desc: t('vsb_node_time_delay_desc'), icon: Clock, color: 'text-amber-400 bg-amber-500/10' },
-                { type: 'condition', label: t('vsb_node_condition'), desc: t('vsb_node_condition_desc'), icon: GitFork, color: 'text-purple-400 bg-purple-500/10' }
-              ].map(node => (
-                <div
+                { type: 'condition', label: t('vsb_node_condition'), desc: t('vsb_node_condition_desc'), icon: GitFork, color: 'text-purple-400 bg-purple-500/10' },
+                { type: 'meeting', label: t('vsb_node_meeting'), desc: t('vsb_node_meeting_desc', 'Randevu/Toplantı planla'), icon: Calendar, color: 'text-amber-500 bg-amber-500/10' }
+              ].map(node => (                <div
                   key={node.type}
                   draggable
                   onDragStart={(e) => { e.dataTransfer.setData('application/reactflow', node.type); e.dataTransfer.effectAllowed = 'move'; }}
@@ -1910,6 +1974,7 @@ function Flow() {
                 if (n.type === 'sendMessage') return '#3b82f6';
                 if (n.type === 'timeDelay') return '#f59e0b';
                 if (n.type === 'condition') return '#a855f7';
+                if (n.type === 'meeting') return '#f59e0b';
                 return '#64748b';
               }} 
               className="bg-white dark:bg-slate-900/50 shadow-md border border-slate-100 rounded-lg overflow-hidden" 
@@ -1956,10 +2021,19 @@ function Flow() {
                 <GitFork size={13} />
               </div>
               <span>{t('vsb_node_condition')}</span>
-            </button>
-          </div>
-        )}
+              </button>
 
+              <button
+              onClick={() => addNodeAtPosition('meeting')}
+              className="w-full text-left px-2.5 py-2 hover:bg-amber-500/10/70 text-xs font-bold text-slate-700 rounded-xl transition-all flex items-center gap-2 group"
+              >
+              <div className="rounded-lg bg-amber-500/10 p-1 text-amber-500 group-hover:bg-amber-500/15/70 transition-colors">
+               <Calendar size={13} />
+              </div>
+              <span>{t('vsb_node_meeting', 'Toplantı Planla')}</span>
+              </button>
+              </div>
+              )}
         {/* Prebuilt Templates Glassmorphic Modal Store Overlay */}
         <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
           <DialogContent className="sm:max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl overflow-hidden flex flex-col max-h-[85vh] p-0">

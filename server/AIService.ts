@@ -179,6 +179,14 @@ export class AIService {
     const provider = this.providers.get(this.defaultProvider);
     if (!provider) throw new Error('No AI provider configured');
 
+    const userId = lead.userId;
+    // FETCH REAL CALENDAR SLOTS
+    const { CalendarService } = await import('./CalendarService.js');
+    const freeSlots = await CalendarService.suggestMeetingSlots(userId);
+    const calendarContext = freeSlots && freeSlots.length > 0
+      ? `Takvimimdeki müsaitlik durumu şu şekilde: ${freeSlots.join(', ')}. Bu saatlerden birini önerebilirsin.`
+      : '';
+
     const contextInstruction = promptContext 
       ? `Özellikle şu konuda odaklan: "${promptContext}".`
       : 'Genel, profesyonel ve dostane bir yanıt yaz.';
@@ -188,11 +196,12 @@ export class AIService {
       Müşteri (Lead) Bilgileri:
       - İşletme Adı: ${lead.businessName || lead.name}
       - Kategori: ${lead.category || 'Niteliksiz'}
-      - Şehir: ${lead.city || 'Belirtilmemiş'}
-      - Değerlendirme Puanı: ${lead.rating || 'Niteliksiz'}
       
       Son WhatsApp sohbet geçmişi:
       ${history}
+      
+      Müsaitlik Bilgisi (Eğer bir toplantı önerilecekse):
+      ${calendarContext}
       
       GÖREV:
       Bu işletmeye göndermek üzere yüksek dönüşüm oranına sahip, samimi, profesyonel ve kısa bir WhatsApp yanıtı tasarla.
@@ -202,8 +211,9 @@ export class AIService {
       KURALLAR:
       1. WhatsApp diline uygun, emojiler barındıran, çok resmi olmayan ama saygılı bir dil kullan.
       2. Çok kısa tut (maksimum 300 karakter).
-      3. Dinamik değişken veya yer tutucu (örn: {businessName}, [Tarih]) asla bırakma, tüm metni gerçekçi bir şekilde doldur.
-      4. Çift tırnak içerisine alma, sadece göndereceğimiz mesajın kendisini dön.
+      3. EĞER Müşteri bir toplantı veya görüşme istiyorsa, yukarıdaki müsaitlik bilgisini kullanarak net bir saat öner.
+      4. Dinamik değişken veya yer tutucu asla bırakma.
+      5. Çift tırnak içerisine alma, sadece göndereceğimiz mesajın kendisini dön.
       
       Önerilen Yanıt:
     `;
@@ -236,6 +246,58 @@ export class AIService {
 
     const result = await provider.generateText(prompt);
     return result.text.trim();
+  }
+
+  public async analyzeMessageIntent(lead: any, message: string): Promise<{
+    intent: 'POSITIVE' | 'MEETING' | 'BUSY' | 'NEGATIVE' | 'UNKNOWN';
+    sentiment: 'PRO' | 'NEUTRAL' | 'CON';
+    suggestedStatus?: string;
+    reasoning: string;
+  }> {
+    const provider = this.providers.get(this.defaultProvider);
+    if (!provider) throw new Error('No AI provider configured');
+
+    const prompt = `
+      Analyze the following WhatsApp message from a potential B2B lead and determine their intent.
+      
+      Business Info:
+      - Name: ${lead.businessName || lead.name}
+      - Category: ${lead.category}
+      
+      Customer Message: "${message}"
+      
+      TASK:
+      1. Determine intent: 
+         - POSITIVE: Interested, asking for price, details, or showing enthusiasm.
+         - MEETING: Explicitly asking for a call, meeting, or demo.
+         - BUSY: Not now, call later, currently on vacation, etc.
+         - NEGATIVE: Not interested, stop messaging, already have a solution.
+      2. Rate sentiment: PRO (positive), NEUTRAL, CON (negative).
+      3. Suggest a Pipeline Status: 'CONTACTED', 'FOLLOW_UP', 'MEETING_BOOKED', 'CLOSED', or 'REJECTED'.
+      
+      Return ONLY JSON:
+      {
+        "intent": "POSITIVE" | "MEETING" | "BUSY" | "NEGATIVE" | "UNKNOWN",
+        "sentiment": "PRO" | "NEUTRAL" | "CON",
+        "suggestedStatus": "STRING",
+        "reasoning": "Short explanation in Turkish"
+      }
+    `;
+
+    const result = await provider.generateText(prompt);
+    try {
+      const match = result.text.match(/\{.*\}/s);
+      if (!match) throw new Error('Invalid JSON');
+      const analysis = JSON.parse(match[0]);
+      return {
+        intent: analysis.intent || 'UNKNOWN',
+        sentiment: analysis.sentiment || 'NEUTRAL',
+        suggestedStatus: analysis.suggestedStatus,
+        reasoning: analysis.reasoning || ''
+      };
+    } catch (err) {
+      return { intent: 'UNKNOWN', sentiment: 'NEUTRAL', reasoning: 'AI response parsing failed' };
+    }
   }
 
   public async processSmartAIFilter(userPrompt: string): Promise<any> {

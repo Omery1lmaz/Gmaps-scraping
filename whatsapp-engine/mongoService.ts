@@ -83,6 +83,7 @@ class MongoService {
   get campaign() { return this.createModelApi(Models.Campaign); }
   get campaignLead() { return this.createModelApi(Models.CampaignLead); }
   get sequence() { return this.createModelApi(Models.Sequence); }
+  get meeting() { return this.createModelApi(Models.Meeting); }
 
   get sequenceState() { return this.createModelApi(Models.SequenceState); }
   get messageLog() { return this.createModelApi(Models.MessageLog); }

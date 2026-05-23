@@ -45,7 +45,7 @@ import {
 } from '../../components/ui/select';
 import { useUIStore } from '../../lib/store';
 import { useAuth } from '../../lib/auth';
-import { getLead, updateLead, addNote, updateNote, deleteNote } from '../../lib/api';
+import { getLead, updateLead, addNote, updateNote, deleteNote, createMeeting } from '../../lib/api';
 
 import { cn, safeFormatDate } from '../../lib/utils';
 import { toast } from 'sonner';
@@ -124,6 +124,26 @@ export function LeadDrawer() {
 
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteContent, setEditingNoteContent] = useState<string>('');
+
+  // Meeting form state
+  const [meetingTitle, setMeetingTitle] = useState('');
+  const [meetingDate, setMeetingDate] = useState('');
+  const [meetingTime, setMeetingTime] = useState('10:00');
+  const [meetingNotes, setMeetingNotes] = useState('');
+
+  const meetingMutation = useMutation({
+    mutationFn: (data: any) => createMeeting(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead', selectedLeadId] });
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      setMeetingTitle('');
+      setMeetingNotes('');
+      toast.success(t('ld_meeting_scheduled', 'Toplantı başarıyla planlandı!'));
+    },
+    onError: () => {
+      toast.error(t('ld_meeting_error', 'Toplantı planlanırken bir hata oluştu.'));
+    }
+  });
 
   const editNoteMutation = useMutation({
     mutationFn: ({ noteId, content }: { noteId: string; content: string }) => 
@@ -581,10 +601,11 @@ export function LeadDrawer() {
 
                 {/* Apple & Linear Styled Tabs Container */}
                 <Tabs defaultValue="notes" className="w-full flex flex-col">
-                  <TabsList className="grid w-full grid-cols-3 bg-slate-200/60 p-1 rounded-xl h-11 border border-slate-200/30 shadow-3xs shrink-0">
+                  <TabsList className="grid w-full grid-cols-4 bg-slate-200/60 p-1 rounded-xl h-11 border border-slate-200/30 shadow-3xs shrink-0">
                     <TabsTrigger value="notes" className="rounded-lg font-bold text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all duration-300">Notlar</TabsTrigger>
                     <TabsTrigger value="activity" className="rounded-lg font-bold text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all duration-300">Aktiviteler</TabsTrigger>
                     <TabsTrigger value="whatsapp" className="rounded-lg font-bold text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all duration-300">WhatsApp</TabsTrigger>
+                    <TabsTrigger value="meetings" className="rounded-lg font-bold text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all duration-300">Toplantı</TabsTrigger>
                   </TabsList>
 
                   {/* Notes Tab Content */}
@@ -957,6 +978,90 @@ export function LeadDrawer() {
                           <p className="text-xs font-bold text-slate-400">Henüz mesajlaşma kaydı bulunamadı.</p>
                         </div>
                       )}
+                    </div>
+                  </TabsContent>
+
+                  {/* Meetings Hub */}
+                  <TabsContent value="meetings" className="pt-4 space-y-5 animate-fade-in">
+                    <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800 p-5 space-y-4 shadow-3xs">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <Calendar className="size-3.5 text-amber-500" /> Yeni Toplantı Planla
+                      </h3>
+
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Konu</label>
+                          <input
+                            type="text"
+                            value={meetingTitle}
+                            onChange={(e) => setMeetingTitle(e.target.value)}
+                            placeholder="Örn: Demo Toplantısı"
+                            className="w-full h-9 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 focus:border-amber-500 outline-none transition-all shadow-3xs"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Tarih</label>
+                            <input
+                              type="date"
+                              value={meetingDate}
+                              onChange={(e) => setMeetingDate(e.target.value)}
+                              className="w-full h-9 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 focus:border-amber-500 outline-none transition-all shadow-3xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Saat</label>
+                            <input
+                              type="time"
+                              value={meetingTime}
+                              onChange={(e) => setMeetingTime(e.target.value)}
+                              className="w-full h-9 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 focus:border-amber-500 outline-none transition-all shadow-3xs"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Notlar</label>
+                          <Textarea
+                            placeholder="Toplantı notları..."
+                            className="min-h-[70px] rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 font-medium text-xs focus:ring-amber-500/10 focus-visible:ring-4"
+                            value={meetingNotes}
+                            onChange={(e) => setMeetingNotes(e.target.value)}
+                          />
+                        </div>
+
+                        <Button
+                          className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black h-10 shadow-lg shadow-amber-500/15 active:scale-[0.98] transition-all rounded-xl mt-2"
+                          disabled={!meetingTitle || !meetingDate || meetingMutation.isPending}
+                          onClick={() => {
+                            const fullDate = new Date(`${meetingDate}T${meetingTime}`);
+                            meetingMutation.mutate({
+                              title: meetingTitle,
+                              date: fullDate,
+                              relatedLeads: [lead.id],
+                              notes: meetingNotes,
+                            });
+                          }}
+                        >
+                          {meetingMutation.isPending ? (
+                            <Loader2 className="animate-spin size-4 mr-2" />
+                          ) : (
+                            <Plus className="size-4 mr-2" />
+                          )}
+                          Toplantıyı Planla
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Upcoming meetings for this lead */}
+                    <div className="space-y-3">
+                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Planlanmış Toplantılar</h4>
+                       {/* In a real app we'd filter meetings by leadId. 
+                          For now we just show a placeholder or if lead has meetings field */}
+                       <div className="p-4 bg-white dark:bg-slate-900/50 border border-slate-200/40 dark:border-slate-800 rounded-2xl shadow-3xs text-center">
+                          <p className="text-xs font-bold text-slate-400 italic">Google Takvim entegrasyonu aktif olduğunda toplantılarınız otomatik olarak senkronize edilir.</p>
+                       </div>
                     </div>
                   </TabsContent>
                 </Tabs>

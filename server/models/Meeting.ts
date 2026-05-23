@@ -7,6 +7,11 @@ export interface IMeeting extends Document {
   relatedLeads: mongoose.Types.ObjectId[];
   notes: string;
   outcome?: 'SUCCESS' | 'FAILED' | 'PENDING';
+  externalEventId?: string;
+  provider?: string;
+  location?: string;
+  meetingLink?: string;
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
 }
 
 const MeetingSchema: Schema = new Schema({
@@ -16,6 +21,11 @@ const MeetingSchema: Schema = new Schema({
   relatedLeads: [{ type: Schema.Types.ObjectId, ref: 'Lead' }],
   notes: { type: String },
   outcome: { type: String, enum: ['SUCCESS', 'FAILED', 'PENDING'], default: 'PENDING' },
+  externalEventId: { type: String },
+  provider: { type: String },
+  location: { type: String },
+  meetingLink: { type: String },
+  status: { type: String, enum: ['PENDING', 'CONFIRMED', 'CANCELLED'], default: 'PENDING' }
 });
 
 export default mongoose.model<IMeeting>('Meeting', MeetingSchema);
