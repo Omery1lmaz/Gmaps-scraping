@@ -15,7 +15,7 @@ services:
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
       - NODE_ENV=development
     volumes:
-      - ${HOST_PROJECT_DIR}/server:/app
+      - ./server:/app
       - /app/node_modules
       - wa_media:/app/media/whatsapp
     depends_on:
@@ -60,9 +60,9 @@ services:
       - NODE_ENV=development
     command: sh -c "npm install --legacy-peer-deps && npm run dev"
     volumes:
-      - ${HOST_PROJECT_DIR}/whatsapp-engine:/app
+      - ./whatsapp-engine:/app
       - /app/node_modules
-      - ${HOST_PROJECT_DIR}/whatsapp-engine/.wwebjs_auth:/app/.wwebjs_auth
+      - ./whatsapp-engine/.wwebjs_auth:/app/.wwebjs_auth
       - wa_media:/app/media/whatsapp
     depends_on:
       mongo:
@@ -103,7 +103,7 @@ services:
       - CHOKIDAR_USEPOLLING=true
     command: sh -c "npm install --legacy-peer-deps && npm run dev -- --host 0.0.0.0"
     volumes:
-      - ${HOST_PROJECT_DIR}/dashboard:/app
+      - ./dashboard:/app
       - /app/node_modules
     depends_on:
       wa-engine:
