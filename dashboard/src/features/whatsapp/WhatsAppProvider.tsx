@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../../lib/auth';
 import { api } from '../../lib/api';
 import { toast } from 'sonner';
-import { MessageSquare, AlertCircle } from 'lucide-react';
+import { MessageSquare, AlertCircle, Zap } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface WhatsAppContextType {
@@ -26,8 +26,14 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
 
   // Request browser notification permission
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+    if ('Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            console.log('[WhatsApp-Provider] Notification permission granted.');
+          }
+        });
+      }
     }
   }, []);
 
@@ -72,23 +78,35 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for incoming messages from leads for global notifications
     newSocket.on('incoming_message', (data: { 
-      leadId: string; 
+      sessionId?: string;
+      leadId: string | null; 
       businessName: string; 
       content: string; 
       timestamp: string 
     }) => {
-      console.log('[WhatsApp-Socket] Incoming message from lead:', data.businessName);
+      console.log('[WhatsApp-Socket] Incoming message from:', data.businessName);
       
       // Update unread count locally
       setUnreadCount(prev => prev + 1);
 
       // Browser notification
       if (Notification.permission === 'granted' && document.visibilityState !== 'visible') {
-        new Notification(data.businessName, {
+        const notification = new Notification(data.businessName, {
           body: data.content,
           icon: '/favicon.svg',
-          tag: data.leadId,
+          tag: data.leadId || 'unknown',
         });
+
+        notification.onclick = () => {
+          window.focus();
+          const queryParam = data.sessionId ? `?sessionId=${data.sessionId}` : '';
+          if (data.leadId) {
+            window.location.href = `/whatsapp/${data.leadId}${queryParam}`;
+          } else {
+            window.location.href = `/whatsapp${queryParam}`;
+          }
+          notification.close();
+        };
       }
 
       // Play a subtle notification sound if possible
@@ -101,7 +119,12 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
         <div 
           className="bg-[#0c1220] border border-emerald-500/30 p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-start gap-4 animate-in slide-in-from-right duration-500 cursor-pointer hover:bg-[#121a2d] transition-colors"
           onClick={() => {
-            window.location.href = `/whatsapp/${data.leadId}`;
+            const queryParam = data.sessionId ? `?sessionId=${data.sessionId}` : '';
+            if (data.leadId) {
+              window.location.href = `/whatsapp/${data.leadId}${queryParam}`;
+            } else {
+              window.location.href = `/whatsapp${queryParam}`;
+            }
             toast.dismiss(t);
           }}
         >
@@ -127,7 +150,16 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
 
       // Invalidate relevant queries globally
       queryClient.invalidateQueries({ queryKey: ['wa-chats'] });
-      queryClient.invalidateQueries({ queryKey: ['lead', data.leadId] });
+      if (data.leadId) {
+        queryClient.invalidateQueries({ queryKey: ['lead', data.leadId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['wa-messages'] });
+    });
+
+    // Listen for generic whatsapp_message for real-time list updates
+    newSocket.on('whatsapp_message', (data: any) => {
+      console.log('[WhatsApp-Socket] Real-time message sync event');
+      queryClient.invalidateQueries({ queryKey: ['wa-chats'] });
       queryClient.invalidateQueries({ queryKey: ['wa-messages'] });
     });
 

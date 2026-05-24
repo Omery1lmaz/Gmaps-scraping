@@ -46,6 +46,7 @@ import {
 import { useT } from '../../lib/i18n';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
+import { api } from '../../lib/api';
 
 const WA_ENGINE_URL = import.meta.env.VITE_WA_ENGINE_URL || 'http://localhost:3002';
 
@@ -119,8 +120,21 @@ export function Topbar() {
     queryKey: ['wa-status-global'],
     queryFn: async () => {
       try {
-        const res = await axios.get(`${WA_ENGINE_URL}/status/${user?.id}`);
-        return res.data?.status || 'OFFLINE';
+        const res = await api.get('/whatsapp/sessions');
+        const sessions = res.data || [];
+        if (sessions.length === 0) return 'OFFLINE';
+        
+        // If any session is CONNECTED, return CONNECTED
+        if (sessions.some((s: any) => s.status === 'CONNECTED')) {
+          return 'CONNECTED';
+        }
+        
+        // If any session is initializing/qr_ready/authenticated, return INITIALIZING
+        if (sessions.some((s: any) => ['INITIALIZING', 'AUTHENTICATED', 'QR_READY'].includes(s.status || ''))) {
+          return 'INITIALIZING';
+        }
+        
+        return 'DISCONNECTED';
       } catch (err) {
         return 'OFFLINE';
       }

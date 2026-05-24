@@ -1,3 +1,2 @@
-2026/05/24-12:03:55.351 75 Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Local Storage/leveldb/MANIFEST-000001
-2026/05/24-12:03:55.361 75 Recovering log #6
-2026/05/24-12:03:55.362 75 Reusing old log /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Local Storage/leveldb/000006.log 
+2026/05/24-21:11:28.558 653 Creating DB /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Local Storage/leveldb since it was missing.
+2026/05/24-21:11:28.613 653 Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Local Storage/leveldb/MANIFEST-000001

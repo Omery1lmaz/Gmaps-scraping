@@ -1,3 +1,2 @@
-2026/05/24-12:03:55.995 77 Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Session Storage/MANIFEST-000001
-2026/05/24-12:03:55.998 77 Recovering log #3
-2026/05/24-12:03:56.001 77 Reusing old log /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Session Storage/000003.log 
+2026/05/24-21:11:28.732 653 Creating DB /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Session Storage since it was missing.
+2026/05/24-21:11:28.771 653 Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Session Storage/MANIFEST-000001

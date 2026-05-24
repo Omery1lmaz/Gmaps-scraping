@@ -14,7 +14,7 @@ export class WhatsAppSessionManager {
   private clients: Map<string, any> = new Map();
   private activeSyncs: Set<string> = new Set();
   private reconnectionAttempts: Map<string, number> = new Map();
-  private readonly MAX_RECONNECT_ATTEMPTS = 3;
+  private readonly MAX_RECONNECT_ATTEMPTS = 10;
   private io: Server;
 
   constructor(io: Server) {
@@ -46,17 +46,24 @@ export class WhatsAppSessionManager {
       const lockFiles = [
         path.join(sessionPath, 'SingletonLock'),
         path.join(sessionPath, 'SingletonCookie'),
-        path.join(sessionPath, 'SingletonSocket')
+        path.join(sessionPath, 'SingletonSocket'),
+        path.join(sessionPath, 'Default', 'SingletonLock'),
+        path.join(sessionPath, 'Default', 'SingletonCookie'),
+        path.join(sessionPath, 'Default', 'SingletonSocket')
       ];
 
       for (const lockFile of lockFiles) {
         if (fs.existsSync(lockFile)) {
-          fs.unlinkSync(lockFile);
-          console.log(`Removed ${lockFile}`);
+          try {
+            fs.unlinkSync(lockFile);
+            console.log(`Successfully removed lock file: ${lockFile}`);
+          } catch (e) {
+            console.warn(`Could not remove lock file ${lockFile}, it might be in use: ${e}`);
+          }
         }
       }
     } catch (error) {
-      console.warn(`Error cleaning up singleton locks: ${error}`);
+      console.warn(`Error during singleton locks cleanup: ${error}`);
     }
   }
 
@@ -378,11 +385,17 @@ export class WhatsAppSessionManager {
     
     // Restore existing connected sessions from DB.
     try {
+      // Small delay to ensure DB is ready, but keep it minimal
+      await new Promise(r => setTimeout(r, 500));
       const sessions = await db.whatsAppSession.findMany({});
+      logger.info(`Found ${sessions.length} sessions in database. Checking for active ones...`);
+      
       for (const session of sessions) {
-        if (session.status === 'CONNECTED' || session.status === 'AUTHENTICATED') {
-          logger.info({ sessionId: session.id || session._id, userId: session.userId }, 'Restoring session');
-          this.createClient(session.id || session._id, session.userId).catch(() => {});
+        if (session.status === 'CONNECTED' || session.status === 'AUTHENTICATED' || session.status === 'QR_READY') {
+          logger.info({ sessionId: session.id, userId: session.userId, status: session.status }, 'Restoring active session');
+          this.createClient(session.id, session.userId).catch(err => {
+            logger.error({ err, sessionId: session.id }, 'Failed to restore session');
+          });
         }
       }
     } catch (error) {
@@ -408,6 +421,9 @@ export class WhatsAppSessionManager {
 
     console.log(`Creating new WhatsApp client for session: ${sessionId} (user: ${resolvedUserId})`);
 
+    // Set initial status to INITIALIZING
+    await this.updateSessionStatus(sessionId, 'INITIALIZING', resolvedUserId!).catch(() => {});
+
     // Ensure session directory exists
     const sessionPath = path.join(process.cwd(), '.wwebjs_auth', `session-${sessionId}`);
     if (!fs.existsSync(sessionPath)) {
@@ -424,18 +440,14 @@ export class WhatsAppSessionManager {
       puppeteer: {
         headless: true,
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
-          '--disable-extensions',
           '--disable-dev-shm-usage',
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
-          '--single-process',
-          '--disable-gpu',
-          '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+          '--disable-gpu'
         ],
       }
     });
@@ -482,6 +494,9 @@ export class WhatsAppSessionManager {
       const info = client.info;
       logger.info({ sessionId, userId, phoneNumber: info.wid.user }, 'WhatsApp client ready');
 
+      // Reset reconnection attempts on successful connection
+      this.reconnectionAttempts.delete(sessionId);
+
       await db.whatsAppSession.upsert({
         where: { id: sessionId },
         update: {
@@ -521,7 +536,21 @@ export class WhatsAppSessionManager {
       console.log(`User ${userId} session ${sessionId} disconnected: ${reason}`);
       await this.updateSessionStatus(sessionId, 'DISCONNECTED', userId);
       this.io.to(userId).emit('disconnected', { sessionId, reason });
-      this.reconnectClient(sessionId).catch(() => { });
+      
+      const attempts = this.reconnectionAttempts.get(sessionId) || 0;
+      if (attempts < this.MAX_RECONNECT_ATTEMPTS) {
+        const delay = Math.min(30000, 2000 * Math.pow(1.5, attempts)); // Exponential backoff
+        console.log(`Scheduling reconnection for session ${sessionId} in ${delay}ms (attempt ${attempts + 1}/${this.MAX_RECONNECT_ATTEMPTS})`);
+        
+        setTimeout(() => {
+          this.reconnectClient(sessionId).catch(() => { });
+        }, delay);
+      } else {
+        this.io.to(userId).emit('wa_error', { 
+          sessionId, 
+          message: 'WhatsApp bağlantısı koptu ve maksimum yeniden bağlanma denemesi aşıldı. Lütfen sayfayı yenileyin veya manuel olarak tekrar bağlayın.' 
+        });
+      }
 
       if (reason === 'NAVIGATION') {
         this.destroyClient(sessionId);
@@ -740,6 +769,15 @@ export class WhatsAppSessionManager {
               sessionId,
               leadId: lead.id,
               businessName: lead.businessName,
+              content: msg.body,
+              timestamp: new Date()
+            });
+          } else {
+            // Even if it's not a lead, we should emit incoming_message for notifications
+            this.io.to(userId).emit('incoming_message', {
+              sessionId,
+              leadId: null,
+              businessName: rawChat?.name || phone,
               content: msg.body,
               timestamp: new Date()
             });

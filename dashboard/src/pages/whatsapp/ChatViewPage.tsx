@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../lib/auth';
 import { useT } from '../../lib/i18n';
-import { useParams, Link } from '../../lib/router';
+import { useParams, Link, useLocation } from '../../lib/router';
 import { Button } from '../../components/ui/button';
 
 // Extracted Components
@@ -40,6 +40,7 @@ export function ChatViewPage() {
   const { user, token } = useAuth();
   const t = useT();
   const { chatId: paramChatId } = useParams();
+  const { search } = useLocation();
 
   // PRO PLAN RESTRICTION WALL
   if (user && user.plan === 'free') {
@@ -97,10 +98,21 @@ export function ChatViewPage() {
   // Keep tracking initial session values when sessions list is fetched
   useEffect(() => {
     if (sessions && sessions.length > 0) {
-      if (!selectedSessionId || !sessions.some((s: any) => s._id === selectedSessionId)) {
-        const firstSessionId = sessions[0]._id;
-        setSelectedSessionId(firstSessionId);
-        localStorage.setItem('wa_selected_session_id', firstSessionId);
+      const searchParams = new URLSearchParams(search);
+      const querySessionId = searchParams.get('sessionId');
+      
+      let targetSessionId = selectedSessionId;
+      if (querySessionId && sessions.some((s: any) => s._id === querySessionId)) {
+        targetSessionId = querySessionId;
+      }
+
+      if (!targetSessionId || !sessions.some((s: any) => s._id === targetSessionId)) {
+        targetSessionId = sessions[0]._id;
+      }
+
+      if (targetSessionId !== selectedSessionId) {
+        setSelectedSessionId(targetSessionId);
+        localStorage.setItem('wa_selected_session_id', targetSessionId || '');
       }
       
       setSessionStatuses(prev => {
@@ -139,7 +151,7 @@ export function ChatViewPage() {
     } else {
       setSelectedSessionId(null);
     }
-  }, [sessions, selectedSessionId]);
+  }, [sessions, selectedSessionId, search]);
 
   const [selectedChatId, _setSelectedChatId] = useState<string | null>(null);
   const setSelectedChatId = useCallback((id: string | null) => {

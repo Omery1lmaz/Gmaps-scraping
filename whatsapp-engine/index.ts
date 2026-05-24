@@ -89,10 +89,15 @@ io.on('connection', (socket) => {
     }
     console.log(`User ${userId} joined their channel (session: ${requestedSessionId || 'default'})`);
     socket.join(userId);
+    if (requestedSessionId) {
+      socket.join(`session:${requestedSessionId}`);
+    }
     
     // Auto-start client initialization if joined
     const sessionId = requestedSessionId || userId;
-    sessionManager.createClient(sessionId, userId).catch(() => {});
+    sessionManager.createClient(sessionId, userId).catch((err) => {
+      console.error(`Failed to auto-create client for session ${sessionId}:`, err);
+    });
   });
 
   socket.on('disconnect', () => {

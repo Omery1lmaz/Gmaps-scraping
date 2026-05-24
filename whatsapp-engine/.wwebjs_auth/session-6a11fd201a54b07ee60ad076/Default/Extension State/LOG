@@ -1,3 +1,2 @@
-2026/05/24-12:03:55.534 7c Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Extension State/MANIFEST-000001
-2026/05/24-12:03:55.536 7c Recovering log #3
-2026/05/24-12:03:55.537 7c Reusing old log /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Extension State/000003.log 
+2026/05/24-21:11:28.833 62a Creating DB /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Extension State since it was missing.
+2026/05/24-21:11:28.850 62a Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Extension State/MANIFEST-000001

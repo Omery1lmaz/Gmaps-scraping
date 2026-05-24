@@ -80,16 +80,30 @@ function App() {
     activity: 'Başlatılmaya hazır'
   })
   const [scrapeDetails, setScrapeDetails] = useState(true)
-  const [customCategory, setCustomCategory] = useState('')
-  const [searchKeyword, setSearchKeyword] = useState('')
-  const [searchCity, setSearchCity] = useState('')
-  const [searchCountry, setSearchCountry] = useState('')
-  const [defaultCity, setDefaultCity] = useState('')
-  const [defaultCountry, setDefaultCountry] = useState('')
+  const [defaultCategory, setDefaultCategory] = useState('Halı Yıkama')
+  const [defaultCity, setDefaultCity] = useState('Antalya')
+  const [defaultCountry] = useState('Türkiye')
+
+  const categories = [
+    'Halı Yıkama', 'Temizlik', 'Emlak', 'Dişçi', 'Restoran', 
+    'Oto Servis', 'Spor Salonu', 'Hukuk Bürosu', 'Kuaför', 
+    'Nakliye', 'Sigorta', 'Eczane', 'Mimarlık', 'Diğer'
+  ]
+
+  const cities = [
+    'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Aksaray', 'Amasya', 'Ankara', 'Antalya', 'Ardahan', 'Artvin', 
+    'Aydın', 'Balıkesir', 'Bartın', 'Batman', 'Bayburt', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 
+    'Bursa', 'Çanakkale', 'Çankırı', 'Çorum', 'Denizli', 'Diyarbakır', 'Düzce', 'Edirne', 'Elazığ', 'Erzincan', 
+    'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun', 'Gümüşhane', 'Hakkari', 'Hatay', 'Iğdır', 'Isparta', 'İstanbul', 
+    'İzmir', 'Kahramanmaraş', 'Karabük', 'Karaman', 'Kars', 'Kastamonu', 'Kayseri', 'Kırıkkale', 'Kırklareli', 'Kırşehir', 
+    'Kilis', 'Kocaeli', 'Konya', 'Kütahya', 'Malatya', 'Manisa', 'Mardin', 'Mersin', 'Muğla', 'Muş', 
+    'Nevşehir', 'Niğde', 'Ordu', 'Osmaniye', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop', 'Sivas', 
+    'Şanlıurfa', 'Şırnak', 'Tekirdağ', 'Tokat', 'Trabzon', 'Tunceli', 'Uşak', 'Van', 'Yalova', 'Yozgat', 'Zonguldak'
+  ]
   const [dismissedError, setDismissedError] = useState<string | null>(null)
   const [authUser, setAuthUser] = useState<any>(null)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('omery020040@gmail.com')
+  const [password, setPassword] = useState('Ommers07.')
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(true)
 
@@ -147,10 +161,7 @@ function App() {
       type: 'START_SCRAPING',
       settings: { 
         scrapeDetails, 
-        customCategory: customCategory.trim(),
-        searchKeyword: searchKeyword.trim(),
-        searchCity: searchCity.trim(),
-        searchCountry: searchCountry.trim(),
+        defaultCategory: defaultCategory.trim(),
         defaultCity: defaultCity.trim(),
         defaultCountry: defaultCountry.trim()
       }
@@ -410,57 +421,8 @@ function App() {
           </div>
         )}
 
-        {/* Google Maps Search Parameters */}
-        {!isScraping && status.state !== 'completed' && (
-          <div className="flex flex-col gap-3.5 p-4 bg-white rounded-xl shadow-sm border border-slate-100">
-            <div className="flex items-center gap-2 text-blue-600">
-              <Building2 className="size-4" />
-              <span className="text-[11px] font-black uppercase tracking-wider">Google Haritalar Arama</span>
-            </div>
-            
-            <div className="space-y-2.5">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-slate-500">Ne Aranacak? (Örn: Eczane, Avukat)</span>
-                <input
-                  type="text"
-                  placeholder="Kategori veya Anahtar Kelime"
-                  value={searchKeyword}
-                  onChange={(e) => setSearchKeyword(e.target.value)}
-                  className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all font-semibold"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-slate-500">Şehir (Örn: İzmir, Berlin)</span>
-                  <input
-                    type="text"
-                    placeholder="Şehir"
-                    value={searchCity}
-                    onChange={(e) => setSearchCity(e.target.value)}
-                    className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all font-semibold"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-slate-500">Ülke (Örn: Türkiye, DE)</span>
-                  <input
-                    type="text"
-                    placeholder="Ülke"
-                    value={searchCountry}
-                    onChange={(e) => setSearchCountry(e.target.value)}
-                    className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all font-semibold"
-                  />
-                </div>
-              </div>
-            </div>
-            <p className="text-[9px] text-slate-400 font-semibold leading-tight">
-              Arama alanlarını doldurursanız tarayıcı otomatik arama yapar. Boş bırakırsanız mevcut açık olan sekmedeki sonuçlar taranır.
-            </p>
-          </div>
-        )}
-
-        {/* Custom Saving Values (Category, City, Country) */}
-        {!isScraping && status.state !== 'completed' && (
+        {/* Varsayılan Kayıt Değerleri */}
+        {!isScraping  && (
           <div className="flex flex-col gap-3.5 p-4 bg-white rounded-xl shadow-sm border border-slate-100">
             <div className="flex items-center gap-2 text-indigo-600">
               <Building2 className="size-4" />
@@ -469,46 +431,43 @@ function App() {
 
             <div className="space-y-2.5">
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-slate-500">Özel Kategori (İsteğe Bağlı)</span>
-                <input
-                  type="text"
-                  placeholder="Örn: Restoran, Yazılım Firması"
-                  value={customCategory}
-                  onChange={(e) => setCustomCategory(e.target.value)}
+                <span className="text-[10px] font-bold text-slate-500">Kategori (Kayıt İçin)</span>
+                <select
+                  value={defaultCategory}
+                  onChange={(e) => setDefaultCategory(e.target.value)}
                   className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all font-semibold"
-                />
+                >
+                  {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-slate-500">Varsayılan Şehir (İsteğe Bağlı)</span>
-                  <input
-                    type="text"
-                    placeholder="Örn: İzmir"
+                  <span className="text-[10px] font-bold text-slate-500">Şehir (Kayıt İçin)</span>
+                  <select
                     value={defaultCity}
                     onChange={(e) => setDefaultCity(e.target.value)}
                     className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all font-semibold"
-                  />
+                  >
+                    {cities.map(city => <option key={city} value={city}>{city}</option>)}
+                  </select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-slate-500">Varsayılan Ülke (İsteğe Bağlı)</span>
-                  <input
-                    type="text"
-                    placeholder="Örn: Türkiye"
-                    value={defaultCountry}
-                    onChange={(e) => setDefaultCountry(e.target.value)}
-                    className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all font-semibold"
-                  />
+                  <span className="text-[10px] font-bold text-slate-500">Ülke (Kayıt İçin)</span>
+                  <select
+                    disabled
+                    className="w-full h-9 px-3 text-xs bg-slate-100 border border-slate-200 rounded-lg outline-none font-semibold cursor-not-allowed"
+                  >
+                    <option value="Türkiye">Türkiye</option>
+                  </select>
                 </div>
               </div>
             </div>
             <p className="text-[9px] text-slate-400 font-semibold leading-tight">
-              Boş bırakılan alanlar Google Haritalar'dan çekilen orijinal verilerle kaydedilir.
+              Taranan bilgiler bu varsayılan değerlerle sisteme kaydedilir.
             </p>
           </div>
         )}
-
-        {/* Detailed Info Toggle */}
         {!isScraping && status.state !== 'completed' && (
           <div className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-slate-100">
             <div className="flex items-center gap-3">

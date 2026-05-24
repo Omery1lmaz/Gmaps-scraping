@@ -72,19 +72,6 @@ export function Sidebar() {
             <h1 className="text-lg font-bold tracking-tight text-white">WPAIFlow</h1>
           </div>
         </div>
-
-        <div className="mt-5 relative">
-          <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-500">
-            <Search size={16} />
-          </div>
-          <input
-            type="text"
-            placeholder={t('sidebar_search_commands')}
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-slate-900/75 py-3 pl-11 pr-4 text-sm font-semibold text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-slate-600 focus:ring-2 focus:ring-slate-700/50"
-          />
-        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-4 py-5 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
