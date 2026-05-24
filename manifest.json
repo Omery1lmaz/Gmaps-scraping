@@ -6,8 +6,19 @@
   "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": ["https://www.google.com/maps/*"],
   "action": {
-    "default_popup": "index.html"
+    "default_popup": "index.html",
+    "icons": {
+  "16": "favicon.svg",
+  "48": "favicon.svg",
+  "128": "favicon.svg"
+},
+  "default_icon": {
+    "16": "favicon.svg",
+    "48": "favicon.svg",
+    "128": "favicon.svg"
+  }
   },
+
   "background": {
     "service_worker": "src/background/main.ts",
     "type": "module"
