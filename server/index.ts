@@ -569,21 +569,29 @@ function buildLeadsQuery(queryParams: any) {
   const { 
     status, minRating, minReviews, category, hasPhone, hasWebsite, search, isOpenNow, priceLevel, city,
     createdAfter, createdBefore, hasOpeningHours, hasDescription, hasServiceOptions,
-    hasPlusCode, hasAddress, serviceOption, minPhotos, inPipeline, notInPipeline 
-  } = queryParams;
+    hasPlusCode, hasAddress, serviceOption, minPhotos, inPipeline, notInPipeline,
+    phoneType
+    } = queryParams;
 
-  const PIPELINE_STAGES = ['NEW', 'CONTACTED', 'FOLLOW_UP', 'MEETING_BOOKED', 'CLOSED', 'REJECTED'];
+    const PIPELINE_STAGES = ['NEW', 'CONTACTED', 'FOLLOW_UP', 'MEETING_BOOKED', 'CLOSED', 'REJECTED'];
 
-  if (status) query.status = status;
+    if (status) query.status = status;
 
-  if (inPipeline === 'true') {
+    if (inPipeline === 'true') {
     query.status = { $in: PIPELINE_STAGES };
-  } else if (notInPipeline === 'true') {
+    } else if (notInPipeline === 'true') {
     query.status = { $nin: PIPELINE_STAGES };
-  }
+    }
 
-  if (search) {
-    query.$or = [
+    if (phoneType === 'corporate') {
+    // Matches numbers starting with 02, 03, 04 or 2, 3, 4 (after potential country code)
+    query.phone = { $regex: /^(\+?90|0)?([234])/, $options: 'i' };
+    } else if (phoneType === 'mobile') {
+    // Matches numbers starting with 05 or 5 (after potential country code)
+    query.phone = { $regex: /^(\+?90|0)?(5)/, $options: 'i' };
+    }
+
+    if (search) {    query.$or = [
       { name: { $regex: search, $options: 'i' } },
       { businessName: { $regex: search, $options: 'i' } },
       { address: { $regex: search, $options: 'i' } }

@@ -80,6 +80,7 @@ function App() {
     activity: 'Başlatılmaya hazır'
   })
   const [scrapeDetails, setScrapeDetails] = useState(true)
+  const [searchKeyword, setSearchKeyword] = useState('')
   const [defaultCategory, setDefaultCategory] = useState('Halı Yıkama')
   const [defaultCity, setDefaultCity] = useState('Antalya')
   const [defaultCountry] = useState('Türkiye')
@@ -161,6 +162,7 @@ function App() {
       type: 'START_SCRAPING',
       settings: { 
         scrapeDetails, 
+        searchKeyword: searchKeyword.trim(),
         defaultCategory: defaultCategory.trim(),
         defaultCity: defaultCity.trim(),
         defaultCountry: defaultCountry.trim()
@@ -330,6 +332,28 @@ function App() {
           </div>
         )}
 
+        {/* Search Keyword Input */}
+        {!isScraping && status.state !== 'completed' && (
+          <div className="space-y-2 p-4 bg-white rounded-xl shadow-sm border border-slate-100 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2 text-[var(--primary)]">
+              <Sparkles className="size-4" />
+              <span className="text-[11px] font-black uppercase tracking-wider">Akıllı Arama</span>
+            </div>
+            <div className="relative">
+              <input
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                placeholder="Örn: Halı Yıkama Antalya..."
+                className="w-full h-11 rounded-xl border border-slate-200 px-4 pl-10 text-sm font-bold outline-none focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary)]/10 transition-all placeholder:text-slate-300"
+              />
+              <Play className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-300" />
+            </div>
+            <p className="text-[10px] text-slate-400 font-semibold leading-tight ml-1">
+              Google Maps üzerinde otomatik arama yapmak için kelime girin.
+            </p>
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
           <Card className="border-none shadow-sm bg-white overflow-hidden group">
@@ -364,9 +388,18 @@ function App() {
                     </div>
                     <span className="text-sm font-bold text-slate-700">Detay Tarama</span>
                   </div>
-                  <span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full tabular-nums">
-                    {dp.current} / {dp.total}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={stopScraping}
+                      className="bg-red-50 text-red-500 hover:bg-red-100 p-1 rounded-md transition-colors"
+                      title="Taramayı Durdur"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                    <span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full tabular-nums">
+                      {dp.current} / {dp.total}
+                    </span>
+                  </div>
                 </div>
                 <Progress value={(dp.current / dp.total) * 100} className="h-2 bg-slate-100" />
               </div>

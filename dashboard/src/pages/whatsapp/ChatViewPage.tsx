@@ -40,7 +40,7 @@ export function ChatViewPage() {
   const { user, token } = useAuth();
   const t = useT();
   const { chatId: paramChatId } = useParams();
-  const { search } = useLocation();
+  const { search: urlSearch } = useLocation();
 
   // PRO PLAN RESTRICTION WALL
   if (user && user.plan === 'free') {
@@ -98,7 +98,7 @@ export function ChatViewPage() {
   // Keep tracking initial session values when sessions list is fetched
   useEffect(() => {
     if (sessions && sessions.length > 0) {
-      const searchParams = new URLSearchParams(search);
+      const searchParams = new URLSearchParams(urlSearch);
       const querySessionId = searchParams.get('sessionId');
       
       let targetSessionId = selectedSessionId;
@@ -151,7 +151,7 @@ export function ChatViewPage() {
     } else {
       setSelectedSessionId(null);
     }
-  }, [sessions, selectedSessionId, search]);
+  }, [sessions, selectedSessionId, urlSearch]);
 
   const [selectedChatId, _setSelectedChatId] = useState<string | null>(null);
   const setSelectedChatId = useCallback((id: string | null) => {

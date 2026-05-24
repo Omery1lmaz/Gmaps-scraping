@@ -197,10 +197,11 @@ export function LeadsPage() {
 
   // Advanced filters states
   const [showFilters, setShowFilters] = useState(
-    !!(initialPhone !== 'all' || initialWebsite !== 'all' || initialCity || initialCategory || initialMinRating || initialMinReviews || initialIsOpenNow !== 'all' || initialHours !== 'all')
+    !!(initialPhone !== 'all' || initialWebsite !== 'all' || initialCity || initialCategory || initialMinRating || initialMinReviews || initialIsOpenNow !== 'all' || initialHours !== 'all' || (searchParams.get('phoneType') || 'all') !== 'all')
   );
   const [phoneFilter, setPhoneFilter] = useState<string>(initialPhone);
   const [websiteFilter, setWebsiteFilter] = useState<string>(initialWebsite);
+  const [phoneTypeFilter, setPhoneTypeFilter] = useState<string>(searchParams.get('phoneType') || 'all');
   const [cityFilter, setCityFilter] = useState<string>(initialCity);
   const [categoryFilter, setCategoryFilter] = useState<string>(initialCategory);
   const [minRatingFilter, setMinRatingFilter] = useState<number | ''>(initialMinRating);
@@ -335,6 +336,7 @@ export function LeadsPage() {
     if (minReviewsFilter) params.set('minReviews', String(minReviewsFilter));
     if (isOpenNowFilter !== 'all') params.set('isOpenNow', isOpenNowFilter);
     if (hoursFilter !== 'all') params.set('hasOpeningHours', hoursFilter);
+    if (phoneTypeFilter !== 'all') params.set('phoneType', phoneTypeFilter);
     
     if (aiPrompt) params.set('aiPrompt', aiPrompt);
     if (aiReport) {
@@ -374,6 +376,7 @@ export function LeadsPage() {
     search: searchTerm,
     hasPhone: phoneFilter === 'all' ? undefined : phoneFilter,
     hasWebsite: websiteFilter === 'all' ? undefined : websiteFilter,
+    phoneType: phoneTypeFilter === 'all' ? undefined : phoneTypeFilter,
     city: cityFilter || undefined,
     category: categoryFilter || undefined,
     minRating: minRatingFilter || undefined,
@@ -400,6 +403,7 @@ export function LeadsPage() {
       searchTerm,
       phoneFilter,
       websiteFilter,
+      phoneTypeFilter,
       cityFilter,
       categoryFilter,
       minRatingFilter,
@@ -426,6 +430,7 @@ export function LeadsPage() {
       searchTerm,
       phoneFilter,
       websiteFilter,
+      phoneTypeFilter,
       cityFilter,
       categoryFilter,
       minRatingFilter,
@@ -1073,6 +1078,20 @@ export function LeadsPage() {
                 </select>
               </div>
 
+              {/* Phone Type Filter */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Telefon Tipi</label>
+                <select 
+                  value={phoneTypeFilter} 
+                  onChange={(e) => { setPhoneTypeFilter(e.target.value); setPage(1); }}
+                  className="w-full h-10 px-3 py-1.5 rounded-xl border border-white/5 bg-white/80 dark:bg-zinc-950/50 text-xs font-bold text-slate-100 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition-all"
+                >
+                  <option value="all">Tümü</option>
+                  <option value="corporate">Kurumsal (Sabit)</option>
+                  <option value="mobile">Mobil</option>
+                </select>
+              </div>
+
               {/* Min Rating */}
               <div className="space-y-1.5">
                 <label className="text-xs font-black text-slate-500 uppercase tracking-wider">{t('min_rating_label')}</label>
@@ -1121,6 +1140,7 @@ export function LeadsPage() {
                   onClick={() => {
                     setPhoneFilter('all');
                     setWebsiteFilter('all');
+                    setPhoneTypeFilter('all');
                     setCityFilter('');
                     setCategoryFilter('');
                     setMinRatingFilter('');

@@ -65,20 +65,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
       currentSettings = message.settings;
     }
 
-    // Fetch existing external IDs first to skip duplicates and read current plan details
-    getAuthData().then(({ token, user }) => {
-      if (!token) throw new Error("Please login before scraping.");
-      
-      const userPlan = user?.plan || 'free';
-      const userSubStatus = user?.subscriptionStatus || 'active';
-
-      return fetch(`${API_BASE_URL}/api/leads/external-ids`, {
-        headers: apiHeaders(token)
-      })
-      .then(res => res.json())
-      .then(existingIds => ({ existingIds, userPlan, userSubStatus }));
-    })
-    .then(({ existingIds, userPlan, userSubStatus }) => {
+    const startExecution = (leadsDbIds: any[] = [], userPlan = 'free', userSubStatus = 'active') => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const activeTab = tabs[0];
         const tabId = activeTab?.id;
@@ -88,15 +75,15 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
           return;
         }
 
-        const executeScrapeFlow = (targetTabId: number, leadsDbIds: any[]) => {
-          globalStateMachine.transition("scraping", { 
-            leadsCount: 0, 
-            pageIndex: 0, 
-            lastLeads: [], 
-            activity: "Scraper is starting...", 
-            detailProgress: undefined 
-          });
+        globalStateMachine.transition("scraping", { 
+          leadsCount: 0, 
+          pageIndex: 0, 
+          lastLeads: [], 
+          activity: "Scraper is starting...", 
+          detailProgress: undefined 
+        });
 
+        const executeScrape = (targetTabId: number) => {
           // Check if user entered search criteria
           if (currentSettings.searchKeyword) {
             const keyword = currentSettings.searchKeyword;
@@ -130,7 +117,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
                       customCategory: currentSettings.customCategory,
                       defaultCity: currentSettings.defaultCity,
                       defaultCountry: currentSettings.defaultCountry,
-                      existingIds: Array.isArray(leadsDbIds) ? leadsDbIds : [],
+                      existingIds: leadsDbIds,
                       plan: userPlan,
                       subscriptionStatus: userSubStatus
                     }, (_response) => {
@@ -138,14 +125,13 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
                         globalStateMachine.transition("failed", { error: "Failed to initialize content scraper. Refresh and try again." });
                       }
                     });
-                  }, 3000); // Wait 3 seconds for Google Maps client-side components to render fully
+                  }, 3000);
                 }
               };
 
               chrome.tabs.onUpdated.addListener(onTabUpdated);
             });
           } else {
-            // Legacy / Default behavior: scrape existing active maps results tab
             chrome.tabs.get(targetTabId, (tab) => {
               const url = tab?.url || "";
               if (!url.includes("google.com/maps")) {
@@ -159,7 +145,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
                 customCategory: currentSettings.customCategory,
                 defaultCity: currentSettings.defaultCity,
                 defaultCountry: currentSettings.defaultCountry,
-                existingIds: Array.isArray(leadsDbIds) ? leadsDbIds : [],
+                existingIds: leadsDbIds,
                 plan: userPlan,
                 subscriptionStatus: userSubStatus
               }, (_response) => {
@@ -171,33 +157,32 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
           }
         };
 
-        executeScrapeFlow(tabId, existingIds);
+        executeScrape(tabId);
+      });
+    };
+
+    // Fetch existing external IDs first to skip duplicates and read current plan details
+    getAuthData().then(({ token, user }) => {
+      if (!token) throw new Error("Please login before scraping.");
+      
+      const userPlan = user?.plan || 'free';
+      const userSubStatus = user?.subscriptionStatus || 'active';
+
+      return fetch(`${API_BASE_URL}/api/leads/external-ids`, {
+        headers: apiHeaders(token)
+      })
+      .then(res => res.json())
+      .then(existingIds => {
+        startExecution(Array.isArray(existingIds) ? existingIds : [], userPlan, userSubStatus);
+      })
+      .catch(err => {
+        console.warn("Failed to fetch existing IDs, starting without deduplication:", err);
+        startExecution([], userPlan, userSubStatus);
       });
     })
     .catch(err => {
-      console.error("Failed to fetch existing IDs:", err);
-      if (String(err?.message || '').includes('login')) {
-        globalStateMachine.transition("failed", { error: "Please login before scraping." });
-        return;
-      }
-      // Proceed without deduplication
-      getAuthData().then(({ user }) => {
-        const userPlan = user?.plan || 'free';
-        const userSubStatus = user?.subscriptionStatus || 'active';
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          const tabId = tabs[0]?.id;
-          if (tabId) {
-            chrome.tabs.sendMessage(tabId, { 
-              type: "START_SCRAPING_CMD", 
-              scrapeDetails: currentSettings.scrapeDetails,
-              customCategory: currentSettings.customCategory,
-              existingIds: [],
-              plan: userPlan,
-              subscriptionStatus: userSubStatus
-            });
-          }
-        });
-      });
+      console.error("Auth error:", err);
+      globalStateMachine.transition("failed", { error: err.message || "Please login before scraping." });
     });
     return false;
   }
