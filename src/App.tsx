@@ -27,7 +27,8 @@ import {
   LogIn,
   LogOut,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Zap
 } from 'lucide-react'
 const fieldMeta: Record<string, { icon: any; label: string; color: string }> = {
   phone: { icon: Phone, label: 'Tel', color: 'text-green-600 bg-green-50' },

@@ -1,11 +1,21 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISequenceStep {
-  type: 'SEND_MESSAGE' | 'BOOK_MEETING';
+  id?: string;
+  type: 'SEND_MESSAGE' | 'BOOK_MEETING' | 'CONDITION' | 'AI_INTENT' | 'TAG';
   templateId?: string | mongoose.Types.ObjectId;
+  templates?: {
+    templateId: string | mongoose.Types.ObjectId;
+    weight: number;
+  }[];
   delayHours: number;
   meetingTitle?: string;
   meetingDuration?: number;
+  branches?: {
+    intent: string;
+    nextStepId: string;
+  }[];
+  tagId?: string;
 }
 
 export interface ISequence extends Document {
@@ -27,7 +37,13 @@ export interface ISequence extends Document {
 const SequenceStepSchema: Schema = new Schema({
   type: { type: String, enum: ['SEND_MESSAGE', 'BOOK_MEETING'], default: 'SEND_MESSAGE' },
   templateId: { type: Schema.Types.ObjectId, ref: 'Template', required: false },
+  templates: [{
+    templateId: { type: Schema.Types.ObjectId, ref: 'Template' },
+    weight: { type: Number, default: 1 }
+  }],
   delayHours: { type: Number, required: true, default: 24 },
+  waitType: { type: String, enum: ['duration', 'until_time', 'weekdays'], default: 'duration' },
+  untilTime: { type: String, default: '09:00' },
   meetingTitle: { type: String },
   meetingDuration: { type: Number, default: 60 },
 });

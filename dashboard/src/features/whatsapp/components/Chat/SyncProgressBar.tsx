@@ -1,16 +1,39 @@
-import React from 'react';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCircle2, Loader2, X } from 'lucide-react';
 import { useT } from '../../../../lib/i18n';
 import { Progress } from '../../../../components/ui/progress';
 
 export function SyncProgressBar({ syncStatus }: { syncStatus: any }) {
   const t = useT();
-  if (!syncStatus || syncStatus.status === 'IDLE' || syncStatus.status === 'COMPLETED') {
+  const [visible, setVisible] = useState(true);
+
+  // Reset visibility state when syncStatus changes to COMPLETED
+  useEffect(() => {
     if (syncStatus?.status === 'COMPLETED') {
+      setVisible(true);
+      const timer = setTimeout(() => {
+        setVisible(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    } else {
+      setVisible(true);
+    }
+  }, [syncStatus?.status]);
+
+  if (!syncStatus || syncStatus.status === 'IDLE' || syncStatus.status === 'COMPLETED') {
+    if (syncStatus?.status === 'COMPLETED' && visible) {
       return (
         <div className="flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-5 py-3 text-xs font-black text-emerald-400 shadow-2xl animate-in slide-in-from-top-2 duration-500 uppercase tracking-widest">
           <span className="flex items-center gap-2"><CheckCircle2 className="size-4" /> {t('wp_sync_done')}</span>
-          <span className="bg-emerald-500 text-black rounded-lg px-2.5 py-1 text-[10px]">{syncStatus.totalMessages || 0} {t('wp_total_msgs')}</span>
+          <div className="flex items-center gap-3">
+            <span className="bg-emerald-500 text-black rounded-lg px-2.5 py-1 text-[10px]">{syncStatus.totalMessages || 0} {t('wp_total_msgs')}</span>
+            <button 
+              onClick={() => setVisible(false)} 
+              className="text-slate-400 hover:text-white transition-colors p-0.5 rounded-lg hover:bg-white/5"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
         </div>
       );
     }

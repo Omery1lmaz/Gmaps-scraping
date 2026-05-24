@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import stringSimilarity from 'string-similarity';
-import { AIGeneration, Lead } from './dbClient';
+import { AIGeneration, Lead, CalendlyIntegration } from './dbClient';
 import { tokens as openRouterTokens, model as openRouterModel } from './ai/tokens/index';
 
 export interface AIProvider {
@@ -123,6 +123,21 @@ export class AIService {
       }
     }
 
+    // Fetch Calendly integration for variable replacement in generated personalized outreach
+    let bookingLink = '';
+    try {
+      const calendlyInt = await CalendlyIntegration.findOne({ userId });
+      if (calendlyInt && calendlyInt.schedulingUrl) {
+        bookingLink = calendlyInt.schedulingUrl;
+      }
+    } catch (err) {
+      console.warn('[AIService] Error loading Calendly link in outreach generation:', err);
+    }
+
+    if (bookingLink) {
+      generatedText = generatedText.replace(/{booking_link}/g, bookingLink).replace(/{{booking_link}}/g, bookingLink);
+    }
+
     // Save to MongoDB
     const generation = await AIGeneration.create({
       userId,
@@ -180,12 +195,27 @@ export class AIService {
     if (!provider) throw new Error('No AI provider configured');
 
     const userId = lead.userId;
-    // FETCH REAL CALENDAR SLOTS
-    const { CalendarService } = await import('./CalendarService.js');
-    const freeSlots = await CalendarService.suggestMeetingSlots(userId);
-    const calendarContext = freeSlots && freeSlots.length > 0
-      ? `Takvimimdeki müsaitlik durumu şu şekilde: ${freeSlots.join(', ')}. Bu saatlerden birini önerebilirsin.`
-      : '';
+    
+    // Fetch Calendly integration details
+    const calendlyInt = await CalendlyIntegration.findOne({ userId });
+    let calendarContext = '';
+    let bookingLink = '';
+    
+    if (calendlyInt && calendlyInt.schedulingUrl) {
+      bookingLink = calendlyInt.schedulingUrl;
+      calendarContext = `Kullanıcının Calendly randevu sayfası linki: ${bookingLink}. EĞER müşteri görüşmek, aramak, demo yapmak istiyorsa bu randevu linkini doğrudan vererek randevu almasını söyle: ${bookingLink}`;
+    } else {
+      // FETCH REAL GOOGLE CALENDAR SLOTS (fallback)
+      try {
+        const { CalendarService } = await import('./CalendarService.js');
+        const freeSlots = await CalendarService.suggestMeetingSlots(userId);
+        if (freeSlots && freeSlots.length > 0) {
+          calendarContext = `Takvimimdeki müsaitlik durumu şu şekilde: ${freeSlots.join(', ')}. Bu saatlerden birini önerebilirsin.`;
+        }
+      } catch (calErr) {
+        console.warn('[AIService] Failed to load Google Calendar fallback slots:', calErr);
+      }
+    }
 
     const contextInstruction = promptContext 
       ? `Özellikle şu konuda odaklan: "${promptContext}".`
@@ -211,7 +241,7 @@ export class AIService {
       KURALLAR:
       1. WhatsApp diline uygun, emojiler barındıran, çok resmi olmayan ama saygılı bir dil kullan.
       2. Çok kısa tut (maksimum 300 karakter).
-      3. EĞER Müşteri bir toplantı veya görüşme istiyorsa, yukarıdaki müsaitlik bilgisini kullanarak net bir saat öner.
+      3. EĞER Müşteri bir toplantı veya görüşme istiyorsa veya konuşma randevu planlamaya gidiyorsa, yukarıdaki müsaitlik bilgisini/Calendly linkini kullanarak net bir yönlendirme yap.
       4. Dinamik değişken veya yer tutucu asla bırakma.
       5. Çift tırnak içerisine alma, sadece göndereceğimiz mesajın kendisini dön.
       
@@ -219,7 +249,11 @@ export class AIService {
     `;
 
     const result = await provider.generateText(prompt);
-    return result.text.trim();
+    let replyText = result.text.trim();
+    if (bookingLink) {
+      replyText = replyText.replace(/{booking_link}/g, bookingLink).replace(/{{booking_link}}/g, bookingLink);
+    }
+    return replyText;
   }
 
   public async generateSequenceAIResponse(lead: any, lastMessage: string, aiPrompt: string): Promise<string> {

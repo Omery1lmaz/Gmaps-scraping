@@ -21,6 +21,8 @@ export type AppNode = Node;
 export type WorkflowState = {
   nodes: AppNode[];
   edges: Edge[];
+  selectedVariation: { nodeId: string; index: number; templateId: string } | null;
+  selectedNodeForSettings: AppNode | null;
   onNodesChange: OnNodesChange<AppNode>;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
@@ -28,11 +30,15 @@ export type WorkflowState = {
   updateNodeData: (nodeId: string, data: any) => void;
   setNodes: (nodes: AppNode[]) => void;
   setEdges: (edges: Edge[]) => void;
+  setSelectedVariation: (variation: { nodeId: string; index: number; templateId: string } | null) => void;
+  setSelectedNodeForSettings: (node: AppNode | null) => void;
 };
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   nodes: [],
   edges: [],
+  selectedVariation: null,
+  selectedNodeForSettings: null,
   
   onNodesChange: (changes: NodeChange<AppNode>[]) => {
     set({
@@ -62,7 +68,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set({
       nodes: get().nodes.map((node) => {
         if (node.id === nodeId) {
-          node.data = { ...node.data, ...data };
+          return {
+            ...node,
+            data: { ...node.data, ...data }
+          };
         }
         return node;
       }),
@@ -75,5 +84,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   setEdges: (edges: Edge[]) => {
     set({ edges });
+  },
+
+  setSelectedVariation: (variation) => {
+    set({ selectedVariation: variation });
+  },
+
+  setSelectedNodeForSettings: (node) => {
+    set({ selectedNodeForSettings: node });
   },
 }));

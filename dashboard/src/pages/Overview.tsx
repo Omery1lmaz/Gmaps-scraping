@@ -146,16 +146,16 @@ export function Overview() {
               <div className="space-y-1">
                  <h4 className="text-sm font-black text-white flex items-center gap-2">
                    <TrendingUp size={16} className="text-emerald-400" />
-                   Lead Depolama Kotası
+                   {t('ov_quota_title')}
                  </h4>
-                 <p className="text-[11px] font-bold text-slate-400">Ücretsiz planda en fazla 100 lead kaydedebilirsiniz.</p>
+                 <p className="text-[11px] font-bold text-slate-400">{t('ov_quota_desc')}</p>
               </div>
               
               <div className="flex-1 max-w-md w-full space-y-2">
                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-300">
-                  <span>{totalLeads} / 100 Kayıt</span>
+                  <span>{totalLeads} / 100 {t('ov_quota_records')}</span>
                   <span className={totalLeads >= 80 ? "text-rose-400 animate-pulse" : "text-emerald-400"}>
-                    %{Math.min((totalLeads / 100) * 100, 100).toFixed(0)} Doluluk
+                    %{Math.min((totalLeads / 100) * 100, 100).toFixed(0)} {t('ov_quota_occupancy')}
                   </span>
                 </div>
                 <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden border border-white/5">
@@ -174,7 +174,7 @@ export function Overview() {
                 className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-6 py-5 rounded-xl text-xs gap-2 shrink-0 shadow-lg shadow-emerald-500/10"
               >
                 <Sparkles size={14} className="fill-current" />
-                LİMİTLERİ KALDIR
+                {t('ov_remove_limits')}
               </Button>
            </div>
         </div>

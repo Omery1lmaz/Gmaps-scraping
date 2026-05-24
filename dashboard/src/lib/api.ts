@@ -161,6 +161,15 @@ export const deleteCalendarConnection = (provider: string) => api.delete(`/calen
 export const getCalendarEvents = () => api.get('/calendar/events').then(res => res.data);
 export const syncCalendar = () => api.post('/calendar/sync').then(res => res.data);
 
+// Calendly Integrations
+export const getCalendlyAuthUrl = () => api.get('/calendly/auth').then(res => res.data);
+export const connectCalendly = (code: string) => api.post('/calendly/connect', { code }).then(res => res.data);
+export const getCalendlyIntegration = () => api.get('/calendly/integration').then(res => res.data);
+export const disconnectCalendly = () => api.delete('/calendly/integration').then(res => res.data);
+export const getCalendlyEventTypes = () => api.get('/calendly/event-types').then(res => res.data);
+export const selectCalendlyEventType = (uri: string) => api.post('/calendly/event-types/select', { uri }).then(res => res.data);
+export const syncCalendly = () => api.post('/calendly/sync').then(res => res.data);
+
 // Create waApi instance for WhatsApp Engine requests
 const waApi: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_WA_ENGINE_URL || 'http://localhost:3002',

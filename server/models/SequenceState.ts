@@ -3,8 +3,9 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface ISequenceState extends Document {
   sequenceId: string | mongoose.Types.ObjectId;
   leadId: string | mongoose.Types.ObjectId;
-  currentStepIndex: number; // The index in the sequence.steps array
-  status: 'PENDING' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'REPLIED';
+  currentStepIndex: number; // For backward compatibility
+  currentStepId?: string;    // The unique ID of the current step in the sequence
+  status: 'PENDING' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'REPLIED' | 'STOPPED_BY_REPLY';
   nextRunAt?: Date; // Scheduled time for the next step
   lastError?: string;
   isForced?: boolean;

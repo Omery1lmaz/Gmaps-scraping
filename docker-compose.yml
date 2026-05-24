@@ -14,6 +14,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-dev-change-me}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
       - NODE_ENV=development
+      - WHATSAPP_ENGINE_URL=http://wa-engine:3002
     volumes:
       - ./server:/app
       - /app/node_modules
@@ -37,6 +38,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-dev-change-me}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
       - NODE_ENV=production
+      - WHATSAPP_ENGINE_URL=http://wa-engine:3002
     volumes:
       - wa_media:/app/media/whatsapp
     depends_on:

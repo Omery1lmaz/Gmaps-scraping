@@ -6,6 +6,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import pinoHttp from 'pino-http';
+import logger from './logger';
 import {
   getMongoConnection,
   Lead,
@@ -24,10 +26,12 @@ import {
   Meeting,
   ScrapeTask,
   ScrapeCategory,
-  Tag
+  Tag,
+  CalendlyIntegration
 } from './dbClient';
 import { aiService } from './AIService';
 import { CalendarService } from './CalendarService';
+import { CalendlyService } from './CalendlyService';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
@@ -50,17 +54,17 @@ setInterval(async () => {
     });
 
     if (dueStates.length > 0) {
-      console.log(`[Sequence Cron] Found ${dueStates.length} due states at ${now.toISOString()}`);
+      logger.info({ count: dueStates.length }, '[Sequence Cron] Found due states');
     }
 
     for (const state of dueStates) {
-      console.log(`[Sequence Cron] Queuing state ${state._id} (Lead: ${state.leadId}, Sequence: ${state.sequenceId})`);
+      logger.info({ stateId: state._id, leadId: state.leadId }, '[Sequence Cron] Queuing state');
       // Mark as IN_PROGRESS to prevent double queuing
       await SequenceState.findByIdAndUpdate(state._id, { status: 'IN_PROGRESS' });
       const job = await sequenceQueue.add('process-sequence-step', {
         leadSequenceStateId: state._id.toString()
       });
-      console.log(`[Sequence Cron] Queued job ${job.id} successfully for state ${state._id}`);
+      logger.debug({ jobId: job.id, stateId: state._id }, '[Sequence Cron] Queued job successfully');
     }
   } catch (err) {
     console.error('Sequence Polling Cron Error:', err);
@@ -125,7 +129,7 @@ function scopedIdQuery(req: Request, id: string) {
 }
 
 async function callWaEngine(path: string, userId: string, options: RequestInit = {}) {
-  const urls = [WA_ENGINE_URL, 'http://localhost:3002'];
+  const urls = [WA_ENGINE_URL, 'http://wa-engine:3002', 'http://localhost:3002'];
   let lastError;
   const token = jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '5m' });
   for (const url of urls) {
@@ -149,6 +153,7 @@ async function callWaEngine(path: string, userId: string, options: RequestInit =
 }
 
 const app = express();
+app.use(pinoHttp({ logger }));
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
@@ -420,6 +425,7 @@ async function checkAndAutoEnrollLead(lead: any, userId: string) {
         sequenceId: seq._id,
         leadId: lead._id,
         currentStepIndex: 0,
+        currentStepId: seq.steps?.[0]?.id,
         status: 'PENDING',
       });
       
@@ -435,10 +441,14 @@ async function checkAndAutoEnrollLead(lead: any, userId: string) {
         $push: { leadSequenceStates: { id: new mongoose.Types.ObjectId(), status: 'ACTIVE', sequence: { id: seq._id.toString(), name: seq.name } } }
       });
       
-      console.log(`[AutoEnroll] Successfully auto-enrolled lead ${lead.businessName || lead.name} into sequence ${seq.name}`);
+      logger.info({ 
+        leadId: lead._id, 
+        sequenceId: seq._id, 
+        leadName: lead.businessName || lead.name 
+      }, '[AutoEnroll] Lead successfully enrolled');
     }
   } catch (error) {
-    console.error('[AutoEnroll] Error during checkAndAutoEnrollLead:', error);
+    logger.error({ err: error }, '[AutoEnroll] Error during auto-enrollment');
   }
 }
 
@@ -1116,6 +1126,7 @@ app.post('/api/leads/:id/sequences', authenticateApiKey, requireProPlan, async (
       sequenceId: sequence._id,
       leadId: lead._id,
       currentStepIndex: 0,
+      currentStepId: sequence.steps?.[0]?.id,
       status: 'PENDING',
     });
     
@@ -1290,6 +1301,86 @@ app.get('/api/calendar/events', authenticateApiKey, async (req: Request, res: Re
 app.post('/api/calendar/sync', authenticateApiKey, async (req: Request, res: Response) => {
   try {
     const count = await CalendarService.syncEventsFromGoogle(getUserId(req));
+    res.json({ success: true, count });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Calendly Integrations
+app.get('/api/calendly/auth', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const url = CalendlyService.getAuthUrl();
+    res.json({ url });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/calendly/callback', async (req: Request, res: Response) => {
+  try {
+    const { code } = req.query;
+    if (!code) {
+      return res.redirect(`${process.env.DASHBOARD_URL || 'http://localhost:5173'}/settings?error=no_code`);
+    }
+    res.redirect(`${process.env.DASHBOARD_URL || 'http://localhost:5173'}/settings?calendly_code=${code}`);
+  } catch (error: any) {
+    res.redirect(`${process.env.DASHBOARD_URL || 'http://localhost:5173'}/settings?error=auth_failed`);
+  }
+});
+
+app.post('/api/calendly/connect', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const { code } = req.body;
+    const userId = getUserId(req);
+    const integration = await CalendlyService.handleCallback(code, userId);
+    res.json({ success: true, integration });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/calendly/integration', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const integration = await CalendlyIntegration.findOne({ userId: getUserId(req) });
+    res.json(integration);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch Calendly integration' });
+  }
+});
+
+app.delete('/api/calendly/integration', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    await CalendlyIntegration.deleteOne({ userId: getUserId(req) });
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to disconnect Calendly' });
+  }
+});
+
+app.get('/api/calendly/event-types', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const eventTypes = await CalendlyService.getEventTypes(getUserId(req));
+    res.json(eventTypes);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/calendly/event-types/select', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const { uri } = req.body;
+    const userId = getUserId(req);
+    const integration = await CalendlyService.selectEventType(userId, uri);
+    res.json({ success: true, integration });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/calendly/sync', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const count = await CalendlyService.syncMeetings(getUserId(req));
     res.json({ success: true, count });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -2260,6 +2351,7 @@ app.post('/api/leads/bulk-enroll-sequence', authenticateApiKey, requireProPlan, 
         sequenceId: sequence._id,
         leadId: lead._id,
         currentStepIndex: 0,
+        currentStepId: sequence.steps?.[0]?.id,
         status: 'PENDING',
       });
 
@@ -2554,5 +2646,5 @@ app.get('/api/campaigns/:id/analytics', authenticateApiKey, async (req: Request,
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  logger.info({ port: PORT }, '🚀 Server running');
 });

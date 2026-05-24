@@ -3,6 +3,10 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface ISequenceStep {
   type: 'SEND_MESSAGE' | 'BOOK_MEETING';
   templateId?: string | mongoose.Types.ObjectId;
+  templates?: {
+    templateId: string | mongoose.Types.ObjectId;
+    weight: number;
+  }[];
   delayHours: number; // Hours to wait before sending this step (0 for immediately after added or after previous)
   meetingTitle?: string;
   meetingDuration?: number; // In minutes
@@ -37,11 +41,23 @@ export interface ISequence extends Document {
 }
 
 const SequenceStepSchema: Schema = new Schema({
-  type: { type: String, enum: ['SEND_MESSAGE', 'BOOK_MEETING'], default: 'SEND_MESSAGE' },
+  id: { type: String },
+  type: { type: String, enum: ['TRIGGER', 'SEND_MESSAGE', 'BOOK_MEETING', 'CONDITION', 'AI_INTENT', 'TAG'], default: 'SEND_MESSAGE' },
   templateId: { type: Schema.Types.ObjectId, ref: 'Template', required: false },
+  templates: [{
+    templateId: { type: Schema.Types.ObjectId, ref: 'Template' },
+    weight: { type: Number, default: 1 }
+  }],
   delayHours: { type: Number, required: true, default: 24 },
+  waitType: { type: String, enum: ['duration', 'until_time', 'weekdays'], default: 'duration' },
+  untilTime: { type: String, default: '09:00' },
   meetingTitle: { type: String },
   meetingDuration: { type: Number, default: 60 },
+  branches: [{
+    intent: { type: String },
+    nextStepId: { type: String }
+  }],
+  tagId: { type: String }
 });
 
 const SequenceSchema: Schema = new Schema({

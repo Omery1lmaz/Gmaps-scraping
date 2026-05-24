@@ -18,8 +18,10 @@ import { Button } from '../components/ui/button';
 import { useNavigate } from '../lib/router';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
+import { useDialogStore } from '../stores/dialogStore';
 
 export function TemplatesPage() {
+  const { openConfirm } = useDialogStore();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const t = useT();
@@ -126,9 +128,13 @@ export function TemplatesPage() {
                    size="sm"
                    className="text-red-500 hover:text-red-400 hover:bg-red-500/10 font-extrabold text-[11px] h-8 px-3.5 rounded-xl transition-all"
                    onClick={() => {
-                     if(window.confirm(t('tpl_delete_confirm'))) {
-                       deleteMutation.mutate(template._id || template.id);
-                     }
+                     openConfirm({
+                       title: 'Şablonu Sil',
+                       message: t('tpl_delete_confirm'),
+                       onConfirm: () => deleteMutation.mutate(template._id || template.id),
+                       confirmText: t('tpl_delete_btn'),
+                       cancelText: t('ct_cancel_btn')
+                     });
                    }}
                  >
                    <Trash2 size={13} className="mr-1.5" /> {t('tpl_delete_btn')}

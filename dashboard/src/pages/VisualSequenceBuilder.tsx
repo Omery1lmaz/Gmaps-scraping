@@ -28,6 +28,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
+import { Slider } from '../components/ui/slider';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '../components/ui/sheet';
 import { 
   Save, Play, PlayCircle, Settings2, Trash2, ArrowLeft, 
   ShieldCheck, Check, Sparkles, Wand2, GitFork, Activity, BrainCircuit,
@@ -36,7 +43,7 @@ import {
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '../lib/router';
-import { api, createSequence, getSequenceDetails, updateSequence, getTemplates } from '../lib/api';
+import { api, createSequence, getSequenceDetails, updateSequence, getTemplates, getTags } from '../lib/api';
 import { toast } from 'sonner';
 import { useT } from '../lib/i18n';
 
@@ -46,7 +53,10 @@ import { SendMessageNode } from '../components/nodes/SendMessageNode';
 import { TimeDelayNode } from '../components/nodes/TimeDelayNode';
 import { ConditionNode } from '../components/nodes/ConditionNode';
 import { MeetingNode } from '../components/nodes/MeetingNode';
+import { AIIntentNode } from '../components/nodes/AIIntentNode';
+import { TagNode } from '../components/nodes/TagNode';
 
+// Moved outside to prevent re-creation
 const ICON_MAP: Record<string, any> = {
   messagesquare: MessageSquare,
   clock: Clock,
@@ -61,7 +71,8 @@ const ICON_MAP: Record<string, any> = {
   compass: Compass,
   send: Send,
   tag: Tag,
-  mappin: MapPin
+  mappin: MapPin,
+  brain: BrainCircuit
 };
 
 const nodeTypes = {
@@ -70,6 +81,8 @@ const nodeTypes = {
   timeDelay: TimeDelayNode,
   condition: ConditionNode,
   meeting: MeetingNode,
+  aiIntent: AIIntentNode,
+  tag: TagNode
 };
 
 function Flow() {
@@ -77,7 +90,7 @@ function Flow() {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const DAYS = [
+  const DAYS = React.useMemo(() => [
     { label: t('day_sun_short'), value: 0 },
     { label: t('day_mon_short'), value: 1 },
     { label: t('day_tue_short'), value: 2 },
@@ -85,24 +98,25 @@ function Flow() {
     { label: t('day_thu_short'), value: 4 },
     { label: t('day_fri_short'), value: 5 },
     { label: t('day_sat_short'), value: 6 },
-  ];
+  ], [t]);
 
-  const MERGE_TAGS = [
+  const MERGE_TAGS = React.useMemo(() => [
     { tag: '{businessName}', label: t('mt_business_name'), desc: t('mt_business_name_desc') },
     { tag: '{city}', label: t('mt_city'), desc: t('mt_city_desc') },
     { tag: '{category}', label: t('mt_category'), desc: t('mt_category_desc') },
     { tag: '{rating}', label: t('mt_rating'), desc: t('mt_rating_desc') },
     { tag: '{website}', label: t('mt_website'), desc: t('mt_website_desc') },
     { tag: '{phone}', label: t('mt_phone'), desc: t('mt_phone_desc') },
-  ];
+    { tag: '{booking_link}', label: t('mt_booking_link', 'Randevu Linki'), desc: t('mt_booking_link_desc', 'Calendly randevu sayfa linki') },
+  ], [t]);
 
-  const HOTKEYS = [
+  const HOTKEYS = React.useMemo(() => [
     { keys: 'Ctrl + S', desc: t('hk_save') },
     { keys: 'Ctrl + A', desc: t('hk_align') },
     { keys: 'Ctrl + D', desc: t('hk_duplicate') },
     { keys: 'Del / Backspace', desc: t('hk_delete') },
     { keys: 'Esc', desc: t('hk_close') },
-  ];
+  ], [t]);
 
   const PREBUILT_TEMPLATES = [
     {
@@ -168,7 +182,21 @@ function Flow() {
   ];
 
   const queryClient = useQueryClient();
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes, setEdges } = useWorkflowStore();
+  
+  // Fine-grained store selectors for extreme performance
+  const nodes = useWorkflowStore(s => s.nodes);
+  const edges = useWorkflowStore(s => s.edges);
+  const onNodesChange = useWorkflowStore(s => s.onNodesChange);
+  const onEdgesChange = useWorkflowStore(s => s.onEdgesChange);
+  const onConnect = useWorkflowStore(s => s.onConnect);
+  const setNodes = useWorkflowStore(s => s.setNodes);
+  const setEdges = useWorkflowStore(s => s.setEdges);
+  const selectedVariation = useWorkflowStore(s => s.selectedVariation);
+  const setSelectedVariation = useWorkflowStore(s => s.setSelectedVariation);
+  const selectedNodeForSettings = useWorkflowStore(s => s.selectedNodeForSettings);
+  const setSelectedNodeForSettings = useWorkflowStore(s => s.setSelectedNodeForSettings);
+  const updateNodeData = useWorkflowStore(s => s.updateNodeData);
+
   const [name, setName] = useState('');
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
@@ -272,6 +300,11 @@ function Flow() {
     queryFn: getTemplates
   });
 
+  const { data: tags = [] } = useQuery({
+    queryKey: ['tags'],
+    queryFn: getTags
+  });
+
   // Fetch sequence if editing
   const { data: sequence, isLoading: isSequenceLoading } = useQuery({
     queryKey: ['sequence', id],
@@ -326,22 +359,6 @@ function Flow() {
     if (!isSilent) {
       toast.success(t('vsb_align_success'));
     }
-  };
-
-  // Update Dynamic Node Data Parameters
-  const updateNodeData = (nodeId: string, updatedFields: any) => {
-    setNodes(nodes.map(n => {
-      if (n.id === nodeId) {
-        return {
-          ...n,
-          data: {
-            ...n.data,
-            ...updatedFields
-          }
-        };
-      }
-      return n;
-    }));
   };
 
   // Toggle Day helper
@@ -575,48 +592,28 @@ function Flow() {
         loadedEdges = migrated.edges;
       }
 
-      // If states exist, perform topological traversal to enrich with metrics!
+      // If states exist, enrich nodes with metrics based on currentStepId
       if (loadedNodes.length > 0 && sequence.states) {
         const states = sequence.states || [];
         
-        let currentId = 'trigger-1';
-        let stepIdx = 0;
-        const visited = new Set<string>();
+        loadedNodes = loadedNodes.map(node => {
+          const nodeStates = states.filter((s: any) => s.currentStepId === node.id);
+          const activeCount = nodeStates.filter((s: any) => s.status === 'PENDING' || s.status === 'ACTIVE').length;
+          const successCount = nodeStates.filter((s: any) => s.status === 'COMPLETED').length;
+          const failCount = nodeStates.filter((s: any) => s.status === 'FAILED').length;
+          const repliedCount = nodeStates.filter((s: any) => s.status === 'STOPPED_BY_REPLY').length;
 
-        while (currentId) {
-          if (visited.has(currentId)) break;
-          visited.add(currentId);
-
-          const node = loadedNodes.find(n => n.id === currentId);
-          if (!node) break;
-
-          if (node.type === 'sendMessage') {
-            const successCount = states.filter((s: any) => s.currentStepIndex === stepIdx && s.status === 'COMPLETED').length;
-            const failCount = states.filter((s: any) => s.currentStepIndex === stepIdx && s.status === 'FAILED').length;
-            
-            node.data = {
+          return {
+            ...node,
+            data: {
               ...node.data,
+              activeCount,
               successCount,
-              failCount
-            };
-            stepIdx++;
-          } else if (node.type === 'timeDelay') {
-            const activeCount = states.filter((s: any) => s.currentStepIndex === stepIdx && s.status === 'PENDING').length;
-            node.data = {
-              ...node.data,
-              activeCount
-            };
-          }
-
-          // Find next connected edge
-          let edge = loadedEdges.find((e: any) => e.source === currentId);
-          if (node.type === 'condition') {
-            edge = loadedEdges.find((e: any) => e.source === currentId && e.sourceHandle === 'no') || edge;
-          }
-          
-          if (!edge) break;
-          currentId = edge.target;
-        }
+              failCount,
+              repliedCount
+            }
+          };
+        });
       }
 
       if (loadedNodes.length > 0) {
@@ -931,7 +928,7 @@ function Flow() {
     toast.success(t('vsb_canvas_cleared'));
   };
 
-  // DAG to linear steps compiler with Branching condition support
+  // DAG to graph steps compiler with Branching and AI Intent support
   const compileWorkflow = (): any[] | null => {
     const trigger = nodes.find(n => n.type === 'trigger');
     if (!trigger) {
@@ -940,64 +937,101 @@ function Flow() {
     }
 
     const steps: any[] = [];
-    let currentId = trigger.id;
-    let currentDelay = 0;
     const visited = new Set<string>();
+    const queue = [trigger.id];
 
-    while (currentId) {
-      if (visited.has(currentId)) {
-        toast.error(t('vsb_compile_loop_error'));
-        return null;
-      }
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      if (visited.has(currentId)) continue;
       visited.add(currentId);
 
       const currentNode = nodes.find(n => n.id === currentId);
-      if (!currentNode) break;
+      if (!currentNode) continue;
 
-      if (currentNode.type === 'condition') {
-        const edge = edges.find(e => e.source === currentId && e.sourceHandle === 'no');
-        if (!edge) {
-          toast.error(t('vsb_compile_branch_error'));
-          return null;
+      // Find all outgoing edges
+      const outgoingEdges = edges.filter(e => e.source === currentId);
+      
+      let step: any = {
+        id: currentNode.id,
+        type: '',
+        delayHours: 0
+      };
+
+      if (currentNode.type === 'trigger') {
+        step.type = 'TRIGGER';
+      } else if (currentNode.type === 'sendMessage') {
+        step.type = 'SEND_MESSAGE';
+        step.templateId = currentNode.data?.templateId;
+        step.templates = (currentNode.data as any)?.templates || [];
+      } else if (currentNode.type === 'meeting') {
+        step.type = 'BOOK_MEETING';
+        step.meetingTitle = currentNode.data?.title || '';
+        step.meetingDuration = currentNode.data?.duration || 60;
+      } else if (currentNode.type === 'tag') {
+        step.type = 'TAG';
+        step.tagId = currentNode.data?.tagId;
+      } else if (currentNode.type === 'condition') {
+        step.type = 'CONDITION';
+        step.branches = outgoingEdges.map(e => ({
+          intent: e.sourceHandle === 'yes' ? 'YES' : 'NO',
+          nextStepId: e.target
+        }));
+      } else if (currentNode.type === 'aiIntent') {
+        step.type = 'AI_INTENT';
+        step.branches = outgoingEdges.map(e => ({
+          intent: e.sourceHandle || 'other',
+          nextStepId: e.target
+        }));
+      } else if (currentNode.type === 'timeDelay') {
+        // Time delay is usually followed by another node. 
+        // We'll merge delay into the NEXT node in the sequence
+        // or keep it as a separate step if we change worker logic.
+        // For now, let's keep it simple and find the next node to apply delay.
+        const nextEdge = outgoingEdges[0];
+        if (nextEdge) {
+          const nextNode = nodes.find(n => n.id === nextEdge.target);
+          if (nextNode) {
+            // Skip this 'delay' node and add next to queue with this delay
+            // This is a bit tricky in graph mode. 
+            // Let's treat delay as a property of the NEXT step.
+            // We'll re-visit this if we want delay to be a standalone step.
+            queue.push(nextEdge.target);
+            // We don't add the delay node itself to 'steps'
+            continue; 
+          }
         }
-        currentId = edge.target;
-        continue;
       }
 
-      const edge = edges.find(e => e.source === currentId);
-      if (!edge) break;
-
-      const nextNode = nodes.find(n => n.id === edge.target);
-      if (!nextNode) break;
-
-      if (nextNode.type === 'timeDelay') {
-        currentDelay = (nextNode.data as any)?.delayHours || 24;
-      } else if (nextNode.type === 'sendMessage') {
-        const templateId = nextNode.data?.templateId;
-        if (!templateId) {
-          toast.error(t('vsb_compile_template_error'));
-          return null;
+      // Add branching for standard nodes (non-condition)
+      if (currentNode.type !== 'condition' && currentNode.type !== 'aiIntent' && currentNode.type !== 'timeDelay') {
+        const nextEdge = outgoingEdges[0];
+        if (nextEdge) {
+          step.nextStepId = nextEdge.target;
         }
-        steps.push({
-          type: 'SEND_MESSAGE',
-          templateId,
-          delayHours: currentDelay
-        });
-        currentDelay = 0;
-      } else if (nextNode.type === 'meeting') {
-        steps.push({
-          type: 'BOOK_MEETING',
-          meetingTitle: nextNode.data?.title || '',
-          meetingDuration: nextNode.data?.duration || 60,
-          delayHours: currentDelay
-        });
-        currentDelay = 0;
       }
 
-      currentId = nextNode.id;
+      // Add to steps and queue next nodes
+      if (step.type) {
+        // Find if this step was preceded by a delay
+        const incomingEdges = edges.filter(e => e.target === currentId);
+        const prevDelayNode = nodes.find(n => n.type === 'timeDelay' && incomingEdges.some(e => e.source === n.id));
+        if (prevDelayNode) {
+          step.delayHours = (prevDelayNode.data as any)?.delayHours || 24;
+          step.waitType = (prevDelayNode.data as any)?.waitType || 'duration';
+          step.untilTime = (prevDelayNode.data as any)?.untilTime || '09:00';
+        }
+
+        steps.push(step);
+      }
+
+      outgoingEdges.forEach(e => {
+        if (!visited.has(e.target)) {
+          queue.push(e.target);
+        }
+      });
     }
 
-    if (steps.length === 0) {
+    if (steps.filter(s => s.type === 'SEND_MESSAGE').length === 0) {
       toast.error(t('vsb_compile_empty_error'));
       return null;
     }
@@ -1048,6 +1082,10 @@ function Flow() {
     setMenuPosition(null);
   };
 
+  const handleNodeDoubleClick = (_: React.MouseEvent, node: any) => {
+    setSelectedNodeForSettings(node);
+  };
+
   const handlePaneClick = () => {
     setSelectedNode(null);
     setMenuPosition(null); // Close context menu
@@ -1093,9 +1131,23 @@ function Flow() {
     toast.success(t('vsb_node_added'));
   };
 
-  // Keyboard Shortcuts (Hotkeys) Engine
+  // Optimized Keyboard Shortcuts (Hotkeys) Engine using Refs to avoid listener re-attachment lag
+  const stateRef = useRef({ 
+    nodes, selectedNode, isSimulating, name, sendTimeStart, sendTimeEnd, activeDays, 
+    maxPerDay, minDelayMinutes, skipReplied, autoStopOnReply 
+  });
+
+  useEffect(() => {
+    stateRef.current = { 
+      nodes, selectedNode, isSimulating, name, sendTimeStart, sendTimeEnd, activeDays, 
+      maxPerDay, minDelayMinutes, skipReplied, autoStopOnReply 
+    };
+  }, [nodes, selectedNode, isSimulating, name, sendTimeStart, sendTimeEnd, activeDays, maxPerDay, minDelayMinutes, skipReplied, autoStopOnReply]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const { nodes: currentNodes, selectedNode: currentSelectedNode, isSimulating: currentIsSimulating } = stateRef.current;
+      
       // 1. Save: Ctrl + S or Cmd + S
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
@@ -1114,18 +1166,18 @@ function Flow() {
       // 3. Duplicate Node: Ctrl + D or Cmd + D
       if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
         const target = e.target as HTMLElement;
-        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && selectedNode && selectedNode.type !== 'trigger') {
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && currentSelectedNode && currentSelectedNode.type !== 'trigger') {
           e.preventDefault();
           const newNode = {
-            id: `${selectedNode.type}-${Date.now()}`,
-            type: selectedNode.type,
+            id: `${currentSelectedNode.type}-${Date.now()}`,
+            type: currentSelectedNode.type,
             position: {
-              x: selectedNode.position.x + 40,
-              y: selectedNode.position.y + 40
+              x: currentSelectedNode.position.x + 40,
+              y: currentSelectedNode.position.y + 40
             },
-            data: JSON.parse(JSON.stringify(selectedNode.data))
+            data: JSON.parse(JSON.stringify(currentSelectedNode.data))
           };
-          setNodes([...nodes, newNode]);
+          setNodes([...currentNodes, newNode]);
           toast.success(t('vsb_node_duplicated'));
         }
       }
@@ -1133,9 +1185,9 @@ function Flow() {
       // 4. Delete Node: Delete or Backspace
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const target = e.target as HTMLElement;
-        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && selectedNode && selectedNode.type !== 'trigger') {
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && currentSelectedNode && currentSelectedNode.type !== 'trigger') {
           e.preventDefault();
-          setNodes(nodes.filter(n => n.id !== selectedNode.id));
+          setNodes(currentNodes.filter(n => n.id !== currentSelectedNode.id));
           setSelectedNode(null);
           toast.info(t('vsb_node_deleted'));
         }
@@ -1146,7 +1198,7 @@ function Flow() {
         setMenuPosition(null);
         setSelectedNode(null);
         setIsTemplateModalOpen(false);
-        if (isSimulating) {
+        if (currentIsSimulating) {
           stopSimulation();
         }
       }
@@ -1154,7 +1206,7 @@ function Flow() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [nodes, selectedNode, isSimulating, name, sendTimeStart, sendTimeEnd, activeDays, maxPerDay, minDelayMinutes, skipReplied, autoStopOnReply]);
+  }, []); // Only run once on mount
 
   // Drag and Drop
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -1185,6 +1237,10 @@ function Flow() {
           conditionType: 'hasReplied',
           title: type === 'meeting' ? 'Demo Toplantısı' : '',
           duration: 60,
+          tagId: '',
+          templates: [],
+          waitType: 'duration',
+          untilTime: '09:00'
         },
       };
 
@@ -1193,28 +1249,6 @@ function Flow() {
     [nodes, setNodes],
   );
 
-  // Injected Actions Synchronizer
-  useEffect(() => {
-    let changed = false;
-    const nextNodes = nodes.map(node => {
-      // Avoid re-assigning if already present to prevent unnecessary re-renders
-      if (node.data.onUpdate && node.data.onDelete) return node;
-
-      changed = true;
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          onUpdate: (newData: any) => updateNodeData(node.id, newData),
-          onDelete: () => setNodes(nodes.filter(n => n.id !== node.id))
-        }
-      };
-    });
-
-    if (changed) {
-      setNodes(nextNodes);
-    }
-  }, [nodes, setNodes]); // Re-run when nodes change to ensure all have functions
   // Dynamic Class Resolvers for Canvas Themes
   const getCanvasBgClass = () => {
     switch (canvasTheme) {
@@ -1353,8 +1387,11 @@ function Flow() {
                 { type: 'sendMessage', label: t('vsb_node_send_message'), desc: t('vsb_node_send_message_desc'), icon: MessageSquare, color: 'text-blue-400 bg-blue-500/10' },
                 { type: 'timeDelay', label: t('vsb_node_time_delay'), desc: t('vsb_node_time_delay_desc'), icon: Clock, color: 'text-amber-400 bg-amber-500/10' },
                 { type: 'condition', label: t('vsb_node_condition'), desc: t('vsb_node_condition_desc'), icon: GitFork, color: 'text-purple-400 bg-purple-500/10' },
+                { type: 'aiIntent', label: t('vsb_node_ai_intent', 'AI Niyet Analizi'), desc: 'Gelen mesaja göre akıllı dallanma.', icon: BrainCircuit, color: 'text-indigo-400 bg-indigo-500/10' },
+                { type: 'tag', label: 'Otomatik Etiketle', desc: 'Lead kartına etiket ekle.', icon: Tag, color: 'text-emerald-400 bg-emerald-500/10' },
                 { type: 'meeting', label: t('vsb_node_meeting'), desc: t('vsb_node_meeting_desc', 'Randevu/Toplantı planla'), icon: Calendar, color: 'text-amber-500 bg-amber-500/10' }
-              ].map(node => (                <div
+              ].map(node => (
+                <div
                   key={node.type}
                   draggable
                   onDragStart={(e) => { e.dataTransfer.setData('application/reactflow', node.type); e.dataTransfer.effectAllowed = 'move'; }}
@@ -1771,102 +1808,7 @@ function Flow() {
         </div>
       </div>
 
-        {/* Reactive Advanced Node Customization (Options Sidebar) */}
-        {activeNode && activeNode.type !== 'trigger' && (
-          <div className="border-t border-white/5 bg-white dark:bg-zinc-950/95 p-4 shrink-0 space-y-3.5 z-20" onClick={(e) => e.stopPropagation()}>
-             <div className="flex items-center justify-between">
-                <h3 className="text-[10px] font-black uppercase text-slate-100 tracking-wider">{t('vsb_node_settings')}</h3>
-                <button 
-                  onClick={() => {
-                    setNodes(nodes.filter(n => n.id !== activeNode.id));
-                    setSelectedNode(null);
-                  }}
-                  className="text-rose-500 hover:text-rose-455 p-1.5 bg-rose-500/10 rounded-lg transition-colors border border-rose-500/20"
-                  title={t('vsb_delete_node')}
-                >
-                  <Trash2 size={13} />
-                </button>
-             </div>
-             
-             {/* Custom Title Input */}
-             <div className="space-y-1">
-                <label className="text-[9px] font-black text-zinc-450 uppercase">{t('vsb_custom_node_name')}</label>
-                <Input
-                  value={(activeNode.data as any)?.customLabel || ''}
-                  onChange={e => updateNodeData(activeNode.id, { customLabel: e.target.value })}
-                  placeholder={activeNode.type === 'sendMessage' ? t('smn_send_message') : activeNode.type === 'timeDelay' ? t('tdn_delay') : t('cn_response_check')}
-                  className="h-8 rounded-lg text-xs font-bold border-white/5 bg-white/5 text-white focus:border-emerald-500"
-                />
-             </div>
-
-             {/* Custom Subtitle/Note Input */}
-             <div className="space-y-1">
-                <label className="text-[9px] font-black text-zinc-455 uppercase">{t('vsb_node_note')}</label>
-                <Input
-                  value={(activeNode.data as any)?.customDescription || ''}
-                  onChange={e => updateNodeData(activeNode.id, { customDescription: e.target.value })}
-                  placeholder={t('vsb_node_note_placeholder')}
-                  className="h-8 rounded-lg text-xs font-bold border-white/5 bg-white/5 text-white focus:border-emerald-500"
-                />
-             </div>
-
-             {/* Accent Color Picker circles */}
-             <div className="space-y-1">
-                <label className="text-[9px] font-black text-zinc-450 uppercase">{t('vsb_accent_color')}</label>
-                <div className="flex gap-1.5 flex-wrap pt-0.5">
-                  {['blue', 'emerald', 'amber', 'purple', 'rose', 'indigo', 'pink', 'slate'].map((color) => {
-                    const dotBg: any = {
-                      blue: 'bg-blue-500',
-                      emerald: 'bg-emerald-500',
-                      amber: 'bg-amber-500',
-                      purple: 'bg-purple-500',
-                      rose: 'bg-rose-500',
-                      indigo: 'bg-indigo-500',
-                      pink: 'bg-pink-500',
-                      slate: 'bg-slate-500'
-                    };
-                    const defaultColor = activeNode.type === 'sendMessage' ? 'blue' : activeNode.type === 'timeDelay' ? 'amber' : 'purple';
-                    const isActive = ((activeNode.data as any)?.customColor || defaultColor) === color;
-                    return (
-                      <button
-                        key={color}
-                        onClick={() => updateNodeData(activeNode.id, { customColor: color })}
-                        className={`w-5 h-5 rounded-full ${dotBg[color]} border-2 transition-all ${
-                          isActive ? 'border-zinc-200 scale-110 shadow-md' : 'border-transparent hover:scale-105'
-                        }`}
-                        title={color}
-                      />
-                    );
-                  })}
-                </div>
-             </div>
-
-             {/* Icon grid selector */}
-             <div className="space-y-1.5">
-                <label className="text-[9px] font-black text-zinc-450 uppercase">{t('vsb_node_icon')}</label>
-                <div className="grid grid-cols-6 gap-1 bg-white/5 p-1 rounded-xl border border-white/5">
-                  {Object.entries(ICON_MAP).map(([key, IconComponent]: any) => {
-                    const defaultIcon = activeNode.type === 'sendMessage' ? 'messagesquare' : activeNode.type === 'timeDelay' ? 'clock' : 'gitfork';
-                    const isActive = ((activeNode.data as any)?.customIcon || defaultIcon).toLowerCase() === key;
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => updateNodeData(activeNode.id, { customIcon: key })}
-                        className={`p-1.5 rounded-lg border transition-all flex items-center justify-center ${
-                          isActive 
-                            ? 'bg-zinc-800 border-slate-300 dark:border-zinc-700 text-white scale-105 shadow-sm' 
-                            : 'bg-transparent border-transparent text-zinc-455 hover:bg-zinc-850'
-                        }`}
-                        title={key}
-                      >
-                        <IconComponent size={12} />
-                      </button>
-                    );
-                  })}
-                </div>
-             </div>
-          </div>
-        )}
+        {/* Reactive Advanced Node Customization (Options Sidebar) removed, moved to Sheet */}
       {/* Main Canvas */}
       <div className="flex-1 flex flex-col relative h-full min-h-0" onClick={handlePaneClick}>
         <div className="absolute top-4 right-4 z-10 flex gap-2">
@@ -1952,6 +1894,7 @@ function Flow() {
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           onNodeClick={handleNodeClick}
+          onNodeDoubleClick={handleNodeDoubleClick}
           onPaneClick={handlePaneClick}
           onPaneContextMenu={onPaneContextMenu}
           onDrop={onDrop}
@@ -2208,6 +2151,559 @@ function Flow() {
             </div>
           </div>
         )}
+
+      {/* Node Settings Sheet */}
+      <Sheet open={!!selectedNodeForSettings} onOpenChange={(open) => !open && setSelectedNodeForSettings(null)}>
+        <SheetContent side="right" className="bg-[#080b10] border-white/5 w-full sm:max-w-md p-0 overflow-hidden flex flex-col">
+          {(() => {
+            const node = nodes.find(n => n.id === selectedNodeForSettings?.id);
+            if (!node) return null;
+
+            return (
+            <>
+              <SheetHeader className="p-6 border-b border-white/5 bg-[#0c1220]/50">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 rounded-2xl ${
+                    node.type === 'sendMessage' ? 'bg-blue-500/10 text-blue-400' :
+                    node.type === 'timeDelay' ? 'bg-amber-500/10 text-amber-400' :
+                    'bg-purple-500/10 text-purple-400'
+                  }`}>
+                    {(() => {
+                      const Icon = ICON_MAP[(node.data?.customIcon || '').toLowerCase()] || 
+                                   (node.type === 'sendMessage' ? MessageSquare : 
+                                    node.type === 'timeDelay' ? Clock : GitFork);
+                      return <Icon size={20} />;
+                    })()}
+                  </div>
+                  <div className="flex-1">
+                    <SheetTitle className="text-white font-black text-lg">
+                      {node.data?.customLabel || (
+                        node.type === 'sendMessage' ? t('smn_send_message') :
+                        node.type === 'timeDelay' ? t('tdn_delay') :
+                        node.type === 'condition' ? t('cn_response_check') :
+                        node.type
+                      )}
+                    </SheetTitle>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Düğüm Ayarları</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setNodes(nodes.filter(n => n.id !== node.id));
+                      setSelectedNodeForSettings(null);
+                      toast.info(t('vsb_node_deleted'));
+                    }}
+                    className="text-rose-500 hover:text-rose-400 p-2 bg-rose-500/10 rounded-xl transition-colors border border-rose-500/20"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </SheetHeader>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Basic Settings */}
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-zinc-450 uppercase tracking-widest">{t('vsb_custom_node_name')}</label>
+                    <Input
+                      value={node.data?.customLabel || ''}
+                      onChange={e => updateNodeData(node.id, { customLabel: e.target.value })}
+                      placeholder="Düğüm İsmi"
+                      className="h-11 rounded-xl font-bold border-white/5 bg-white/5 text-white focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-zinc-455 uppercase tracking-widest">{t('vsb_node_note')}</label>
+                    <Input
+                      value={node.data?.customDescription || ''}
+                      onChange={e => updateNodeData(node.id, { customDescription: e.target.value })}
+                      placeholder={t('vsb_node_note_placeholder')}
+                      className="h-11 rounded-xl font-bold border-white/5 bg-white/5 text-white focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Appearance Settings */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-450 uppercase tracking-widest">{t('vsb_accent_color')}</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['blue', 'emerald', 'amber', 'purple', 'rose', 'indigo', 'pink', 'slate'].map((color) => {
+                        const dotBg: any = {
+                          blue: 'bg-blue-500', emerald: 'bg-emerald-500', amber: 'bg-amber-500',
+                          purple: 'bg-purple-500', rose: 'bg-rose-500', indigo: 'bg-indigo-500',
+                          pink: 'bg-pink-500', slate: 'bg-slate-500'
+                        };
+                        const defaultColor = node.type === 'sendMessage' ? 'blue' : node.type === 'timeDelay' ? 'amber' : 'purple';
+                        const isActive = (node.data?.customColor || defaultColor) === color;
+                        return (
+                          <button
+                            key={color}
+                            onClick={() => updateNodeData(node.id, { customColor: color })}
+                            className={`w-6 h-6 rounded-full ${dotBg[color]} border-2 transition-all ${
+                              isActive ? 'border-white scale-110 shadow-lg' : 'border-transparent hover:scale-110'
+                            }`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-450 uppercase tracking-widest">{t('vsb_node_icon')}</label>
+                    <div className="grid grid-cols-4 gap-1.5 bg-white/5 p-1.5 rounded-2xl border border-white/5">
+                      {Object.entries(ICON_MAP).slice(0, 8).map(([key, IconComponent]: any) => {
+                        const defaultIcon = node.type === 'sendMessage' ? 'messagesquare' : node.type === 'timeDelay' ? 'clock' : 'gitfork';
+                        const isActive = (node.data?.customIcon || defaultIcon).toLowerCase() === key;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => updateNodeData(node.id, { customIcon: key })}
+                            className={`p-2 rounded-xl border transition-all flex items-center justify-center ${
+                              isActive 
+                                ? 'bg-white/10 border-white/20 text-white' 
+                                : 'bg-transparent border-transparent text-slate-500 hover:bg-white/5'
+                            }`}
+                          >
+                            <IconComponent size={14} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Node Specific Advanced Settings */}
+                {node.type === 'sendMessage' && (
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                    <label className="text-[10px] font-black text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                      <GitFork size={14} className="text-blue-400" /> {t('smn_template_variations')}
+                    </label>
+                    
+                    <div className="space-y-3">
+                      {/* Main Template Selection */}
+                      <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 space-y-4">
+                        <div className="flex justify-between items-center">
+                           <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                              <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Ana Mesaj Şablonu</label>
+                           </div>
+                           <span className="text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                              %{(() => {
+                                 const allTpls = node.data.templates || [];
+                                 const mainW = node.data.weight || 1;
+                                 const totalWeight = mainW + allTpls.reduce((acc: number, curr: any) => acc + (curr.weight || 1), 0);
+                                 return Math.round((mainW / totalWeight) * 100);
+                              })()}
+                           </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Select
+                            value={String(node.data?.templateId || '')}
+                            onValueChange={(val) => {
+                              updateNodeData(node.id, { templateId: val });
+                            }}
+                          >
+                            <SelectTrigger className="flex-1 h-11 bg-white/5 border-white/5 text-white font-bold rounded-xl shadow-inner">
+                              <SelectValue placeholder="Şablon Seçin">
+                                {templates.find((t: any) => String(t._id || t.id) === String(node.data?.templateId || ''))?.name}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#0c1220] border-white/10 text-white max-h-60">
+                              {templates.map((tpl: any) => (
+                                <SelectItem key={String(tpl._id || tpl.id)} value={String(tpl._id || tpl.id)}>
+                                  {tpl.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button 
+                            variant="outline"
+                            size="icon"
+                            className="h-11 w-11 rounded-xl border-white/5 bg-white/5 text-blue-400 hover:text-blue-300"
+                            onClick={() => setSelectedVariation({ nodeId: node.id, index: -1, templateId: node.data?.templateId })}
+                          >
+                            <Eye size={18} />
+                          </Button>
+                        </div>
+                        
+                        <div className="space-y-2 pt-1">
+                           <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-slate-500">
+                              <span>Gönderim Ağırlığı</span>
+                              <span className="text-slate-300 font-bold">{node.data.weight || 1}</span>
+                           </div>
+                           <Slider 
+                              value={[node.data.weight || 1]}
+                              min={1}
+                              max={20}
+                              step={1}
+                              onValueChange={([val]) => updateNodeData(node.id, { weight: val })}
+                              className="py-2"
+                           />
+                        </div>
+                      </div>
+
+                      {/* Variations List */}
+                      {node.data?.templates?.map((v: any, idx: number) => (
+                        <div key={idx} className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                               <div className="w-2 h-2 rounded-full bg-blue-500" />
+                               <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Varyasyon #{idx + 1}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                               <span className="text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+                                  %{(() => {
+                                     const allTpls = node.data.templates || [];
+                                     const mainW = node.data.weight || 1;
+                                     const totalWeight = mainW + allTpls.reduce((acc: number, curr: any) => acc + (curr.weight || 1), 0);
+                                     return Math.round(((v.weight || 1) / totalWeight) * 100);
+                                  })()}
+                               </span>
+                               <button 
+                                 onClick={() => {
+                                   const newTpls = node.data.templates.filter((_: any, i: number) => i !== idx);
+                                   updateNodeData(node.id, { templates: newTpls });
+                                 }}
+                                 className="text-rose-500 hover:text-rose-400 bg-rose-500/10 p-1 rounded-md"
+                               >
+                                 <X size={14} />
+                               </button>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Select
+                              value={String(v.templateId || '')}
+                              onValueChange={(val) => {
+                                const newTpls = node.data.templates.map((tpl: any, i: number) => 
+                                  i === idx ? { ...tpl, templateId: val } : tpl
+                                );
+                                updateNodeData(node.id, { templates: newTpls });
+                              }}
+                            >
+                              <SelectTrigger className="flex-1 h-10 bg-[#080b10] border-white/5 text-white font-bold rounded-xl shadow-inner">
+                                <SelectValue placeholder="Şablon Seçin">
+                                  {templates.find((t: any) => String(t._id || t.id) === String(v.templateId || ''))?.name}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#0c1220] border-white/10 text-white max-h-60">
+                                {templates.map((tpl: any) => (
+                                  <SelectItem key={String(tpl._id || tpl.id)} value={String(tpl._id || tpl.id)}>
+                                    {tpl.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button 
+                              variant="outline"
+                              size="icon"
+                              className="h-10 w-10 rounded-xl border-white/5 bg-[#080b10] text-blue-400"
+                              onClick={() => setSelectedVariation({ nodeId: node.id, index: idx, templateId: v.templateId })}
+                            >
+                              <Eye size={16} />
+                            </Button>
+                          </div>
+                          <div className="space-y-2 pt-1">
+                             <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                <span>Gönderim Ağırlığı</span>
+                                <span className="text-slate-300 font-bold">{v.weight || 1}</span>
+                             </div>
+                             <Slider 
+                                value={[v.weight || 1]}
+                                min={1}
+                                max={20}
+                                step={1}
+                                onValueChange={([val]) => {
+                                  const newTpls = node.data.templates.map((tpl: any, i: number) => 
+                                    i === idx ? { ...tpl, weight: val } : tpl
+                                  );
+                                  updateNodeData(node.id, { templates: newTpls });
+                                }}
+                                className="py-2"
+                             />
+                          </div>
+                        </div>
+                      ))}
+
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const currentTpls = node.data.templates || [];
+                          updateNodeData(node.id, { templates: [...currentTpls, { templateId: '', weight: 1 }] });
+                        }}
+                        className="w-full h-11 rounded-2xl border-dashed border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 flex items-center gap-2 font-bold"
+                      >
+                        <Plus size={16} /> Yeni Varyasyon Ekle
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {node.type === 'timeDelay' && (
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                    <label className="text-[10px] font-black text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                      <Clock size={14} className="text-amber-400" /> Zamanlama Ayarları
+                    </label>
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase">Bekleme Tipi</label>
+                        <Select
+                          value={node.data?.waitType || 'duration'}
+                          onValueChange={(val) => updateNodeData(node.id, { waitType: val })}
+                        >
+                          <SelectTrigger className="h-11 bg-white/5 border-white/5 text-white font-bold rounded-xl shadow-inner">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#0c1220] border-white/10 text-white">
+                            <SelectItem value="duration">Süre Kadar Bekle</SelectItem>
+                            <SelectItem value="until_time">Şu Saate Kadar Bekle</SelectItem>
+                            <SelectItem value="weekdays">Hafta İçi Olana Kadar Bekle</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {node.data?.waitType === 'duration' && (
+                        <div className="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-4">
+                           <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                              <span>Bekleme Süresi</span>
+                              <span className="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                 {Math.floor((node.data?.delayHours || 24))} Saat {Math.round(((node.data?.delayHours || 24) % 1) * 60)} Dakika
+                              </span>
+                           </div>
+                           <Slider 
+                              value={[node.data?.delayHours || 24]}
+                              min={0.25}
+                              max={72}
+                              step={0.25}
+                              onValueChange={([val]) => updateNodeData(node.id, { delayHours: val })}
+                              className="py-2"
+                           />
+                           <div className="flex justify-between text-[9px] font-bold text-slate-600 uppercase">
+                              <span>15 dk</span>
+                              <span>72 saat</span>
+                           </div>
+                        </div>
+                      )}
+
+                      {node.data?.waitType === 'until_time' && (
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-slate-400 uppercase">Hedef Saat</label>
+                          <Input 
+                            type="time"
+                            value={node.data?.untilTime || '09:00'}
+                            onChange={e => updateNodeData(node.id, { untilTime: e.target.value })}
+                            className="h-11 bg-white/5 border-white/5 text-white font-bold rounded-xl"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {node.type === 'condition' && (
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                    <label className="text-[10px] font-black text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                      <GitFork size={14} className="text-purple-400" /> Kontrol Şartı
+                    </label>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-slate-400 uppercase">Şart Tipi</label>
+                      <Select
+                        value={node.data?.conditionType || 'hasReplied'}
+                        onValueChange={(val) => updateNodeData(node.id, { conditionType: val })}
+                      >
+                        <SelectTrigger className="h-11 bg-white/5 border-white/5 text-white font-bold rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#0c1220] border-white/10 text-white">
+                          <SelectItem value="hasReplied">Müşteri Yanıtladıysa</SelectItem>
+                          <SelectItem value="hasOpened">Mesaj Okunduysa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                {node.type === 'tag' && (
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                    <label className="text-[10px] font-black text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                      <Tag size={14} className="text-emerald-400" /> Etiketleme Ayarları
+                    </label>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-slate-400 uppercase">Uygulanacak Etiket</label>
+                      <Select
+                        value={node.data?.tagId || ''}
+                        onValueChange={(val) => updateNodeData(node.id, { tagId: val })}
+                      >
+                        <SelectTrigger className="h-11 bg-white/5 border-white/5 text-white font-bold rounded-xl">
+                          <SelectValue placeholder="Etiket Seçin" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#0c1220] border-white/10 text-white">
+                          {tags.map((tag: any) => (
+                            <SelectItem key={tag.id} value={tag.id}>
+                              {tag.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                {node.type === 'meeting' && (
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                    <label className="text-[10px] font-black text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                      <Calendar size={14} className="text-amber-500" /> Toplantı Detayları
+                    </label>
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase">Toplantı Konusu</label>
+                        <Input 
+                          value={node.data?.title || ''}
+                          onChange={e => updateNodeData(node.id, { title: e.target.value })}
+                          placeholder="Örn: Ürün Tanıtımı"
+                          className="h-11 bg-white/5 border-white/5 text-white font-bold rounded-xl"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase">Süre (Dakika)</label>
+                        <Select
+                          value={String(node.data?.duration || 60)}
+                          onValueChange={(val) => updateNodeData(node.id, { duration: parseInt(val) })}
+                        >
+                          <SelectTrigger className="h-11 bg-white/5 border-white/5 text-white font-bold rounded-xl">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#0c1220] border-white/10 text-white">
+                            <SelectItem value="15">15 dk</SelectItem>
+                            <SelectItem value="30">30 dk</SelectItem>
+                            <SelectItem value="45">45 dk</SelectItem>
+                            <SelectItem value="60">60 dk</SelectItem>
+                            <SelectItem value="90">90 dk</SelectItem>
+                            <SelectItem value="120">120 dk</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              <div className="p-6 border-t border-white/5 bg-[#0c1220]/30">
+                <Button 
+                  onClick={() => setSelectedNodeForSettings(null)}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-black rounded-2xl h-12"
+                >
+                  Değişiklikleri Uygula
+                </Button>
+              </div>
+            </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
+
+      {/* Variation Details Sheet */}
+      <Sheet open={!!selectedVariation} onOpenChange={(open) => !open && setSelectedVariation(null)}>
+        <SheetContent side="right" className="bg-[#080b10] border-white/5 w-full sm:max-w-md p-0 overflow-hidden flex flex-col">
+          {selectedVariation && (
+            <>
+              <SheetHeader className="p-6 border-b border-white/5 bg-[#0c1220]/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-400">
+                    <MessageSquare size={20} />
+                  </div>
+                  <div>
+                    <SheetTitle className="text-white font-black text-lg">Varyasyon Detayları</SheetTitle>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      {selectedVariation.index === -1 ? 'Ana Mesaj Şablonu' : `Varyasyon #${selectedVariation.index + 1}`}
+                    </p>
+                  </div>
+                </div>
+              </SheetHeader>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {(() => {
+                  const targetId = typeof selectedVariation.templateId === 'object' ? (selectedVariation.templateId as any)._id || (selectedVariation.templateId as any).id : selectedVariation.templateId;
+                  const tpl = templates.find((t: any) => (t._id || t.id) === targetId);
+                  if (!tpl) return (
+                    <div className="flex flex-col items-center justify-center py-12 text-slate-500 gap-3">
+                      <AlertCircle size={40} className="opacity-20" />
+                      <p className="font-bold text-sm">Şablon seçilmedi veya bulunamadı.</p>
+                      <p className="text-[10px] opacity-50">ID: {String(targetId)}</p>
+                    </div>
+                  );
+
+                  const mediaUrl = tpl.mediaUrl ? (tpl.mediaUrl.startsWith('http') || tpl.mediaUrl.startsWith('data:') ? tpl.mediaUrl : `http://localhost:3001${tpl.mediaUrl.startsWith('/') ? '' : '/'}${tpl.mediaUrl}`) : null;
+
+                  return (
+                    <>
+                      {/* Template Identity */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-zinc-450 uppercase tracking-widest">Şablon İsmi</label>
+                        <div className="p-3.5 rounded-2xl bg-white/5 border border-white/5 font-bold text-slate-100">
+                          {tpl.name}
+                        </div>
+                      </div>
+
+                      {/* Message Content */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-zinc-450 uppercase tracking-widest">Mesaj İçeriği</label>
+                        <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
+                          <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-medium">
+                            {tpl.body}
+                          </p>
+                          <div className="pt-3 border-t border-white/5 flex flex-wrap gap-1.5">
+                            {MERGE_TAGS.filter(tag => tpl.body?.includes(tag.tag)).map(tag => (
+                              <span key={tag.tag} className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-black border border-emerald-500/20">
+                                {tag.tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Media Preview */}
+                      {mediaUrl && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-zinc-450 uppercase tracking-widest">Ekli Medya</label>
+                          <div className="rounded-2xl overflow-hidden border border-white/5 bg-black/20">
+                            {mediaUrl.match(/\.(mp4|webm|ogg)$/i) ? (
+                              <video src={mediaUrl} controls className="w-full h-auto" />
+                            ) : (
+                              <img src={mediaUrl} alt="Media" className="w-full h-auto object-contain max-h-64" />
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* A/B Testing Note */}
+                      <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10 flex gap-3">
+                        <Sparkles size={18} className="text-amber-500 shrink-0" />
+                        <div>
+                          <p className="text-[11px] font-black text-amber-500 uppercase mb-0.5">A/B Testi İpucu</p>
+                          <p className="text-[10px] font-medium text-slate-400 leading-relaxed">
+                            Farklı varyasyonlar kullanarak hangi mesajın daha yüksek dönüşüm aldığını ölçebilirsiniz. Ağırlık değerini artırarak o mesajın daha sık gönderilmesini sağlayabilirsiniz.
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              <div className="p-6 border-t border-white/5 bg-[#0c1220]/30">
+                <Button 
+                  onClick={() => setSelectedVariation(null)}
+                  className="w-full bg-white/5 hover:bg-white/10 text-white font-black rounded-2xl h-12"
+                >
+                  Kapat
+                </Button>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
       </div>
     </div>
   );

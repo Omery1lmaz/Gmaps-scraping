@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { 
-  Clock, MessageSquare, Sparkles, HelpCircle, Target, AlertCircle, Heart, Smile, GitFork, Compass, Send, CheckCircle2 
+  Clock, MessageSquare, Sparkles, HelpCircle, Target, AlertCircle, Heart, Smile, GitFork, Compass, Send, CheckCircle2, Settings2 
 } from 'lucide-react';
 import { useT } from '../../lib/i18n';
+import { useWorkflowStore } from '../../stores/workflowStore';
 
 const ICON_MAP: any = {
   messagesquare: MessageSquare,
@@ -31,47 +32,20 @@ const ACCENT_COLORS: any = {
   slate: { border: 'border-zinc-800', bg: 'bg-zinc-800/30', text: 'text-zinc-400', handle: '#64748b' }
 };
 
-export function TimeDelayNode({ data }: any) {
+export const TimeDelayNode = React.memo(({ data, id }: any) => {
   const t = useT();
+  const { setSelectedNodeForSettings } = useWorkflowStore();
 
-  // Determine initial state from existing data.delayHours
-  const [unit, setUnit] = useState<'minutes' | 'hours' | 'days'>(() => {
-    const hours = data.delayHours !== undefined ? data.delayHours : 24;
-    if (hours === 0) return 'hours';
-    if (hours < 1) return 'minutes';
-    if (hours >= 24 && hours % 24 === 0) return 'days';
-    return 'hours';
-  });
+  const waitType = data.waitType || 'duration';
+  const hours = data.delayHours !== undefined ? data.delayHours : 24;
 
-  const [amount, setAmount] = useState<number>(() => {
-    const hours = data.delayHours !== undefined ? data.delayHours : 24;
-    if (hours === 0) return 0;
-    if (hours < 1) return Math.round(hours * 60);
-    if (hours >= 24 && hours % 24 === 0) return Math.round(hours / 24);
-    return hours;
-  });
-
-  // Track and write to react-flow node data
-  const updateDelay = (newAmount: number, newUnit: 'minutes' | 'hours' | 'days') => {
-    let hours = newAmount;
-    if (newUnit === 'minutes') {
-      hours = Number((newAmount / 60).toFixed(4));
-    } else if (newUnit === 'days') {
-      hours = newAmount * 24;
-    }
-    data.delayHours = hours;
-  };
-
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Math.max(0, parseInt(e.target.value) || 0);
-    setAmount(val);
-    updateDelay(val, unit);
-  };
-
-  const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value as 'minutes' | 'hours' | 'days';
-    setUnit(val);
-    updateDelay(amount, val);
+  const getDelayDisplay = () => {
+    if (waitType === 'until_time') return `Saat: ${data.untilTime || '09:00'}`;
+    if (waitType === 'weekdays') return 'Hafta İçi';
+    
+    if (hours < 1) return `${Math.round(hours * 60)} Dakika`;
+    if (hours >= 24 && hours % 24 === 0) return `${Math.round(hours / 24)} Gün`;
+    return `${hours} Saat`;
   };
 
   // Dynamic customization
@@ -80,12 +54,24 @@ export function TimeDelayNode({ data }: any) {
   const IconComponent = data.customIcon ? (ICON_MAP[data.customIcon.toLowerCase()] || Clock) : Clock;
 
   return (
-    <div className={`px-4 py-3 shadow-lg rounded-2xl bg-[#090d12]/95 border-2 ${colorStyles.border} min-w-[210px] relative select-none`}>
+    <div className={`px-4 py-3 shadow-lg rounded-2xl bg-[#090d12]/95 border-2 ${colorStyles.border} min-w-[210px] relative select-none group/node`}>
       <Handle
         type="target"
         position={Position.Top}
         style={{ background: colorStyles.handle, width: 8, height: 8 }}
       />
+      
+      {/* Settings Icon - Absolute positioned on hover */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedNodeForSettings({ id, type: 'timeDelay', data } as any);
+        }}
+        className="absolute -right-2 -top-2 p-1.5 rounded-full bg-slate-800 text-slate-400 hover:text-white border border-slate-700 shadow-xl opacity-0 group-hover/node:opacity-100 transition-opacity z-20"
+        title={t('vsb_node_settings')}
+      >
+        <Settings2 size={12} />
+      </button>
 
       {data.activeCount !== undefined && data.activeCount > 0 && (
         <div className="absolute -top-3 right-2 px-2 py-0.5 rounded-full bg-amber-500 text-white font-black text-[9px] animate-pulse shadow-sm flex items-center gap-1 border border-white">
@@ -109,31 +95,13 @@ export function TimeDelayNode({ data }: any) {
         </div>
       </div>
 
-      <div className="space-y-1">
-        <label className="text-[9px] font-black text-slate-400 uppercase">{t('tdn_delay')}</label>
-        <div className="flex gap-1.5">
-          <input 
-            type="number"
-            min="0"
-            value={amount} 
-            onChange={handleAmountChange}
-            className="w-16 rounded-xl font-bold text-xs bg-zinc-900 border border-zinc-800 h-8 px-2 text-center focus:outline-none focus:border-amber-500 text-slate-100 shrink-0"
-          />
-          <select
-            value={unit}
-            onChange={handleUnitChange}
-            className="flex-1 rounded-xl font-bold text-xs bg-zinc-900 border border-zinc-800 h-8 px-2 focus:outline-none focus:border-amber-500 text-slate-100 cursor-pointer appearance-none"
-          >
-            <option value="minutes" className="text-xs bg-zinc-900">{t('tdn_unit_min')}</option>
-            <option value="hours" className="text-xs bg-zinc-900">{t('tdn_unit_hr')}</option>
-            <option value="days" className="text-xs bg-zinc-900">{t('tdn_unit_day')}</option>
-          </select>
-        </div>
+      <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/50">
+        <p className="text-[9px] font-black text-slate-500 uppercase mb-1">BEKLEME SÜRESİ</p>
+        <p className="text-xs font-black text-amber-500">{getDelayDisplay()}</p>
       </div>
 
-      {/* Description Annotations */}
       {data.customDescription && (
-        <div className="mt-2.5 pt-2 text-[9px] font-bold text-slate-400 border-t border-slate-100 italic leading-tight max-w-[180px] truncate" title={data.customDescription}>
+        <div className="mt-3 pt-2 text-[9px] font-bold text-slate-400 border-t border-white/5 italic leading-tight max-w-[170px] truncate" title={data.customDescription}>
           * {data.customDescription}
         </div>
       )}
@@ -146,4 +114,6 @@ export function TimeDelayNode({ data }: any) {
       />
     </div>
   );
-}
+});
+
+TimeDelayNode.displayName = 'TimeDelayNode';

@@ -68,16 +68,6 @@ const statusColors: Record<string, string> = {
   REJECTED: 'bg-red-500/10 text-red-500 border-red-500/20',
 };
 
-const statusTranslations: Record<string, string> = {
-  ALL: 'Tüm Durumlar',
-  NEW: 'Yeni',
-  CONTACTED: 'İletişime Geçildi',
-  FOLLOW_UP: 'Takip Ediliyor',
-  MEETING_BOOKED: 'Toplantı Ayarlandı',
-  CLOSED: 'Kazanıldı',
-  REJECTED: 'Reddedildi',
-};
-
 function isBusinessCurrentlyOpen(openingHours: any): boolean | undefined {
   if (!openingHours || Object.keys(openingHours).length === 0) return undefined;
   
@@ -165,6 +155,16 @@ export function LeadsPage() {
   const queryClient = useQueryClient();
   const { setSelectedLeadId } = useUIStore();
   const t = useT();
+
+  const statusTranslations = React.useMemo(() => ({
+    ALL: t('lp_all_status'),
+    NEW: t('lp_status_new'),
+    CONTACTED: t('lp_status_contacted'),
+    FOLLOW_UP: t('lp_status_follow_up'),
+    MEETING_BOOKED: t('lp_status_meeting_booked'),
+    CLOSED: t('lp_status_closed'),
+    REJECTED: t('lp_status_rejected'),
+  }), [t]);
   // Parse initial query params from URL
   const searchParams = new URLSearchParams(window.location.search);
   const initialSearch = searchParams.get('search') || '';
@@ -802,17 +802,16 @@ export function LeadsPage() {
                   <Badge className="bg-amber-500 text-black text-[8px] font-black border-none uppercase px-1.5 py-0">Starter</Badge>
                 </h4>
                 <p className="text-[11px] text-slate-400 font-bold max-w-md mx-auto">
-                  Yapay zeka ile akıllı filtreleme ve paket eşleştirme özelliğini kullanabilmek için planınızı yükseltin.
+                  {t('upg_ai_desc')}
                 </p>
-             </div>
-             <Button 
-               onClick={() => window.location.href = '/billing'}
-               className="h-9 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-[10px] uppercase tracking-wider gap-1.5 shadow-md shadow-emerald-500/20"
-             >
-               <Zap size={12} className="fill-black" />
-               Şimdi Kilidi Aç
-             </Button>
-          </div>
+                </div>
+                <Button
+                onClick={() => window.location.href = '/billing'}
+                className="h-9 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-[10px] uppercase tracking-wider gap-1.5 shadow-md shadow-emerald-500/20"
+                >
+                <Zap size={12} className="fill-black" />
+                {t('unlock_now')}
+                </Button>          </div>
         ) : (
           <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-white/5 p-6">
             <div className="flex items-center gap-2 mb-3">
@@ -1447,8 +1446,7 @@ export function LeadsPage() {
                               </button>
                             } />
                             <DropdownMenuContent align="start" className="w-56 p-2.5 rounded-xl border border-white/5 shadow-xl bg-[#0c1220]/50 backdrop-blur-sm text-[11px] text-slate-100 font-semibold">
-                              <div className="font-bold text-[10px] uppercase text-slate-400 border-b pb-1 mb-1 tracking-widest">Çalışma Saatleri</div>
-                              {Object.entries(lead.openingHours).map(([day, hrs]) => (
+                              <div className="font-bold text-[10px] uppercase text-slate-400 border-b pb-1 mb-1 tracking-widest">{t('hours_working_hours')}</div>                              {Object.entries(lead.openingHours).map(([day, hrs]) => (
                                 <div key={day} className="flex justify-between py-0.5">
                                   <span className="text-slate-500">{day}:</span>
                                   <span className="text-slate-700">{hrs as string}</span>
@@ -1549,10 +1547,10 @@ export function LeadsPage() {
                 } />
             <DropdownMenuContent align="center" className="w-56 rounded-xl border-white/5 p-1 shadow-2xl bg-[#0c1220]/50 backdrop-blur-sm text-slate-100 z-50">
               <div className="font-bold text-[10px] uppercase text-slate-400 border-b pb-1 mb-1 tracking-widest px-2 pt-1.5">{t('select_stage')}</div>
-              <DropdownMenuItem className="rounded-lg font-bold text-xs py-2 cursor-pointer" onClick={() => handleBulkUpdateStatus('NEW')}>Yeni</DropdownMenuItem>
-              <DropdownMenuItem className="rounded-lg font-bold text-xs py-2 cursor-pointer" onClick={() => handleBulkUpdateStatus('CONTACTED')}>İletişime Geçildi</DropdownMenuItem>
-              <DropdownMenuItem className="rounded-lg font-bold text-xs py-2 cursor-pointer" onClick={() => handleBulkUpdateStatus('FOLLOW_UP')}>Takip Ediliyor</DropdownMenuItem>
-              <DropdownMenuItem className="rounded-lg font-bold text-xs py-2 cursor-pointer" onClick={() => handleBulkUpdateStatus('MEETING_BOOKED')}>Toplantı Ayarlandı</DropdownMenuItem>
+              <DropdownMenuItem className="rounded-lg font-bold text-xs py-2 cursor-pointer" onClick={() => handleBulkUpdateStatus('NEW')}>{t('status_new')}</DropdownMenuItem>
+              <DropdownMenuItem className="rounded-lg font-bold text-xs py-2 cursor-pointer" onClick={() => handleBulkUpdateStatus('CONTACTED')}>{t('status_contacted')}</DropdownMenuItem>
+              <DropdownMenuItem className="rounded-lg font-bold text-xs py-2 cursor-pointer" onClick={() => handleBulkUpdateStatus('FOLLOW_UP')}>{t('status_follow_up')}</DropdownMenuItem>
+              <DropdownMenuItem className="rounded-lg font-bold text-xs py-2 cursor-pointer" onClick={() => handleBulkUpdateStatus('MEETING_BOOKED')}>{t('status_meeting_booked')}</DropdownMenuItem>
               <DropdownMenuItem className="rounded-lg font-bold text-xs py-2 text-green-600 font-black cursor-pointer" onClick={() => handleBulkUpdateStatus('CLOSED')}>{t('status_closed')}</DropdownMenuItem>
               <DropdownMenuItem className="rounded-lg font-bold text-xs py-2 text-red-600 font-black cursor-pointer" onClick={() => handleBulkUpdateStatus('REJECTED')}>{t('status_rejected')}</DropdownMenuItem>
             </DropdownMenuContent>

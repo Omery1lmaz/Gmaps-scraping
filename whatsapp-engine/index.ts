@@ -7,10 +7,15 @@ import jwt from 'jsonwebtoken';
 import { WhatsAppSessionManager } from './SessionManager.js';
 import db from './mongoService.js';
 import { setupWorkers } from './Worker.js';
+import pinoHttp from 'pino-http';
+import logger from './logger.js';
 
 dotenv.config();
 
 const app = express();
+// Using pino-http as a function directly if possible, or defaulting to .default if necessary
+const pinoMiddleware = (typeof pinoHttp === 'function') ? pinoHttp : (pinoHttp as any).default;
+app.use(pinoMiddleware({ logger }));
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {

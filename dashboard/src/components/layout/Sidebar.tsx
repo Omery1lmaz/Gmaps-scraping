@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Layout, 
+import {
+  LayoutDashboard,
+  Users,
+  Layout,
   Zap,
   MessageCircle,
   FileText,
@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   Calendar,
+  Smartphone,
   Settings
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -32,19 +33,19 @@ const menuItems = [
   { id: 'pipeline', path: '/pipeline', icon: Layout, label: 'Pipeline' },
   { id: 'templates', path: '/templates', icon: FileText, label: 'WP Şablonlar' },
   { id: 'sequences', path: '/sequences', icon: Zap, label: 'WP Otomasyon' },
-  { id: 'calendar', path: '/calendar', icon: Calendar, label: 'Takvim' },
-  { 
-    id: 'whatsapp_dropdown', 
-    icon: MessageCircle, 
+  // { id: 'calendar', path: '/calendar', icon: Calendar, label: 'Takvim' },
+  {
+    id: 'whatsapp_dropdown',
+    icon: MessageCircle,
     label: 'WhatsApp',
     isDropdown: true,
     children: [
-      { id: 'whatsapp_web', path: '/whatsapp', label: 'Web' },
-      { id: 'whatsapp_accounts', path: '/whatsapp/accounts', label: 'Hesaplar' },
+      { id: 'whatsapp_web', icon: Smartphone, path: '/whatsapp', label: 'Web' },
+      { id: 'whatsapp_accounts', icon: Users, path: '/whatsapp/accounts', label: 'Hesaplar' },
     ]
   },
   { id: 'billing', path: '/billing', icon: CreditCard, label: 'Abonelik & Ödeme' },
-  { id: 'settings', path: '/settings', icon: Settings, label: 'Ayarlar' },
+  // { id: 'settings', path: '/settings', icon: Settings, label: 'Ayarlar' },
 ];
 
 export function Sidebar() {
@@ -54,7 +55,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const t = useT();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  
+
   // Collapsible state initialized from localStorage for persistence
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem('sidebar-collapsed') === 'true';
@@ -77,7 +78,7 @@ export function Sidebar() {
 
   return (
     <TooltipProvider>
-      <aside 
+      <aside
         className={cn(
           "border-r border-slate-100/5 dark:border-slate-800/50 bg-white/5 dark:bg-slate-900/70 backdrop-blur-md flex flex-col h-screen shrink-0 relative transition-all duration-300 ease-in-out z-30 shadow-[4px_0_24px_rgba(0,0,0,0.5)]",
           isCollapsed ? "w-20" : "w-64"
@@ -103,7 +104,7 @@ export function Sidebar() {
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="font-extrabold text-sm tracking-tight text-slate-100 flex items-center gap-1.5">
-                WPAIFlow 
+                WPAIFlow
                 <span className="bg-gradient-to-r from-emerald-500 to-green-600 text-black text-[9px] font-extrabold px-1.5 py-0.5 rounded-full shadow-sm">
                   PRO
                 </span>
@@ -114,7 +115,7 @@ export function Sidebar() {
             </div>
           )}
         </div>
-        
+
         {/* Navigation Items */}
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto scrollbar-thin">
           {menuItems.map((item) => {
@@ -142,10 +143,11 @@ export function Sidebar() {
                       key={child.id}
                       to={child.path || '#'}
                       className={cn(
-                        "flex items-center justify-between w-full px-12 py-2 text-xs font-semibold rounded-xl transition-colors",
+                        "flex items-center justify-start gap-2 w-full px-12 py-2 text-xs font-semibold rounded-xl transition-colors",
                         pathname === child.path ? "text-emerald-400" : "text-slate-500 hover:text-slate-300"
                       )}
                     >
+                      <child.icon size={19} className={cn("transition-transform duration-200", isActive ? "text-emerald-400" : "text-slate-400")} />
                       <span>{child.label}</span>
                       {child.id === 'whatsapp_web' && unreadCount > 0 && (
                         <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-lg shadow-rose-500/20">
@@ -166,7 +168,7 @@ export function Sidebar() {
                 className={cn(
                   "w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all duration-200 group relative border border-transparent",
                   isActive
-                    ? "bg-gradient-to-r from-emerald-500 to-green-600 text-black font-extrabold shadow-[0_4px_20px_rgba(16,185,129,0.25)] border-0" 
+                    ? "bg-gradient-to-r from-emerald-500 to-green-600 text-black font-extrabold shadow-[0_4px_20px_rgba(16,185,129,0.25)] border-0"
                     : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
                 )}
               >
@@ -245,8 +247,8 @@ export function Sidebar() {
               )}
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent 
-              side={isCollapsed ? "right" : "top"} 
+            <DropdownMenuContent
+              side={isCollapsed ? "right" : "top"}
               align={isCollapsed ? "end" : "center"}
               sideOffset={isCollapsed ? 12 : 8}
               className="w-56 p-1.5 border border-white/10 bg-[#0c1220]/95 backdrop-blur-md shadow-2xl rounded-2xl z-50"
@@ -255,29 +257,29 @@ export function Sidebar() {
                 <span className="text-xs font-black text-slate-200">{user?.name}</span>
                 <span className="text-[10px] font-bold text-slate-500">{user?.email}</span>
               </div>
-              
+
               <DropdownMenuSeparator className="bg-white/5" />
-              
-              <DropdownMenuItem 
+
+              <DropdownMenuItem
                 onClick={() => navigate('/overview')}
                 className="flex items-center gap-2 p-2 text-xs font-extrabold text-slate-300 hover:text-emerald-400 focus:bg-emerald-500/10 focus:text-emerald-400 rounded-xl cursor-pointer transition-colors"
               >
                 <LayoutDashboard size={14} />
                 {t('overview')}
               </DropdownMenuItem>
-              
-              <DropdownMenuItem 
+
+              <DropdownMenuItem
                 onClick={() => navigate('/whatsapp')}
                 className="flex items-center gap-2 p-2 text-xs font-extrabold text-slate-300 hover:text-emerald-400 focus:bg-emerald-500/10 focus:text-emerald-400 rounded-xl cursor-pointer transition-colors"
               >
                 <MessageCircle size={14} />
                 {t('whatsapp')}
               </DropdownMenuItem>
-              
+
               <DropdownMenuSeparator className="bg-white/5" />
-              
-              <DropdownMenuItem 
-                onClick={() => logout()} 
+
+              <DropdownMenuItem
+                onClick={() => logout()}
                 className="flex items-center gap-2 p-2 text-xs font-extrabold text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10 rounded-xl cursor-pointer transition-colors"
               >
                 <Zap size={14} className="rotate-180" />

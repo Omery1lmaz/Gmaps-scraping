@@ -17,6 +17,7 @@ import { AdaptiveRetryEngine } from './AdaptiveRetryEngine.js';
 import { MediaCacheService } from './MediaCacheService.js';
 import { MetricsService } from './MetricsService.js';
 import { LatencyController } from './LatencyController.js';
+import logger from './logger.js';
 
 const { MessageMedia } = whatsappWeb as any;
 const IORedis = (Redis as any).default || Redis;
@@ -309,20 +310,20 @@ async function resolveClientForUser(
 
 async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionManager, service: WhatsAppService) {
   const { leadSequenceStateId } = job.data;
-  console.log(`[SequenceWorker] === STARTING processSequenceStep for state: ${leadSequenceStateId} ===`);
+  logger.info({ leadSequenceStateId }, '[SequenceWorker] === STARTING processSequenceStep ===');
   const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
     maxRetriesPerRequest: null,
   });
   const sequenceQueue = new Queue('sequence-messages', { connection: redisConnection });
 
   try {
-    console.log(`[SequenceWorker] Fetching state ${leadSequenceStateId} from DB`);
+    logger.debug({ leadSequenceStateId }, '[SequenceWorker] Fetching state from DB');
     const state = await db.sequenceState.findUnique({
       where: { id: leadSequenceStateId }
     });
 
     if (!state) {
-      console.warn(`[SequenceWorker] State ${leadSequenceStateId} not found in DB!`);
+      logger.warn({ leadSequenceStateId }, '[SequenceWorker] State not found in DB!');
       return;
     }
     console.log(`[SequenceWorker] State status: ${state.status}, nextRunAt: ${state.nextRunAt}, isForced: ${state.isForced}`);
@@ -353,14 +354,18 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
       return;
     }
 
-    console.log(`[SequenceWorker] Sequence: ${sequence.name}, Lead: ${lead.businessName || lead.name}`);
+    logger.info({ 
+      sequenceName: sequence.name, 
+      leadName: lead.businessName || lead.name,
+      stepCount: sequence.steps?.length || 0 
+    }, '[SequenceWorker] Starting step processing');
+
     const steps = sequence.steps || [];
-    console.log(`[SequenceWorker] Total steps in sequence: ${steps.length}`);
 
     // Check Sequence Schedule
-    console.log(`[SequenceWorker] Checking schedule constraints`);
+    logger.debug({ sequenceId: sequence.id }, '[SequenceWorker] Checking schedule constraints');
     if (!isWithinSequenceSchedule(sequence, state.isForced)) {
-      console.log(`[SequenceWorker] Outside sequence schedule. Rescheduling in DB...`);
+      logger.info({ stateId: state.id }, '[SequenceWorker] Outside sequence schedule. Rescheduling...');
       await db.sequenceState.update({
         where: { id: state.id },
         data: { nextRunAt: new Date(Date.now() + 3600000), status: 'ACTIVE', isForced: false }
@@ -369,18 +374,18 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
     }
 
     // Resolve WhatsApp client early to obtain session ID for isolated rate limiting
-    console.log(`[SequenceWorker] Resolving WA client for user: ${resolvedUserId}`);
+    logger.debug({ userId: resolvedUserId }, '[SequenceWorker] Resolving WA client');
     const targetSessionId = sequence.whatsappSessionId || job.data.sessionId;
     const resolved = await resolveClientForUser(resolvedUserId, sessionManager, targetSessionId);
     if (!resolved) {
-      console.error(`[SequenceWorker] WhatsApp client not found for user: ${resolvedUserId} (targetSessionId: ${targetSessionId})`);
+      logger.error({ userId: resolvedUserId, targetSessionId }, '[SequenceWorker] WhatsApp client not found or offline');
       throw new Error('WhatsApp Client offline');
     }
     const { client, sessionId: resolvedSessionId } = resolved;
 
-    console.log(`[SequenceWorker] Checking rate limits for session ${resolvedSessionId}`);
+    logger.debug({ resolvedSessionId }, '[SequenceWorker] Checking rate limits');
     if (!checkRateLimit(resolvedSessionId)) {
-      console.warn(`[SequenceWorker] Rate limited for session ${resolvedSessionId}. Re-scheduling sequence step in DB.`);
+      logger.warn({ resolvedSessionId }, '[SequenceWorker] Rate limited. Re-scheduling...');
       await db.sequenceState.update({
         where: { id: state.id },
         data: { nextRunAt: new Date(Date.now() + 60000), status: 'ACTIVE' }
@@ -388,12 +393,23 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
       return;
     }
 
+    const currentStepId = state.currentStepId;
     const currentStepIndex = state.currentStepIndex;
-    const nextStep = steps[currentStepIndex];
-    console.log(`[SequenceWorker] Current step index: ${currentStepIndex}`);
+    
+    let nextStep = null;
+    if (currentStepId) {
+      nextStep = steps.find((s: any) => s.id === currentStepId);
+    } else {
+      nextStep = steps[currentStepIndex];
+    }
+
+    logger.info({ 
+      stepType: nextStep?.type, 
+      stepId: currentStepId || currentStepIndex 
+    }, '[SequenceWorker] Processing current step');
 
     if (!nextStep) {
-      console.log(`[SequenceWorker] No steps remaining. Marking sequence state ${state.id} as COMPLETED.`);
+      logger.info({ stateId: state.id }, '[SequenceWorker] No steps remaining. Marking as COMPLETED.');
       await db.sequenceState.update({
         where: { id: state.id },
         data: { status: 'COMPLETED' }
@@ -401,8 +417,91 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
       return;
     }
 
+    // Helper to find next step in graph or linear
+    const findNextStep = (currentStep: any, intent?: string): any => {
+      if (currentStep.branches && currentStep.branches.length > 0) {
+        if (intent) {
+          const branch = currentStep.branches.find((b: any) => b.intent === intent);
+          if (branch) return steps.find((s: any) => s.id === branch.nextStepId);
+        }
+        // Fallback to first branch if no intent or not found? Or just end.
+        return null;
+      }
+      if (currentStep.nextStepId) {
+        return steps.find((s: any) => s.id === currentStep.nextStepId);
+      }
+      // Backward compatibility: linear increment
+      if (!currentStep.id) {
+        return steps[currentStepIndex + 1];
+      }
+      return null;
+    };
+
+    // Helper to calculate nextRunAt based on wait settings
+    const calculateNextRunAt = (step: any): Date => {
+      const now = new Date();
+      const waitType = step.waitType || 'duration';
+      const delayHours = step.delayHours || 24;
+
+      if (waitType === 'until_time' && step.untilTime) {
+        const [h, m] = step.untilTime.split(':').map(Number);
+        const next = new Date();
+        next.setHours(h, m, 0, 0);
+        if (next <= now) {
+          next.setDate(next.getDate() + 1); // Tomorrow at that time
+        }
+        return next;
+      }
+
+      if (waitType === 'weekdays') {
+        const next = new Date(now.getTime() + (delayHours * 3600000));
+        const day = next.getDay();
+        if (day === 0) { // Sunday -> Monday
+          next.setDate(next.getDate() + 1);
+          next.setHours(9, 0, 0, 0);
+        } else if (day === 6) { // Saturday -> Monday
+          next.setDate(next.getDate() + 2);
+          next.setHours(9, 0, 0, 0);
+        }
+        return next;
+      }
+
+      // Default: Duration
+      return new Date(now.getTime() + (delayHours * 3600000));
+    };
+
+    if (nextStep.type === 'TAG') {
+      logger.info({ tagId: nextStep.tagId, leadId: lead.id }, '[SequenceWorker] Step type is TAG. Adding tag to lead...');
+      if (nextStep.tagId) {
+        await db.lead.update({
+          where: { id: lead.id },
+          data: {
+            tags: { $addToSet: nextStep.tagId }
+          }
+        });
+      }
+      
+      const nextToRun = findNextStep(nextStep);
+      const hasMoreSteps = !!nextToRun;
+      
+      await db.sequenceState.update({
+        where: { id: state.id },
+        data: {
+          currentStepId: nextToRun?.id,
+          currentStepIndex: currentStepIndex + 1,
+          status: hasMoreSteps ? 'ACTIVE' : 'COMPLETED',
+          nextRunAt: new Date(), // Run next step immediately for TAG
+          lastRunAt: new Date()
+        }
+      });
+      
+      // Re-queue immediately
+      await sequenceQueue.add('process-sequence-step', { leadSequenceStateId: state.id });
+      return;
+    }
+
     if (nextStep.type === 'BOOK_MEETING') {
-      console.log(`[SequenceWorker] Step type is BOOK_MEETING. Creating meeting record...`);
+      logger.info({ leadId: lead.id }, '[SequenceWorker] Step type is BOOK_MEETING. Creating meeting record...');
       const meetingDate = new Date();
       meetingDate.setDate(meetingDate.getDate() + 1); // Default to tomorrow
       
@@ -417,22 +516,21 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
         }
       });
       
-      console.log(`[SequenceWorker] Meeting created: ${newMeeting.id}`);
+      logger.info({ meetingId: newMeeting.id }, '[SequenceWorker] Meeting created');
       
       // Update State and finish
-      const nextStepIndex = currentStepIndex + 1;
-      const hasMoreSteps = steps.length > nextStepIndex;
+      const nextToRun = findNextStep(nextStep);
+      const hasMoreSteps = !!nextToRun;
       let nextRunAt = null;
       if (hasMoreSteps) {
-        const nextDelayStep = steps[nextStepIndex];
-        const delayMs = (nextDelayStep?.delayHours || 24) * 3600000;
-        nextRunAt = new Date(Date.now() + delayMs);
+        nextRunAt = calculateNextRunAt(nextToRun);
       }
 
       await db.sequenceState.update({
         where: { id: state.id },
         data: {
-          currentStepIndex: nextStepIndex,
+          currentStepId: nextToRun?.id,
+          currentStepIndex: currentStepIndex + 1,
           status: hasMoreSteps ? 'ACTIVE' : 'COMPLETED',
           nextRunAt,
           lastRunAt: new Date()
@@ -443,48 +541,83 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
 
     // Client already resolved above for rate limiting
 
-    console.log(`[SequenceWorker] Fetching message template ${nextStep.templateId}`);
-    const template = await db.messageTemplate.findUnique({ where: { id: nextStep.templateId } });
+    const pickTemplateId = (step: any): string => {
+      if (step.templates && step.templates.length > 0) {
+        const totalWeight = step.templates.reduce((sum: number, t: any) => sum + (t.weight || 0), 0);
+        let random = Math.random() * totalWeight;
+        for (const t of step.templates) {
+          if (random < (t.weight || 0)) {
+            return t.templateId.toString();
+          }
+          random -= (t.weight || 0);
+        }
+        return step.templates[0].templateId.toString();
+      }
+      return step.templateId;
+    };
+
+    const resolvedTemplateId = pickTemplateId(nextStep);
+    logger.info({ resolvedTemplateId }, '[SequenceWorker] Selected template');
+
+    logger.debug({ resolvedTemplateId }, '[SequenceWorker] Fetching message template');
+    const template = await db.messageTemplate.findUnique({ where: { id: resolvedTemplateId } });
     if (!template) {
-      console.error(`[SequenceWorker] Template ${nextStep.templateId} not found in DB!`);
+      logger.error({ resolvedTemplateId }, '[SequenceWorker] Template not found in DB!');
       throw new Error('Template missing');
     }
 
     let content = template.content;
+    
+    // Fetch Calendly integration for variable replacement
+    let bookingLink = '';
+    try {
+      const calendlyInt = await db.calendlyIntegration.findFirst({
+        where: { userId: resolvedUserId }
+      });
+      if (calendlyInt && calendlyInt.schedulingUrl) {
+        bookingLink = calendlyInt.schedulingUrl;
+        console.log(`[SequenceWorker] Resolved Calendly booking link for user ${resolvedUserId}: ${bookingLink}`);
+      }
+    } catch (dbErr) {
+      console.warn(`[SequenceWorker] Error loading Calendly integration:`, dbErr);
+    }
+
     const vars = {
       businessName: lead.businessName || '',
       city: lead.city || '',
       category: lead.category || '',
       rating: lead.rating?.toString() || '',
       website: lead.website || '',
-      phone: lead.phone || ''
+      phone: lead.phone || '',
+      booking_link: bookingLink
     };
     Object.entries(vars).forEach(([key, value]) => {
       content = content.replace(new RegExp(`{${key}}`, 'g'), value);
+      content = content.replace(new RegExp(`{{${key}}}`, 'g'), value);
     });
 
     // Dynamic Anti-Ban delay and strict cooldown spacing
     const delay = await AntiBanService.getDelayForType('SEQUENCE', resolvedSessionId);
-    console.log(`[SequenceWorker] Dynamic Anti-Ban delay: ${delay}ms before sending (session: ${resolvedSessionId})...`);
+    logger.info({ delay, sessionId: resolvedSessionId }, '[SequenceWorker] Applying anti-ban delay');
     await new Promise(resolve => setTimeout(resolve, delay));
 
     await AntiBanService.enforceCooldown(resolvedSessionId);
 
     let targetJid = formatPhoneToJid(lead.phone || '', lead.country || undefined);
-    console.log(`[SequenceWorker] Formatted phone to targetJid: ${targetJid}`);
+    logger.debug({ phone: lead.phone, targetJid }, '[SequenceWorker] Formatted phone');
     if (targetJid.endsWith('@c.us')) {
       const numberToResolve = targetJid.split('@')[0];
       try {
-        console.log(`[SequenceWorker] Resolving JID for ${numberToResolve}`);
+        logger.debug({ numberToResolve }, '[SequenceWorker] Resolving JID');
         const registered = await client.getNumberId(numberToResolve);
         if (registered && registered._serialized) {
           targetJid = registered._serialized;
-          console.log(`[SequenceWorker] JID resolved successfully: ${targetJid}`);
+          logger.info({ targetJid }, '[SequenceWorker] JID resolved successfully');
         } else {
-          console.log(`[SequenceWorker] getNumberId returned null for ${numberToResolve}, keeping original targetJid`);
+          logger.warn({ numberToResolve }, '[SequenceWorker] JID resolution failed, using fallback');
         }
       } catch (err) {
-        console.error(`[SequenceWorker] Failed to resolve JID:`, err);
+        logger.error({ err, numberToResolve }, '[SequenceWorker] Error resolving JID');
       }
     }
 
@@ -493,17 +626,17 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
       const chat = await client.getChatById(targetJid);
       await chat.sendStateTyping();
       const typingTime = Math.min(3500, Math.max(1200, content.length * 40));
-      console.log(`[SequenceWorker] Simulating human typing for ${typingTime}ms...`);
+      logger.debug({ typingTime, targetJid }, '[SequenceWorker] Simulating human typing');
       await new Promise(resolve => setTimeout(resolve, typingTime));
       await chat.clearState();
     } catch (typingErr) {
-      console.warn(`[SequenceWorker] Typing simulation failed (ignoring):`, extractErrorMessage(typingErr));
+      logger.warn({ err: extractErrorMessage(typingErr), targetJid }, '[SequenceWorker] Typing simulation failed');
     }
 
-    console.log(`[SequenceWorker] Sending message to ${targetJid} with content preview: "${content.substring(0, 30)}..."`);
+    logger.info({ targetJid, preview: content.substring(0, 30) }, '[SequenceWorker] Sending message');
     let message;
     if (template.hasMedia && template.mediaUrl) {
-      console.log(`[SequenceWorker] Sending ${template.mediaType} media from ${template.mediaUrl}`);
+      logger.debug({ mediaType: template.mediaType, mediaUrl: template.mediaUrl }, '[SequenceWorker] Sending media');
       const clientAdapter = new WhatsAppClient(client);
       const mediaInfo = await MediaPreprocessor.downloadAndValidate(
         (template.mediaType as any) || 'IMAGE',
@@ -528,35 +661,34 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
     } else {
       message = await client.sendMessage(targetJid, content);
     }
-    console.log(`[SequenceWorker] Message sent successfully! ID: ${message.id._serialized}`);
+    logger.info({ messageId: message.id._serialized }, '[SequenceWorker] Message sent successfully');
 
     // 2. Update State
-    const nextStepIndex = currentStepIndex + 1;
-    const hasMoreSteps = steps.length > nextStepIndex;
+    const nextToRun = findNextStep(nextStep);
+    const hasMoreSteps = !!nextToRun;
     
     let nextRunAt = null;
     if (hasMoreSteps) {
-      const nextDelayStep = steps[nextStepIndex];
-      const delayMs = (nextDelayStep?.delayHours || 24) * 3600000;
-      nextRunAt = new Date(Date.now() + delayMs);
-      console.log(`[SequenceWorker] Scheduled next step in ${nextDelayStep?.delayHours}h (nextRunAt: ${nextRunAt.toISOString()})`);
+      nextRunAt = calculateNextRunAt(nextToRun);
+      logger.info({ nextRunAt, nextStepType: nextToRun?.type }, '[SequenceWorker] Scheduled next step');
     }
 
-    console.log(`[SequenceWorker] Updating sequence state in DB...`);
+    logger.debug({ stateId: state.id }, '[SequenceWorker] Updating sequence state in DB');
     await db.sequenceState.update({
       where: { id: state.id },
       data: {
-        currentStepIndex: nextStepIndex,
+        currentStepId: nextToRun?.id,
+        currentStepIndex: currentStepIndex + 1,
         lastSentAt: new Date(),
         status: hasMoreSteps ? 'ACTIVE' : 'COMPLETED',
         nextRunAt: nextRunAt,
         isForced: false
       }
     });
-    console.log(`[SequenceWorker] Sequence state updated successfully.`);
+    logger.info({ stateId: state.id }, '[SequenceWorker] Sequence state updated');
 
     // 3. Log
-    console.log(`[SequenceWorker] Creating message log entry...`);
+    logger.debug({ leadId: state.leadId }, '[SequenceWorker] Creating message log entry');
     await db.messageLog.create({
       data: {
         userId: resolvedUserId,

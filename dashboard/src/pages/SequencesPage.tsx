@@ -268,10 +268,10 @@ export function SequencesPage() {
                 </div>
 
                 {/* Footer Actions */}
-                <div className="flex items-center justify-between pt-1">
-                  
+                <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
+
                   {/* Status controls */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -303,26 +303,25 @@ export function SequencesPage() {
                   </div>
 
                   {/* Routing controls */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5 shrink-0">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => navigate(`/sequences/${seq._id}/edit`)}
-                      className="h-8 text-[10px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-xl px-2.5 flex items-center gap-1 border border-border/50 hover:border-blue-150 transition-all cursor-pointer"
+                      className="h-8 text-[9px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-xl px-2 flex items-center gap-0.5 border border-border/50 hover:border-blue-150 transition-all cursor-pointer"
                     >
-                      <GitFork size={11} className="stroke-[2.5]" /> {t('sp_design_flow')}
+                      <GitFork size={10} className="stroke-[2.5]" /> {t('sp_design_flow')}
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => navigate(`/sequences/${seq._id}`)}
-                      className="h-8 text-[10px] font-black uppercase tracking-wider text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-xl px-2.5 border border-border/50 hover:border-amber-150 transition-all flex items-center cursor-pointer"
+                      className="h-8 text-[9px] font-black uppercase tracking-wider text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-xl px-2 border border-border/50 hover:border-amber-150 transition-all flex items-center cursor-pointer"
                     >
-                      {t('sp_people')} ({seq._count?.leadStates || 0}) <ChevronRight size={12} className="ml-0.5 stroke-[2.5]" />
+                      {t('sp_people')} ({seq._count?.leadStates || 0}) <ChevronRight size={10} className="ml-0.5 stroke-[2.5]" />
                     </Button>
                   </div>
-                </div>
-              </div>
+                </div>              </div>
 
             </CardContent>
           </Card>

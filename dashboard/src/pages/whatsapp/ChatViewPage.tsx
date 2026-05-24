@@ -777,47 +777,41 @@ export function ChatViewPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-104px)] flex-col gap-4 p-1">
-      <div className="flex items-center gap-4">
-        {/* Sidebar Toggle Button */}
-        <Button 
-          variant="outline" 
-          onClick={() => setIsChatListVisible(!isChatListVisible)}
-          className={cn(
-            "h-14 w-14 rounded-3xl border-white/5 bg-[#0c1220]/60 backdrop-blur-xl shadow-2xl transition-all active:scale-90 flex items-center justify-center shrink-0",
-            !isChatListVisible ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" : "text-slate-400 hover:text-white"
-          )}
-          title={isChatListVisible ? "Sohbet Listesini Gizle" : "Sohbet Listesini Göster"}
-        >
-          <LayoutDashboard size={24} />
-        </Button>
-
-        <div className="flex-1">
-          <WhatsAppHeader
-            sessionInfo={sessionInfo}
-            connected={connected}
-            socketConnected={!!socket?.connected}
-            onSync={() => syncMutation.mutate()} 
-            onLogout={() => logoutMutation.mutate(undefined)} 
-            onRestart={() => connectMutation.mutate(undefined)}
-            syncPending={syncMutation.isPending}
-            logoutPending={logoutMutation.isPending}
-            restartPending={connectMutation.isPending}
-            isSimpleView={true}
-            sessions={sessions}
-            selectedSessionId={selectedSessionId}
-            onSessionChange={(id) => {
-              setSelectedSessionId(id);
-              localStorage.setItem('wa_selected_session_id', id);
-            }}
-          />
+    <div className="flex h-[calc(100vh-64px)] flex-col gap-3 p-1">
+      <div className="flex items-center justify-between gap-4 py-1.5">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => setIsChatListVisible(!isChatListVisible)}
+            className={cn(
+              "h-10 w-10 rounded-2xl border-white/5 bg-[#0c1220]/60 backdrop-blur-xl shadow-2xl transition-all active:scale-90 flex items-center justify-center shrink-0",
+              !isChatListVisible ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" : "text-slate-400 hover:text-white"
+            )}
+            title={isChatListVisible ? "Sohbet Listesini Gizle" : "Sohbet Listesini Göster"}
+          >
+            <LayoutDashboard size={18} />
+          </Button>
+          <span className="text-sm font-black text-white tracking-tight flex items-center gap-2">
+            WhatsApp Sohbet
+            {socket?.connected ? (
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-black text-emerald-400 uppercase tracking-widest">
+                <span className="size-1 rounded-full bg-emerald-500 animate-pulse" />
+                Live
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-[9px] font-black text-rose-400 uppercase tracking-widest">
+                <span className="size-1 rounded-full bg-rose-500" />
+                Offline
+              </span>
+            )}
+          </span>
         </div>
 
         {/* Right Panel Trigger (Sheet) */}
         <Sheet>
           <SheetTrigger>
-            <Button variant="outline" className="h-14 w-14 rounded-3xl border-white/5 bg-[#0c1220]/60 backdrop-blur-xl shadow-2xl hover:bg-white/10 transition-all active:scale-90 flex items-center justify-center shrink-0">
-              <Sparkles className="size-6 text-amber-500" />
+            <Button variant="outline" className="h-10 w-10 rounded-2xl border-white/5 bg-[#0c1220]/60 backdrop-blur-xl shadow-2xl hover:bg-white/10 transition-all active:scale-90 flex items-center justify-center shrink-0">
+              <Sparkles className="size-4 text-amber-500" />
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-[400px] bg-[#0c1220]/95 backdrop-blur-2xl border-white/5 p-0 sm:max-w-[400px]">
@@ -881,6 +875,19 @@ export function ChatViewPage() {
             connected={connected}
             chatTags={chatTags}
             AVAILABLE_TAGS={AVAILABLE_TAGS}
+            sessionInfo={sessionInfo}
+            onSync={() => syncMutation.mutate()}
+            onLogout={() => logoutMutation.mutate(undefined)}
+            onRestart={() => connectMutation.mutate(undefined)}
+            syncPending={syncMutation.isPending}
+            logoutPending={logoutMutation.isPending}
+            restartPending={connectMutation.isPending}
+            sessions={sessions}
+            selectedSessionId={selectedSessionId}
+            onSessionChange={(id) => {
+              setSelectedSessionId(id);
+              localStorage.setItem('wa_selected_session_id', id);
+            }}
           />
         </section>
 

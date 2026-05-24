@@ -16,6 +16,7 @@ import { ScrollArea } from '../../components/ui/scroll-area';
 import { Search, Plus, Loader2, CheckCircle2, ShieldAlert, MapPin, Tag, Globe, Phone, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
+import { useT } from '../../lib/i18n';
 
 interface AddLeadsSheetProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ interface AddLeadsSheetProps {
 }
 
 export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
@@ -154,11 +156,11 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
               </div>
               
               <div className="space-y-1.5 col-span-2">
-                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest block">Metin Arama</label>
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest block">{t('als_search_text')}</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
                   <Input
-                    placeholder="İşletme adı, adres veya anahtar kelime..."
+                    placeholder={t('search_customers_ph')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9 h-10 rounded-xl border-slate-200 dark:border-slate-700 focus-visible:ring-4 focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 text-xs font-bold shadow-2xs bg-slate-50/30 dark:bg-slate-800/50"
@@ -178,7 +180,7 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                   onChange={(e) => setSelectedCity(e.target.value)}
                   className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-2xs"
                 >
-                  <option value="">Tüm Şehirler</option>
+                  <option value="">{t('als_all_cities')}</option>
                   {cities.map((city) => (
                     <option key={city} value={city}>
                       {city}
@@ -196,7 +198,7 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-2xs"
                 >
-                  <option value="">Tüm Kategoriler</option>
+                  <option value="">{t('als_all_categories')}</option>
                   {categories.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
@@ -214,10 +216,10 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                   onChange={(e) => setMinRating(e.target.value)}
                   className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-2xs"
                 >
-                  <option value="">Fark Etmez</option>
-                  <option value="3.0">3.0+ Yıldız</option>
-                  <option value="4.0">4.0+ Yıldız</option>
-                  <option value="4.5">4.5+ Yıldız</option>
+                  <option value="">{t('als_any')}</option>
+                  <option value="3.0">{t('als_3_star_plus')}</option>
+                  <option value="4.0">{t('als_4_star_plus')}</option>
+                  <option value="4.5">{t('als_4_5_star_plus')}</option>
                 </select>
               </div>
             </div>
@@ -233,9 +235,9 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                   onChange={(e) => setHasWebsite(e.target.value)}
                   className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-2xs"
                 >
-                  <option value="all">Fark Etmez (Hepsi)</option>
-                  <option value="true">Sadece Web Sitesi Olanlar</option>
-                  <option value="false">Sadece Web Sitesi Olmayanlar</option>
+                  <option value="all">{t('als_any_all')}</option>
+                  <option value="true">{t('als_only_website')}</option>
+                  <option value="false">{t('als_no_website')}</option>
                 </select>
               </div>
 
@@ -248,9 +250,9 @@ export function AddLeadsSheet({ isOpen, onClose }: AddLeadsSheetProps) {
                   onChange={(e) => setHasPhone(e.target.value)}
                   className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all cursor-pointer shadow-2xs"
                 >
-                  <option value="all">Fark Etmez (Hepsi)</option>
-                  <option value="true">Sadece Telefonu Olanlar</option>
-                  <option value="false">Sadece Telefonu Olmayanlar</option>
+                  <option value="all">{t('als_any_all')}</option>
+                  <option value="true">{t('als_only_phone')}</option>
+                  <option value="false">{t('als_no_phone')}</option>
                 </select>
               </div>
             </div>

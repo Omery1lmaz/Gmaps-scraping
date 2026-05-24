@@ -178,7 +178,6 @@ export function BillingPage() {
 
   const currentQuotaLimit = isFree ? 50 : isStarter ? 1000 : isPro ? 5000 : 25000;
   const quotaPercent = (leadsScraped / currentQuotaLimit) * 100;
-
   return (
     <div className="space-y-8 animate-in fade-in duration-300 relative pb-10">
       {/* Dynamic Glow Accents */}
@@ -289,16 +288,16 @@ export function BillingPage() {
               </span>
             </div>
 
-            <div className="mt-6 space-y-2">
+            <div className="mt-8 space-y-2">
               <Progress value={quotaPercent} className="h-2">
                 <ProgressTrack className="bg-slate-800/80 rounded-full overflow-hidden h-2.5">
                   <ProgressIndicator className="bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full h-full" style={{ width: `${Math.min(quotaPercent, 100)}%` }} />
                 </ProgressTrack>
               </Progress>
-              <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 mt-1">
+              <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 mt-2">
                 <span>{t('quota_start')}</span>
                 <span className={quotaPercent >= 80 ? 'text-rose-400 font-extrabold animate-pulse' : 'text-slate-400'}>
-                  {t('quota_percent_full', { percent: quotaPercent.toFixed(0) })}
+                  {t('quota_percent_full', quotaPercent.toFixed(0))}
                 </span>
                 <span>{t('quota_limit')}</span>
               </div>

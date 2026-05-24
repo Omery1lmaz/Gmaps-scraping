@@ -1,0 +1,3 @@
+2026/05/24-11:55:39.983 85 Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Sync Data/LevelDB/MANIFEST-000001
+2026/05/24-11:55:40.005 85 Recovering log #3
+2026/05/24-11:55:40.008 85 Reusing old log /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Sync Data/LevelDB/000003.log 

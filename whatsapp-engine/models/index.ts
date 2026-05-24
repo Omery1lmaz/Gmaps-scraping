@@ -15,6 +15,7 @@ import CampaignLead from './CampaignLead.js';
 import Sequence from './Sequence.js';
 import Meeting from './Meeting.js';
 import WhatsAppMediaDLQ from './WhatsAppMediaDLQ.js';
+import CalendlyIntegration from './CalendlyIntegration.js';
 
 import SequenceState from './SequenceState.js';
 import MessageLog from './MessageLog.js';
@@ -38,6 +39,7 @@ export {
   CampaignLead,
   Sequence,
   Meeting,
+  CalendlyIntegration,
 
   SequenceState,
   MessageLog,

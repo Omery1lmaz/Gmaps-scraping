@@ -22,6 +22,7 @@ import { LanguageProvider } from './lib/language';
 import { AuthProvider, useAuth } from './lib/auth';
 import { WhatsAppProvider } from './features/whatsapp/WhatsAppProvider';
 import { Routes, Route, Navigate } from './lib/router';
+import { GlobalDialog } from './components/GlobalDialog';
 import { AuthPage } from './pages/AuthPage';
 
 function ProtectedApp() {
@@ -58,6 +59,7 @@ function ProtectedApp() {
         </Routes>
       </Layout>
       <LeadDrawer />
+      <GlobalDialog />
     </>
   );
 }

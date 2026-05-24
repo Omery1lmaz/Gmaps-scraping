@@ -181,7 +181,7 @@ export function CreateTemplatePage() {
           <div className="pt-2">
               <p className="text-[10px] font-black text-zinc-550 uppercase mb-3">{t('ct_variables_label')}</p>
               <div className="flex flex-wrap gap-2">
-                {['businessName', 'city', 'category', 'phone', 'website'].map(variable => (
+                {['businessName', 'city', 'category', 'phone', 'website', 'booking_link'].map(variable => (
                   <Badge
                     key={variable}
                     variant="outline"

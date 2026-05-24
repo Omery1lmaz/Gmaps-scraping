@@ -19,6 +19,7 @@ import PipelineStage from './models/PipelineStage';
 import ScrapeTask from './models/ScrapeTask';
 import Meeting from './models/Meeting';
 import ScrapeCategory from './models/ScrapeCategory';
+import CalendlyIntegration from './models/CalendlyIntegration';
 
 let isConnected = false;
 
@@ -60,5 +61,6 @@ export {
   PipelineStage,
   ScrapeTask,
   Meeting,
-  ScrapeCategory
+  ScrapeCategory,
+  CalendlyIntegration
 };

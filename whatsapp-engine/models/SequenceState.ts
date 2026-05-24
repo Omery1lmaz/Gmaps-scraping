@@ -4,7 +4,8 @@ export interface ISequenceState extends Document {
   sequenceId: string | mongoose.Types.ObjectId;
   leadId: string | mongoose.Types.ObjectId;
   currentStepIndex: number;
-  status: 'PENDING' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'REPLIED';
+  currentStepId?: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'REPLIED' | 'STOPPED_BY_REPLY';
   nextRunAt?: Date;
   lastError?: string;
   isForced?: boolean;
@@ -17,7 +18,8 @@ const SequenceStateSchema: Schema = new Schema({
   sequenceId: { type: Schema.Types.ObjectId, ref: 'Sequence', required: true },
   leadId: { type: Schema.Types.ObjectId, ref: 'Lead', required: true },
   currentStepIndex: { type: Number, default: 0 },
-  status: { type: String, enum: ['PENDING', 'IN_PROGRESS', 'PAUSED', 'COMPLETED', 'FAILED', 'REPLIED'], default: 'PENDING' },
+  currentStepId: { type: String },
+  status: { type: String, enum: ['PENDING', 'IN_PROGRESS', 'PAUSED', 'COMPLETED', 'FAILED', 'REPLIED', 'STOPPED_BY_REPLY'], default: 'PENDING' },
   nextRunAt: { type: Date },
   lastError: { type: String },
   isForced: { type: Boolean, default: false },

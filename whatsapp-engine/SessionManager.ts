@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import fsp from 'fs/promises';
 import { generateAiReply } from './aiUtility.js';
+import logger from './logger.js';
 
 const { Client, LocalAuth, Events } = whatsappWeb as any;
 const MEDIA_DIR = process.env.WHATSAPP_MEDIA_DIR || path.join(process.cwd(), 'media', 'whatsapp');
@@ -25,16 +26,16 @@ export class WhatsAppSessionManager {
   private startBackgroundSync() {
     // Run every 15 minutes
     setInterval(async () => {
-      console.log('[Background-Sync] Starting periodic sync for all active sessions...');
+      logger.info('[Background-Sync] Starting periodic sync for all active sessions...');
       for (const [sessionId, client] of this.clients.entries()) {
         try {
           const state = await client.getState();
           if (state === 'CONNECTED') {
-            console.log(`[Background-Sync] Syncing session: ${sessionId}`);
-            this.syncHistory(sessionId).catch(err => console.error(`Sync failed for ${sessionId}:`, err));
+            logger.debug({ sessionId }, '[Background-Sync] Syncing session');
+            this.syncHistory(sessionId).catch(err => logger.error({ err, sessionId }, 'Sync failed'));
           }
         } catch (e) {
-          console.error(`[Background-Sync] Failed to check status for ${sessionId}:`, e);
+          logger.error({ err: e, sessionId }, '[Background-Sync] Failed to check status');
         }
       }
     }, 15 * 60 * 1000);
@@ -373,19 +374,19 @@ export class WhatsAppSessionManager {
   }
 
   private async initialize() {
-    console.log('Initializing WhatsApp Session Manager...');
+    logger.info('Initializing WhatsApp Session Manager...');
     
     // Restore existing connected sessions from DB.
     try {
       const sessions = await db.whatsAppSession.findMany({});
       for (const session of sessions) {
         if (session.status === 'CONNECTED' || session.status === 'AUTHENTICATED') {
-          console.log(`Restoring session for user: ${session.userId}, session: ${session.id || session._id}`);
+          logger.info({ sessionId: session.id || session._id, userId: session.userId }, 'Restoring session');
           this.createClient(session.id || session._id, session.userId).catch(() => {});
         }
       }
     } catch (error) {
-      console.error('Failed to restore sessions during SessionManager initialization:', error);
+      logger.error(error, 'Failed to restore sessions during SessionManager initialization');
     }
   }
 
@@ -466,20 +467,20 @@ export class WhatsAppSessionManager {
 
   private setupEventListeners(sessionId: string, client: any, userId: string) {
     client.on('qr', (qr: any) => {
-      console.log(`QR Code generated for session ${sessionId} (user ${userId})`);
+      logger.info({ sessionId, userId }, 'QR Code generated');
       this.io.to(userId).emit('qr', { sessionId, qr });
       this.updateSessionStatus(sessionId, 'QR_READY', userId);
     });
 
     client.on('authenticated', () => {
-      console.log(`User ${userId} session ${sessionId} authenticated`);
+      logger.info({ sessionId, userId }, 'Session authenticated');
       this.io.to(userId).emit('authenticated', { sessionId });
       this.updateSessionStatus(sessionId, 'AUTHENTICATED', userId).catch(() => { });
     });
 
     client.on('ready', async () => {
       const info = client.info;
-      console.log(`WhatsApp client ready for session ${sessionId} (${info.wid.user})`);
+      logger.info({ sessionId, userId, phoneNumber: info.wid.user }, 'WhatsApp client ready');
 
       await db.whatsAppSession.upsert({
         where: { id: sessionId },
@@ -507,6 +508,12 @@ export class WhatsAppSessionManager {
         sessionId,
         phoneNumber: info.wid.user,
         pushName: info.pushname
+      });
+
+      // Trigger automatic synchronization when connection is successfully established/restored
+      console.log(`[Auto-Sync] Initiating auto-sync for session ${sessionId}...`);
+      this.syncHistory(sessionId).catch((err) => {
+        console.error(`[Auto-Sync] Auto-sync failed for session ${sessionId}:`, err);
       });
     });
 
@@ -561,7 +568,12 @@ export class WhatsAppSessionManager {
     client.on('message_create', async (msg: any) => {
       if (msg.from.endsWith('@c.us') || msg.from.endsWith('@g.us') || msg.from.endsWith('@lid')) {
         const phone = (msg.fromMe ? msg.to : msg.from).split('@')[0];
-        console.log(`[Message-Event] ${msg.fromMe ? 'Outgoing' : 'Incoming'} message for ${phone} in session ${sessionId}: ${msg.body?.substring(0, 30)}`);
+        logger.debug({ 
+          sessionId, 
+          fromMe: msg.fromMe, 
+          phone, 
+          body: msg.body?.substring(0, 50) 
+        }, '[Message-Event] Processed message');
         
         const rawChat = typeof msg.getChat === 'function' ? await msg.getChat() : undefined;
         const savedMessage = await this.persistWhatsAppMessage(sessionId, userId, msg, rawChat);
@@ -574,7 +586,7 @@ export class WhatsAppSessionManager {
 
           // AUTO-DISCOVERY FOR UNKNOWN NUMBERS
           if (!lead) {
-            console.log(`[Auto-Discovery] Unknown contact detected: ${phone}. Calling discovery endpoint...`);
+            logger.info({ phone, sessionId }, '[Auto-Discovery] Unknown contact detected. Calling discovery...');
             try {
               const axios = (await import('axios')).default;
               const serverUrl = process.env.SERVER_URL || 'http://api:3001';
@@ -590,10 +602,10 @@ export class WhatsAppSessionManager {
 
               if (discRes.data.success) {
                 lead = discRes.data.lead;
-                console.log(`[Auto-Discovery] New lead created: ${lead!.id}`);
+                logger.info({ leadId: lead!.id, phone }, '[Auto-Discovery] New lead created');
               }
             } catch (discErr) {
-              console.error('[Auto-Discovery] Error discovering lead:', discErr);
+              logger.error({ err: discErr, phone }, '[Auto-Discovery] Error discovering lead');
             }
           }
 
@@ -616,9 +628,67 @@ export class WhatsAppSessionManager {
             if (activeSequences.length > 0) {
               for (const state of activeSequences) {
                 const sequence = await db.sequence.findUnique({ where: { id: state.sequenceId } });
+                if (!sequence) continue;
 
-                if (sequence && sequence.aiReplyEnabled) {
-                  console.log(`[AI-Reply] Sequence ${sequence.id} has AI reply enabled for lead ${lead.id}. Generating response...`);
+                // TRIGGER AI INTENT ANALYSIS
+                let detectedIntent = 'other';
+                try {
+                  const axios = (await import('axios')).default;
+                  const serverUrl = process.env.SERVER_URL || 'http://api:3001';
+                  const apiKey = process.env.API_KEY;
+
+                  const analysisRes = await axios.post(`${serverUrl}/api/whatsapp/analyze-intent`, {
+                    leadId: lead.id,
+                    message: msg.body
+                  }, {
+                    headers: { 'x-api-key': apiKey }
+                  });
+
+                  detectedIntent = analysisRes.data.intent?.toLowerCase() || 'other';
+                  logger.info({ leadId: lead.id, detectedIntent }, '[AI-Intent] Detected intent');
+                } catch (intentErr) {
+                  logger.error({ err: intentErr, leadId: lead.id }, '[AI-Intent] Error analyzing intent');
+                }
+
+                // Check for AI Intent Branching in sequence
+                const steps = sequence.steps || [];
+                const currentStepId = state.currentStepId;
+                const currentStepIndex = state.currentStepIndex;
+                let currentStep = currentStepId ? steps.find((s: any) => s.id === currentStepId) : steps[currentStepIndex];
+
+                // If current step points to an AI_INTENT node, or IS an AI_INTENT node
+                // (Usually, after SEND_MESSAGE, the next node could be AI_INTENT)
+                let intentNode = null;
+                if (currentStep?.nextStepId) {
+                  const next = steps.find((s: any) => s.id === currentStep.nextStepId);
+                  if (next?.type === 'AI_INTENT') intentNode = next;
+                } else if (currentStep?.type === 'AI_INTENT') {
+                  intentNode = currentStep;
+                }
+
+                if (intentNode && intentNode.branches) {
+                  logger.debug({ sequenceId: sequence.id, detectedIntent }, '[AI-Intent] Sequence has AI Intent node. Branching...');
+                  const branch = intentNode.branches.find((b: any) => b.intent === detectedIntent) || 
+                                 intentNode.branches.find((b: any) => b.intent === 'other');
+                  
+                  if (branch) {
+                    const nextStep = steps.find((s: any) => s.id === branch.nextStepId);
+                    await db.sequenceState.update({
+                      where: { id: state.id },
+                      data: {
+                        currentStepId: nextStep?.id,
+                        status: nextStep ? 'ACTIVE' : 'COMPLETED',
+                        nextRunAt: new Date(), // Continue immediately
+                        isForced: true
+                      }
+                    });
+                    logger.info({ nextStepType: nextStep?.type, sequenceId: sequence.id }, '[AI-Intent] Sequence updated to next step');
+                    continue; // Handled by branching
+                  }
+                }
+
+                if (sequence.aiReplyEnabled) {
+                  logger.info({ sequenceId: sequence.id, leadId: lead.id }, '[AI-Reply] AI reply enabled. Generating response...');
                   try {
                     const replyText = await generateAiReply(lead, msg.body, sequence.aiPrompt || '', userId);
                     if (replyText) {
@@ -673,35 +743,6 @@ export class WhatsAppSessionManager {
               content: msg.body,
               timestamp: new Date()
             });
-
-            // TRIGGER AI INTENT ANALYSIS
-            try {
-              // We call the backend via fetch or axios to analyze intent
-              // Since the server is likely at localhost:3001
-              const axios = (await import('axios')).default;
-              const serverUrl = process.env.SERVER_URL || 'http://api:3001';
-              const apiKey = process.env.API_KEY;
-
-              const analysisRes = await axios.post(`${serverUrl}/api/whatsapp/analyze-intent`, {
-                leadId: lead.id,
-                message: msg.body
-              }, {
-                headers: { 'x-api-key': apiKey }
-              });
-
-              const analysis = analysisRes.data;
-              console.log(`[AI-Intent] Analyzed message for ${lead.businessName}: ${analysis.intent}`);
-
-              if (analysis.intent !== 'UNKNOWN') {
-                this.io.to(userId).emit('intent_detected', {
-                  leadId: lead.id,
-                  businessName: lead.businessName,
-                  ...analysis
-                });
-              }
-            } catch (intentErr) {
-              console.error('[AI-Intent] Error analyzing intent:', intentErr);
-            }
           }
         }
 
@@ -911,7 +952,7 @@ export class WhatsAppSessionManager {
       this.reconnectionAttempts.delete(sessionId);
       return true;
     } catch (error) {
-      console.error(`Reconnection failed for session ${sessionId}:`, error);
+      logger.error(error, `Reconnection failed for session ${sessionId}`);
       return false;
     }
   }
