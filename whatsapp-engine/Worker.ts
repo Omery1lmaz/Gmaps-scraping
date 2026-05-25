@@ -915,7 +915,7 @@ async function processWhatsAppChatMessage(job: Job, sessionManager: WhatsAppSess
       where: { id: whatsAppMessageId },
       data: {
         status: 'SENT',
-        whatsappMessageId: sentMessage?.id?._serialized || null,
+        whatsappMessageId: sentMessage?.id?._serialized,
         timestamp: new Date(),
         chatId: targetJid, // Ensure the message points to the correct JID
         sessionId: resolvedSessionId,

@@ -216,10 +216,14 @@ export class WhatsAppSessionManager {
 
   private async persistWhatsAppMessage(sessionId: string, userId: string, rawMessage: any, rawChat?: any) {
     const chat = await this.upsertChatFromRaw(sessionId, userId, rawChat, rawMessage?.fromMe ? rawMessage?.to : rawMessage?.from);
-    const whatsappMessageId = rawMessage?.id?._serialized;
-    if (whatsappMessageId) {
+    
+    // Always ensure a unique ID to avoid E11000 duplicate key error on nulls
+    const whatsappMessageId = rawMessage?.id?._serialized || `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    
+    // Check for duplicates only if it's not our local ID
+    if (rawMessage?.id?._serialized) {
       const existing = await db.whatsAppMessage.findFirst({
-        where: { userId, sessionId, whatsappMessageId },
+        where: { userId, sessionId, whatsappMessageId: rawMessage.id._serialized },
       });
       if (existing) return existing;
     }
@@ -231,7 +235,7 @@ export class WhatsAppSessionManager {
     const type = rawMessage?.type || (rawMessage?.hasMedia ? 'media' : 'text');
     const message = await db.whatsAppMessage.create({
       data: {
-        whatsappMessageId,
+        whatsappMessageId, // Always use the string ID
         userId,
         sessionId,
         chatId: chat.jid || chat.id,
@@ -861,7 +865,7 @@ export class WhatsAppSessionManager {
     });
   }
 
-  public async destroyClient(sessionId: string, forceLogout: boolean = false) {
+  public async destroyClient(sessionId: string, forceLogout: boolean = false, removeRecord: boolean = false) {
     const client = this.clients.get(sessionId);
     if (client) {
       try {
@@ -878,7 +882,16 @@ export class WhatsAppSessionManager {
 
     const sessionRecord = await db.whatsAppSession.findUnique({ where: { id: sessionId } });
     const userId = sessionRecord ? sessionRecord.userId : sessionId;
-    await this.updateSessionStatus(sessionId, 'DISCONNECTED', userId);
+
+    if (removeRecord) {
+      await db.whatsAppSession.delete({ where: { id: sessionId } }).catch(() => {});
+    } else {
+      await this.updateSessionStatus(sessionId, 'DISCONNECTED', userId);
+    }
+  }
+
+  public resetReconnection(sessionId: string) {
+    this.reconnectionAttempts.delete(sessionId);
   }
 
   public getStatus(sessionId: string) {

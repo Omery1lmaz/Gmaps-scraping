@@ -46,6 +46,13 @@ const WhatsAppMessageSchema: Schema = new Schema({
 
 // Compound index for chatId + timestamp
 WhatsAppMessageSchema.index({ chatId: 1, timestamp: 1 });
-WhatsAppMessageSchema.index({ userId: 1, sessionId: 1, whatsappMessageId: 1 }, { unique: true, sparse: true });
+WhatsAppMessageSchema.index(
+  { userId: 1, sessionId: 1, whatsappMessageId: 1 },
+  { 
+    unique: true, 
+    sparse: true,
+    partialFilterExpression: { whatsappMessageId: { $type: "string" } }
+  }
+);
 
 export default mongoose.model<IWhatsAppMessage>('WhatsAppMessage', WhatsAppMessageSchema);

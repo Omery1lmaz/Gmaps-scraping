@@ -1,2 +1,3 @@
-2026/05/24-21:03:59.849 225 Creating DB /app/.wwebjs_auth/session-6a1367bf56a18bc6baf2d9f4/Default/shared_proto_db/metadata since it was missing.
-2026/05/24-21:03:59.897 225 Reusing MANIFEST /app/.wwebjs_auth/session-6a1367bf56a18bc6baf2d9f4/Default/shared_proto_db/metadata/MANIFEST-000001
+2026/05/25-11:14:40.241 12b Reusing MANIFEST /app/.wwebjs_auth/session-6a1367bf56a18bc6baf2d9f4/Default/shared_proto_db/metadata/MANIFEST-000001
+2026/05/25-11:14:40.248 12b Recovering log #3
+2026/05/25-11:14:40.254 12b Reusing old log /app/.wwebjs_auth/session-6a1367bf56a18bc6baf2d9f4/Default/shared_proto_db/metadata/000003.log 

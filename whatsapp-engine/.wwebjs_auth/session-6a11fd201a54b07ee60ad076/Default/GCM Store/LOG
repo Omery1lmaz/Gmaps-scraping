@@ -1,2 +1,3 @@
-2026/05/24-21:11:37.857 625 Creating DB /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/GCM Store since it was missing.
-2026/05/24-21:11:37.868 625 Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/GCM Store/MANIFEST-000001
+2026/05/24-23:14:11.384 a23 Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/GCM Store/MANIFEST-000001
+2026/05/24-23:14:11.386 a23 Recovering log #3
+2026/05/24-23:14:11.387 a23 Reusing old log /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/GCM Store/000003.log 

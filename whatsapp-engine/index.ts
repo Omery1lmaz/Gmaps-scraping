@@ -92,12 +92,6 @@ io.on('connection', (socket) => {
     if (requestedSessionId) {
       socket.join(`session:${requestedSessionId}`);
     }
-    
-    // Auto-start client initialization if joined
-    const sessionId = requestedSessionId || userId;
-    sessionManager.createClient(sessionId, userId).catch((err) => {
-      console.error(`Failed to auto-create client for session ${sessionId}:`, err);
-    });
   });
 
   socket.on('disconnect', () => {
@@ -110,6 +104,12 @@ app.get('/status/:sessionId', requireSessionAccess, async (req, res) => {
   const sessionId = String(req.params.sessionId);
   const session = await db.whatsAppSession.findUnique({ where: { id: sessionId } });
   res.json(session || { status: 'DISCONNECTED', lastErrorMessage: null, lastErrorAt: null });
+});
+
+app.post('/disconnect/:sessionId', requireSessionAccess, async (req, res) => {
+  const sessionId = String(req.params.sessionId);
+  await sessionManager.destroyClient(sessionId, true, true);
+  res.json({ success: true, message: 'Disconnected and removed successfully' });
 });
 
 app.post('/connect/:sessionId', requireSessionAccess, async (req, res) => {

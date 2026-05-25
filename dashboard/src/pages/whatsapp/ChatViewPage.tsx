@@ -805,7 +805,7 @@ export function ChatViewPage() {
           </Button>
           <span className="text-sm font-black text-white tracking-tight flex items-center gap-2">
             WhatsApp Sohbet
-            {socket?.connected ? (
+            {connected ? (
               <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-black text-emerald-400 uppercase tracking-widest">
                 <span className="size-1 rounded-full bg-emerald-500 animate-pulse" />
                 Live

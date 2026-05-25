@@ -4,12 +4,20 @@ import { useAuth } from '../../lib/auth';
 import { api } from '../../lib/api';
 import { toast } from 'sonner';
 import { MessageSquare, AlertCircle, Zap } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface WhatsAppContextType {
-  socket: Socket | null;
+  status: string;
+  qrCode: string | null;
+  connect: (sessionId: string) => void;
+  disconnect: (sessionId: string) => void;
   isConnected: boolean;
   unreadCount: number;
+  setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+  selectedSessionId: string | null;
+  setSelectedSessionId: (id: string | null) => void;
+  connectMutation: any;
+  disconnectMutation: any;
 }
 
 const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined);
@@ -20,9 +28,30 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
   const { user, token } = useAuth();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [status, setStatus] = useState<string>('DISCONNECTED');
+  const [qrCode, setQrCode] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(user?.id || null);
   const queryClient = useQueryClient();
   const userId = user?.id;
+
+  const connectMutation = useMutation({
+    mutationFn: (sessionId: string) => api.post(`/whatsapp/connect/${sessionId}?force=true`),
+    onSuccess: () => {
+      setQrCode(null);
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
+    },
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: (sessionId: string) => api.post(`/whatsapp/disconnect/${sessionId}`),
+    onSuccess: () => {
+      setQrCode(null);
+      setStatus('DISCONNECTED');
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
+      toast.success('Bağlantı sıfırlandı');
+    },
+  });
 
   // Request browser notification permission
   useEffect(() => {
@@ -64,11 +93,12 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
       reconnectionAttempts: 5,
       reconnectionDelay: 3000,
     });
+    setSocket(newSocket);
 
     newSocket.on('connect', () => {
       console.log('[WhatsApp-Socket] Connected to engine');
       setIsConnected(true);
-      newSocket.emit('join', { userId, token });
+      newSocket.emit('join', { userId, token, sessionId: selectedSessionId });
     });
 
     newSocket.on('disconnect', () => {
@@ -87,7 +117,7 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
       console.log('[WhatsApp-Socket] Incoming message from:', data.businessName);
       
       // Update unread count locally
-      setUnreadCount(prev => prev + 1);
+      setUnreadCount(prev => (prev || 0) + 1);
 
       // Browser notification
       if (Notification.permission === 'granted' && document.visibilityState !== 'visible') {
@@ -163,75 +193,48 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['wa-messages'] });
     });
 
-    // Listen for AI Intent Detection
-    newSocket.on('intent_detected', (data: { 
-      leadId: string; 
-      businessName: string; 
-      intent: string;
-      sentiment: string;
-      reasoning: string;
-    }) => {
-      console.log('[WhatsApp-Socket] AI detected intent:', data.intent);
-      
-      // Only show specialized notifications for Positive or Meeting intents
-      if (data.intent === 'POSITIVE' || data.intent === 'MEETING') {
-        toast.custom((t) => (
-          <div 
-            className="bg-[#0c1220] border-2 border-amber-500/50 p-5 rounded-[2rem] shadow-[0_25px_60px_rgba(245,158,11,0.3)] flex items-start gap-4 animate-in zoom-in-95 duration-500 cursor-pointer overflow-hidden relative"
-            onClick={() => {
-              window.location.href = `/whatsapp/${data.leadId}`;
-              toast.dismiss(t);
-            }}
-          >
-            {/* Background Glow */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-3xl -mr-16 -mt-16" />
-            
-            <div className="w-14 h-14 bg-amber-500 text-black rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20 rotate-3">
-              <Zap size={28} className="fill-black" />
-            </div>
-            <div className="flex-1 min-w-0 z-10">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                 <h4 className="text-sm font-black text-white uppercase tracking-tight truncate">{data.businessName}</h4>
-                 <span className="text-[9px] font-black text-black bg-amber-500 px-2 py-0.5 rounded-full border border-amber-400 shadow-sm">HOT LEAD</span>
-              </div>
-              <p className="text-xs text-amber-200 font-bold leading-relaxed mb-2">
-                AI Analizi: {data.intent === 'MEETING' ? '📅 Toplantı/Randevu Talebi!' : '🔥 Çok İlgili / Satın Almaya Yakın'}
-              </p>
-              <p className="text-[10px] text-slate-400 font-medium italic line-clamp-1 italic">
-                "{data.reasoning}"
-              </p>
-              <div className="flex items-center gap-2 mt-3">
-                 <div className="h-8 flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center text-[10px] font-black text-white uppercase tracking-widest transition-all">
-                   Hemen Yanıtla
-                 </div>
-              </div>
-            </div>
-          </div>
-        ), { duration: 10000, position: 'top-right' });
+    newSocket.on('qr', (data) => {
+      if (data.qr) {
+        setQrCode(data.qr);
+        setStatus('QR_READY');
       }
-
-      // Update lead queries to show new status/activities
-      queryClient.invalidateQueries({ queryKey: ['lead', data.leadId] });
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
     });
 
-    // Error handling
-    newSocket.on('wa_error', (data: { message: string }) => {
-      console.error('[WhatsApp-Socket] Engine error:', data.message);
-      // We don't toast every error to avoid spamming the user
+    newSocket.on('authenticated', () => {
+      setStatus('AUTHENTICATED');
+      setQrCode(null);
     });
 
-    setSocket(newSocket);
+    newSocket.on('ready', (data) => {
+      setStatus('CONNECTED');
+      setQrCode(null);
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
+    });
+
+    newSocket.on('wa_error', (data) => {
+      toast.error(data.message || 'WhatsApp hatası oluştu');
+      setStatus('ERROR');
+    });
 
     return () => {
-      console.log('[WhatsApp-Provider] Cleaning up socket connection...');
-      newSocket.disconnect();
+      newSocket.close();
     };
-  }, [userId, token, queryClient]);
+  }, [userId, token, selectedSessionId, queryClient]);
 
   return (
-    <WhatsAppContext.Provider value={{ socket, isConnected, unreadCount }}>
+    <WhatsAppContext.Provider value={{ 
+      status, 
+      qrCode, 
+      connect: (id) => connectMutation.mutate(id),
+      disconnect: (id) => disconnectMutation.mutate(id),
+      isConnected, 
+      unreadCount, 
+      setUnreadCount,
+      selectedSessionId,
+      setSelectedSessionId,
+      connectMutation,
+      disconnectMutation
+    }}>
       {children}
     </WhatsAppContext.Provider>
   );

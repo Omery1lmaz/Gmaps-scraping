@@ -1,2 +1,3 @@
-2026/05/24-21:11:28.392 622 Creating DB /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Sync Data/LevelDB since it was missing.
-2026/05/24-21:11:28.416 622 Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Sync Data/LevelDB/MANIFEST-000001
+2026/05/24-23:14:51.512 b56 Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Sync Data/LevelDB/MANIFEST-000001
+2026/05/24-23:14:51.533 b56 Recovering log #3
+2026/05/24-23:14:51.538 b56 Reusing old log /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Sync Data/LevelDB/000003.log 

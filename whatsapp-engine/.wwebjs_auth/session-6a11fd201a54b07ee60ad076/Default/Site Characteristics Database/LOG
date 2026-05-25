@@ -1,2 +1,3 @@
-2026/05/24-21:11:28.438 64a Creating DB /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Site Characteristics Database since it was missing.
-2026/05/24-21:11:28.474 64a Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Site Characteristics Database/MANIFEST-000001
+2026/05/24-23:14:51.544 b91 Reusing MANIFEST /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Site Characteristics Database/MANIFEST-000001
+2026/05/24-23:14:51.553 b91 Recovering log #3
+2026/05/24-23:14:51.561 b91 Reusing old log /app/.wwebjs_auth/session-6a11fd201a54b07ee60ad076/Default/Site Characteristics Database/000003.log 
