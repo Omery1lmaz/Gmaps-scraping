@@ -277,9 +277,20 @@ async function resolveClientForUser(
   sessionManager: WhatsAppSessionManager,
   jobSessionId?: string
 ): Promise<{ client: any; sessionId: string } | null> {
+  const checkConnected = async (sessId: string) => {
+    const client = sessionManager.getClient(sessId);
+    if (!client) return null;
+    
+    // Check if the session is CONNECTED in DB
+    const session = await db.whatsAppSession.findUnique({ where: { id: sessId } });
+    if (!session || session.status !== 'CONNECTED') return null;
+    
+    return client;
+  };
+
   // 1. If a specific sessionId was provided, try it first
   if (jobSessionId) {
-    const client = sessionManager.getClient(jobSessionId);
+    const client = await checkConnected(jobSessionId);
     if (client) return { client, sessionId: jobSessionId };
   }
 
@@ -288,24 +299,94 @@ async function resolveClientForUser(
     where: { userId, status: 'CONNECTED' }
   });
   if (activeSession) {
-    const client = sessionManager.getClient(activeSession.id);
+    const client = await checkConnected(activeSession.id);
     if (client) return { client, sessionId: activeSession.id };
   }
 
   // 3. Try any session belonging to this user
   const anySession = await db.whatsAppSession.findFirst({
-    where: { userId }
+    where: { userId, status: 'CONNECTED' }
   });
   if (anySession) {
-    const client = sessionManager.getClient(anySession.id);
+    const client = await checkConnected(anySession.id);
     if (client) return { client, sessionId: anySession.id };
   }
 
   // 4. Legacy fallback: try userId as sessionId
-  const legacyClient = sessionManager.getClient(userId);
+  const legacyClient = await checkConnected(userId);
   if (legacyClient) return { client: legacyClient, sessionId: userId };
 
   return null;
+}
+
+export function calculateScheduledTime(baseTime: Date, step: any, sequence: any): Date {
+  const waitType = step.waitType || 'duration';
+  const delayHours = step.delayHours || 0;
+
+  let scheduledDate = new Date(baseTime.getTime() + (delayHours * 3600000));
+
+  if (waitType === 'until_time' && step.untilTime) {
+    const [h, m] = step.untilTime.split(':').map(Number);
+    scheduledDate = new Date(baseTime.getTime() + (delayHours * 3600000));
+    scheduledDate.setHours(h, m || 0, 0, 0);
+    const minTime = baseTime.getTime() + (delayHours * 3600000);
+    if (scheduledDate.getTime() < minTime) {
+      scheduledDate.setDate(scheduledDate.getDate() + 1);
+    }
+  } else if (waitType === 'weekdays') {
+    scheduledDate = new Date(baseTime.getTime() + (delayHours * 3600000));
+    const day = scheduledDate.getDay();
+    if (day === 0) { // Sunday -> Monday
+      scheduledDate.setDate(scheduledDate.getDate() + 1);
+      scheduledDate.setHours(9, 0, 0, 0);
+    } else if (day === 6) { // Saturday -> Monday
+      scheduledDate.setDate(scheduledDate.getDate() + 2);
+      scheduledDate.setHours(9, 0, 0, 0);
+    }
+  }
+
+  // Ensure scheduledDate is not in the past compared to now
+  const now = new Date();
+  if (scheduledDate.getTime() < now.getTime()) {
+    scheduledDate = new Date(now.getTime());
+  }
+
+  // Align with sequence sending preferences: activeDays, sendTimeStart, sendTimeEnd
+  const activeDays = sequence.activeDays || [1, 2, 3, 4, 5];
+  const startStr = sequence.sendTimeStart || "09:00";
+  const endStr = sequence.sendTimeEnd || "18:00";
+
+  const [startH, startM] = startStr.split(':').map(Number);
+  const [endH, endM] = endStr.split(':').map(Number);
+
+  // We loop to check constraints, up to 14 days safety limit
+  for (let i = 0; i < 14; i++) {
+    const day = scheduledDate.getDay();
+    if (!activeDays.includes(day)) {
+      scheduledDate.setDate(scheduledDate.getDate() + 1);
+      scheduledDate.setHours(startH, startM || 0, 0, 0);
+      continue;
+    }
+
+    const hour = scheduledDate.getHours();
+    const minute = scheduledDate.getMinutes();
+    const timeVal = hour + minute / 60;
+    const startVal = startH + (startM || 0) / 60;
+    const endVal = endH + (endM || 0) / 60;
+
+    if (timeVal < startVal) {
+      scheduledDate.setHours(startH, startM || 0, 0, 0);
+      break;
+    } else if (timeVal > endVal) {
+      scheduledDate.setDate(scheduledDate.getDate() + 1);
+      scheduledDate.setHours(startH, startM || 0, 0, 0);
+      continue;
+    }
+
+    break;
+  }
+
+  return scheduledDate;
 }
 
 async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionManager, service: WhatsAppService) {
@@ -328,7 +409,8 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
     }
     console.log(`[SequenceWorker] State status: ${state.status}, nextRunAt: ${state.nextRunAt}, isForced: ${state.isForced}`);
 
-    if (!['ACTIVE', 'PENDING', 'IN_PROGRESS', 'PROCESSING'].includes(state.status)) {
+    // REPLIED is eligible so CONDITION steps can evaluate the reply
+    if (!['ACTIVE', 'PENDING', 'IN_PROGRESS', 'PROCESSING', 'REPLIED'].includes(state.status)) {
       console.log(`[SequenceWorker] State status ${state.status} is not eligible. Skipping processing.`);
       return;
     }
@@ -365,10 +447,36 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
     // Check Sequence Schedule
     logger.debug({ sequenceId: sequence.id }, '[SequenceWorker] Checking schedule constraints');
     if (!isWithinSequenceSchedule(sequence, state.isForced)) {
-      logger.info({ stateId: state.id }, '[SequenceWorker] Outside sequence schedule. Rescheduling...');
+      // Calculate the next valid window start instead of blindly adding 1 hour
+      const seqActiveDays: number[] = sequence.activeDays || [1,2,3,4,5];
+      const [sh, sm] = (sequence.sendTimeStart || '09:00').split(':').map(Number);
+      const [eh, em] = (sequence.sendTimeEnd || '18:00').split(':').map(Number);
+      const now = new Date();
+      let nextWindow = new Date(now.getTime());
+      for (let i = 0; i < 14; i++) {
+        const day = nextWindow.getDay();
+        if (!seqActiveDays.includes(day)) {
+          nextWindow.setDate(nextWindow.getDate() + 1);
+          nextWindow.setHours(sh, sm || 0, 0, 0);
+          continue;
+        }
+        const mins = nextWindow.getHours() * 60 + nextWindow.getMinutes();
+        const endMins = eh * 60 + (em || 0);
+        if (mins >= endMins) {
+          nextWindow.setDate(nextWindow.getDate() + 1);
+          nextWindow.setHours(sh, sm || 0, 0, 0);
+          continue;
+        }
+        const startMins = sh * 60 + (sm || 0);
+        if (mins < startMins) {
+          nextWindow.setHours(sh, sm || 0, 0, 0);
+        }
+        break;
+      }
+      logger.info({ stateId: state.id, nextWindow }, '[SequenceWorker] Outside schedule window — rescheduling to next window');
       await db.sequenceState.update({
         where: { id: state.id },
-        data: { nextRunAt: new Date(Date.now() + 3600000), status: 'ACTIVE', isForced: false }
+        data: { nextRunAt: nextWindow, status: 'PENDING', isForced: false }
       });
       return;
     }
@@ -378,8 +486,31 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
     const targetSessionId = sequence.whatsappSessionId || job.data.sessionId;
     const resolved = await resolveClientForUser(resolvedUserId, sessionManager, targetSessionId);
     if (!resolved) {
-      logger.error({ userId: resolvedUserId, targetSessionId }, '[SequenceWorker] WhatsApp client not found or offline');
-      throw new Error('WhatsApp Client offline');
+      logger.warn({ userId: resolvedUserId, targetSessionId }, '[SequenceWorker] WhatsApp client offline — attempting auto-connection and scheduling retry in 1 min');
+      
+      // Auto-connection trigger: if the session exists in DB, force-create the client to connect it in memory
+      try {
+        const sessionToConnect = targetSessionId 
+          ? await db.whatsAppSession.findUnique({ where: { id: targetSessionId } })
+          : await db.whatsAppSession.findFirst({ where: { userId: resolvedUserId } });
+        
+        if (sessionToConnect) {
+          logger.info({ sessionId: sessionToConnect.id }, '[SequenceWorker] Auto-connecting offline session in background');
+          // Start the client connection in background without blocking
+          sessionManager.createClient(sessionToConnect.id, resolvedUserId).catch(err => {
+            logger.error({ err, sessionId: sessionToConnect.id }, '[SequenceWorker] Auto-connection failed');
+          });
+        }
+      } catch (connErr) {
+        logger.error({ connErr }, '[SequenceWorker] Error during auto-connection check');
+      }
+
+      // Reschedule silently for 1 minute later to retry
+      await db.sequenceState.update({
+        where: { id: leadSequenceStateId },
+        data: { status: 'PENDING', nextRunAt: new Date(Date.now() + 60 * 1000) }
+      });
+      return;
     }
     const { client, sessionId: resolvedSessionId } = resolved;
 
@@ -419,55 +550,32 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
 
     // Helper to find next step in graph or linear
     const findNextStep = (currentStep: any, intent?: string): any => {
+      // 1. Condition/AI-intent branches take priority
       if (currentStep.branches && currentStep.branches.length > 0) {
         if (intent) {
           const branch = currentStep.branches.find((b: any) => b.intent === intent);
           if (branch) return steps.find((s: any) => s.id === branch.nextStepId);
         }
-        // Fallback to first branch if no intent or not found? Or just end.
+        // No intent match → sequence ends at this branch point
         return null;
       }
+      // 2. Explicit graph edge (set by VisualSequenceBuilder)
       if (currentStep.nextStepId) {
         return steps.find((s: any) => s.id === currentStep.nextStepId);
       }
-      // Backward compatibility: linear increment
-      if (!currentStep.id) {
-        return steps[currentStepIndex + 1];
+      // 3. Fallback: linear order (handles old sequences AND new sequences where
+      //    nextStepId wasn't saved due to the missing schema field bug)
+      const idx = steps.findIndex((s: any) => s.id === currentStep.id);
+      if (idx >= 0) {
+        return steps[idx + 1] || null;
       }
-      return null;
+      return steps[currentStepIndex + 1] || null;
     };
 
     // Helper to calculate nextRunAt based on wait settings
     const calculateNextRunAt = (step: any): Date => {
-      const now = new Date();
-      const waitType = step.waitType || 'duration';
-      const delayHours = step.delayHours || 24;
-
-      if (waitType === 'until_time' && step.untilTime) {
-        const [h, m] = step.untilTime.split(':').map(Number);
-        const next = new Date();
-        next.setHours(h, m, 0, 0);
-        if (next <= now) {
-          next.setDate(next.getDate() + 1); // Tomorrow at that time
-        }
-        return next;
-      }
-
-      if (waitType === 'weekdays') {
-        const next = new Date(now.getTime() + (delayHours * 3600000));
-        const day = next.getDay();
-        if (day === 0) { // Sunday -> Monday
-          next.setDate(next.getDate() + 1);
-          next.setHours(9, 0, 0, 0);
-        } else if (day === 6) { // Saturday -> Monday
-          next.setDate(next.getDate() + 2);
-          next.setHours(9, 0, 0, 0);
-        }
-        return next;
-      }
-
-      // Default: Duration
-      return new Date(now.getTime() + (delayHours * 3600000));
+      const baseTime = state.lastSentAt || state.createdAt || new Date();
+      return calculateScheduledTime(baseTime, step, sequence);
     };
 
     if (nextStep.type === 'TAG') {
@@ -491,7 +599,8 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
           currentStepIndex: currentStepIndex + 1,
           status: hasMoreSteps ? 'ACTIVE' : 'COMPLETED',
           nextRunAt: new Date(), // Run next step immediately for TAG
-          lastRunAt: new Date()
+          lastRunAt: new Date(),
+          lastSentAt: new Date()
         }
       });
       
@@ -533,9 +642,97 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
           currentStepIndex: currentStepIndex + 1,
           status: hasMoreSteps ? 'ACTIVE' : 'COMPLETED',
           nextRunAt,
-          lastRunAt: new Date()
+          lastRunAt: new Date(),
+          lastSentAt: new Date()
         }
       });
+      return;
+    }
+
+    if (nextStep.type === 'TRIGGER') {
+      logger.info({ stateId: state.id }, '[SequenceWorker] Step type is TRIGGER. Advancing immediately to next step.');
+      
+      const nextToRun = findNextStep(nextStep);
+      const hasMoreSteps = !!nextToRun;
+      
+      await db.sequenceState.update({
+        where: { id: state.id },
+        data: {
+          currentStepId: nextToRun?.id,
+          currentStepIndex: currentStepIndex + 1,
+          status: hasMoreSteps ? 'ACTIVE' : 'COMPLETED',
+          nextRunAt: new Date(), // Run next step immediately
+          lastRunAt: new Date(),
+          lastSentAt: new Date()
+        }
+      });
+      
+      // Re-queue immediately
+      await sequenceQueue.add('process-sequence-step', { leadSequenceStateId: state.id });
+      return;
+    }
+
+    if (nextStep.type === 'CONDITION') {
+      logger.info({ stateId: state.id, leadId: lead.id }, '[SequenceWorker] Step type is CONDITION. Evaluating condition...');
+      
+      const conditionType = nextStep.conditionType || 'hasReplied';
+      let conditionMet = false;
+
+      if (conditionType === 'hasReplied') {
+        // Primary check: state marked as REPLIED by the incoming message handler
+        conditionMet = state.status === 'REPLIED';
+
+        // Secondary check: look at real WhatsApp message history since last sent
+        // This is a robust fallback in case the status wasn't updated in time
+        if (!conditionMet) {
+          const lastSentAt = state.lastSentAt || state.createdAt || new Date(0);
+          const phone = lead.phone?.replace(/\D/g, '') || '';
+          if (phone) {
+            const recentReply = await db.whatsAppMessage.findFirst({
+              where: {
+                userId: resolvedUserId,
+                direction: 'INCOMING',
+                chatId: { contains: phone },
+                timestamp: { gt: lastSentAt }
+              },
+              orderBy: { timestamp: 'desc' }
+            });
+            conditionMet = !!recentReply;
+            if (conditionMet) {
+              logger.info({ leadId: lead.id, lastSentAt }, '[SequenceWorker] CONDITION: reply detected via message history');
+            }
+          }
+        }
+      }
+
+      const intent = conditionMet ? 'YES' : 'NO';
+      logger.info({ stateId: state.id, conditionType, conditionMet, chosenIntent: intent }, '[SequenceWorker] Condition evaluation complete');
+
+      const nextToRun = findNextStep(nextStep, intent);
+      const hasMoreSteps = !!nextToRun;
+      let nextRunAt = null;
+      if (hasMoreSteps) {
+        nextRunAt = calculateNextRunAt(nextToRun);
+      }
+
+      await db.sequenceState.update({
+        where: { id: state.id },
+        data: {
+          currentStepId: nextToRun?.id,
+          currentStepIndex: currentStepIndex + 1,
+          status: hasMoreSteps ? 'ACTIVE' : 'COMPLETED',
+          nextRunAt,
+          lastRunAt: new Date(),
+          lastSentAt: new Date()
+        }
+      });
+
+      if (hasMoreSteps && nextRunAt) {
+        const diffMs = nextRunAt.getTime() - Date.now();
+        if (diffMs <= 5000) { // within 5 seconds
+          await sequenceQueue.add('process-sequence-step', { leadSequenceStateId: state.id });
+        }
+      }
       return;
     }
 
@@ -742,19 +939,30 @@ async function processSequenceStep(job: Job, sessionManager: WhatsAppSessionMana
     }
 
   } catch (error: any) {
-    console.error(`[SequenceWorker] Error:`, error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[SequenceWorker] Error:`, errMsg);
     try {
-      await db.sequenceState.update({
-        where: { id: leadSequenceStateId },
-        data: { 
-          status: 'FAILED',
-          lastError: error instanceof Error ? error.message : String(error)
-        }
-      });
+      // For transient errors (network, rate limit, etc.) — retry in 3 minutes instead of permanent FAIL
+      const isTransient = /offline|timeout|network|ECONNREFUSED|ETIMEDOUT|rate.limit|socket/i.test(errMsg);
+      if (isTransient) {
+        console.warn(`[SequenceWorker] Transient error detected — scheduling retry in 3 min instead of FAIL`);
+        await db.sequenceState.update({
+          where: { id: leadSequenceStateId },
+          data: { status: 'PENDING', nextRunAt: new Date(Date.now() + 3 * 60 * 1000), lastError: errMsg }
+        });
+      } else {
+        await db.sequenceState.update({
+          where: { id: leadSequenceStateId },
+          data: { status: 'FAILED', lastError: errMsg }
+        });
+      }
     } catch (dbErr) {
-      console.error(`[SequenceWorker] Failed to update sequence state to FAILED:`, dbErr);
+      console.error(`[SequenceWorker] Failed to update sequence state after error:`, dbErr);
     }
-    throw error;
+    // Don't re-throw transient errors — BullMQ won't retry since we handled it
+    if (!/offline|timeout|network|ECONNREFUSED|ETIMEDOUT|rate.limit|socket/i.test(errMsg)) {
+      throw error;
+    }
   }
 }
 
@@ -767,7 +975,28 @@ async function processSendMessage(job: Job, sessionManager: WhatsAppSessionManag
 
   // Resolve client first to obtain session ID for isolated rate limiting
   const resolved = await resolveClientForUser(resolvedUserId, sessionManager, job.data.sessionId);
-  if (!resolved) throw new Error(`Client not found for ${resolvedUserId}`);
+  if (!resolved) {
+    const targetSessionId = job.data.sessionId || resolvedUserId;
+    console.warn(`[SingleWorker] WhatsApp Client offline for session ${targetSessionId}. Triggering auto-connect and re-queuing job ${job.id}`);
+    
+    try {
+      const sessionToConnect = await db.whatsAppSession.findUnique({ where: { id: targetSessionId } });
+      if (sessionToConnect) {
+        sessionManager.createClient(sessionToConnect.id, resolvedUserId).catch(err => {
+          console.error(`[SingleWorker] Auto-connection failed for session ${sessionToConnect.id}:`, err);
+        });
+      }
+    } catch (connErr) {
+      console.error('[SingleWorker] Auto-connection check failed:', connErr);
+    }
+
+    const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+      maxRetriesPerRequest: null,
+    });
+    const queue = new Queue('single-messages', { connection: redisConnection });
+    await queue.add(job.name || 'send-message', job.data, { delay: 60000 }); // Retry in 1 minute
+    return;
+  }
   const { client, sessionId: resolvedSessionId } = resolved;
   
   if (!checkRateLimit(resolvedSessionId)) {
@@ -982,7 +1211,28 @@ async function processCampaignSend(job: Job, sessionManager: WhatsAppSessionMana
 
   // Resolve client first to obtain session ID for isolated rate limiting and anti-ban
   const resolved = await resolveClientForUser(resolvedUserId, sessionManager, job.data.sessionId);
-  if (!resolved) throw new Error('WhatsApp Client offline');
+  if (!resolved) {
+    const targetSessionId = job.data.sessionId || resolvedUserId;
+    console.warn(`[CampaignWorker] WhatsApp Client offline for session ${targetSessionId}. Triggering auto-connect and re-queuing job ${job.id}`);
+    
+    try {
+      const sessionToConnect = await db.whatsAppSession.findUnique({ where: { id: targetSessionId } });
+      if (sessionToConnect) {
+        sessionManager.createClient(sessionToConnect.id, resolvedUserId).catch(err => {
+          console.error(`[CampaignWorker] Auto-connection failed for session ${sessionToConnect.id}:`, err);
+        });
+      }
+    } catch (connErr) {
+      console.error('[CampaignWorker] Auto-connection check failed:', connErr);
+    }
+
+    const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+      maxRetriesPerRequest: null,
+    });
+    const queue = new Queue('campaign-messages', { connection: redisConnection });
+    await queue.add(job.name || 'send-campaign-message', job.data, { delay: 60000 }); // Retry in 1 minute
+    return;
+  }
   const { client, sessionId: resolvedSessionId } = resolved;
 
   if (!checkRateLimit(resolvedSessionId)) {

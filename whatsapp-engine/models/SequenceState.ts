@@ -7,6 +7,7 @@ export interface ISequenceState extends Document {
   currentStepId?: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'REPLIED' | 'STOPPED_BY_REPLY';
   nextRunAt?: Date;
+  lastSentAt?: Date;
   lastError?: string;
   isForced?: boolean;
   userId: string;
@@ -21,6 +22,7 @@ const SequenceStateSchema: Schema = new Schema({
   currentStepId: { type: String },
   status: { type: String, enum: ['PENDING', 'IN_PROGRESS', 'PAUSED', 'COMPLETED', 'FAILED', 'REPLIED', 'STOPPED_BY_REPLY'], default: 'PENDING' },
   nextRunAt: { type: Date },
+  lastSentAt: { type: Date },
   lastError: { type: String },
   isForced: { type: Boolean, default: false },
   userId: { type: String, required: true, index: true },

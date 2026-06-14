@@ -45,6 +45,7 @@ function StatusBadge({ status }: { status: string }) {
     'AUTHENTICATED': { color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', label: 'Doğrulandı', icon: <Shield size={13} />, pulse: true },
     'QR_READY': { color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', label: 'QR Bekliyor', icon: <QrCode size={13} />, pulse: true },
     'INITIALIZING': { color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', label: 'Başlatılıyor', icon: <Loader2 size={13} className="animate-spin" /> },
+    'RECONNECTING': { color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20', label: 'Yeniden Bağlanıyor', icon: <Loader2 size={13} className="animate-spin" /> },
     'DISCONNECTED': { color: 'text-slate-400', bg: 'bg-slate-500/10 border-slate-500/20', label: 'Bağlı Değil', icon: <WifiOff size={13} /> },
     'ERROR': { color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', label: 'Hata', icon: <AlertCircle size={13} /> },
   };
@@ -104,21 +105,21 @@ export function WhatsAppAccountsPage() {
       setSessionStatuses(prev => {
         const next = { ...prev };
         sessions.forEach((s: any) => {
-          if (next[s._id] === undefined) {
-            next[s._id] = s.status || 'DISCONNECTED';
-          }
+          next[s._id] = s.status || 'DISCONNECTED';
         });
         return next;
       });
       setSessionInfos(prev => {
         const next = { ...prev };
         sessions.forEach((s: any) => {
-          if (next[s._id] === undefined && (s.status === 'CONNECTED' || s.status === 'AUTHENTICATED')) {
+          if (s.status === 'CONNECTED' || s.status === 'AUTHENTICATED') {
             next[s._id] = {
               phoneNumber: s.phoneNumber,
               pushName: s.pushName,
               lastConnected: s.lastConnected,
             };
+          } else {
+            delete next[s._id];
           }
         });
         return next;
@@ -126,9 +127,7 @@ export function WhatsAppAccountsPage() {
       setSessionErrors(prev => {
         const next = { ...prev };
         sessions.forEach((s: any) => {
-          if (next[s._id] === undefined) {
-            next[s._id] = s.lastErrorMessage || null;
-          }
+          next[s._id] = s.lastErrorMessage || null;
         });
         return next;
       });
@@ -203,6 +202,26 @@ export function WhatsAppAccountsPage() {
       });
       setSessionQrs(prev => ({ ...prev, [sId]: null }));
       refetchSessions();
+      toast.warning('WhatsApp bağlantısı kesildi. Yeniden bağlanılıyor...');
+    };
+
+    const onSessionStatus = (data: { sessionId?: string; status: string; attempt?: number; error?: string }) => {
+      const sId = data.sessionId || userId;
+      const status = data.status;
+      setSessionStatuses(prev => ({ ...prev, [sId]: status }));
+      if (status === 'RECONNECTING') {
+        setSessionQrs(prev => ({ ...prev, [sId]: null }));
+        // Show progress if multiple attempts
+        if ((data.attempt || 0) > 1) {
+          toast.loading(`WhatsApp yeniden bağlanılıyor... (Deneme ${data.attempt})`, { id: `reconnecting-${sId}`, duration: 5000 });
+        }
+      } else if (status === 'CONNECTED') {
+        toast.dismiss(`reconnecting-${sId}`);
+        setSessionErrors(prev => ({ ...prev, [sId]: null }));
+        refetchSessions();
+      } else if (status === 'ERROR' && data.error) {
+        setSessionErrors(prev => ({ ...prev, [sId]: data.error || null }));
+      }
     };
 
     const onWaError = (data: any) => {
@@ -218,6 +237,7 @@ export function WhatsAppAccountsPage() {
     socket.on('ready', onReady);
     socket.on('disconnected', onDisconnected);
     socket.on('wa_error', onWaError);
+    socket.on('session_status', onSessionStatus);
 
     return () => {
       socket.off('qr', onQr);
@@ -225,6 +245,7 @@ export function WhatsAppAccountsPage() {
       socket.off('ready', onReady);
       socket.off('disconnected', onDisconnected);
       socket.off('wa_error', onWaError);
+      socket.off('session_status', onSessionStatus);
     };
   }, [socket, userId, refetchSessions, sessions]);
 
@@ -334,7 +355,7 @@ export function WhatsAppAccountsPage() {
   const stats = useMemo(() => {
     const connected = sessions.filter((s: any) => ['CONNECTED', 'AUTHENTICATED'].includes(sessionStatuses[s._id] || s.status)).length;
     const error = sessions.filter((s: any) => (sessionStatuses[s._id] || s.status) === 'ERROR').length;
-    const pending = sessions.filter((s: any) => ['QR_READY', 'INITIALIZING'].includes(sessionStatuses[s._id] || s.status)).length;
+    const pending = sessions.filter((s: any) => ['QR_READY', 'INITIALIZING', 'RECONNECTING'].includes(sessionStatuses[s._id] || s.status)).length;
     return { connected, error, pending, total: sessions.length };
   }, [sessions, sessionStatuses]);
 

@@ -48,6 +48,23 @@ const sequenceQueue = new Queue('sequence-messages', { connection: redisConnecti
 setInterval(async () => {
   try {
     const now = new Date();
+
+    // 1. Stuck State Recovery: Reset any state stuck in IN_PROGRESS for more than 5 minutes
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const stuckStates = await SequenceState.find({
+      status: 'IN_PROGRESS',
+      updatedAt: { $lte: fiveMinutesAgo }
+    });
+    for (const stuck of stuckStates) {
+      logger.warn({ stateId: stuck._id, leadId: stuck.leadId }, '[Sequence Cron] Recovered stuck IN_PROGRESS state — resetting to PENDING');
+      await SequenceState.findByIdAndUpdate(stuck._id, { 
+        status: 'PENDING', 
+        updatedAt: new Date(),
+        nextRunAt: new Date(Date.now() + 60 * 1000) // retry in 1 minute
+      });
+    }
+
+    // 2. Queue due states
     const dueStates = await SequenceState.find({
       status: { $in: ['PENDING', 'ACTIVE'] },
       nextRunAt: { $lte: now }
@@ -59,8 +76,8 @@ setInterval(async () => {
 
     for (const state of dueStates) {
       logger.info({ stateId: state._id, leadId: state.leadId }, '[Sequence Cron] Queuing state');
-      // Mark as IN_PROGRESS to prevent double queuing
-      await SequenceState.findByIdAndUpdate(state._id, { status: 'IN_PROGRESS' });
+      // Mark as IN_PROGRESS to prevent double queuing and set updatedAt
+      await SequenceState.findByIdAndUpdate(state._id, { status: 'IN_PROGRESS', updatedAt: new Date() });
       const job = await sequenceQueue.add('process-sequence-step', {
         leadSequenceStateId: state._id.toString()
       });
@@ -1053,6 +1070,180 @@ app.post('/api/sequences/:id/clear', authenticateApiKey, async (req: Request, re
     res.json({ success: true, deletedCount: result.deletedCount });
   } catch (error) {
     res.status(500).json({ error: 'Failed to clear sequence states' });
+  }
+});
+
+// Recalculate nextRunAt for all active/failed states based on current sequence settings
+app.post('/api/sequences/:id/recalculate', authenticateApiKey, async (req: Request, res: Response) => {
+  try {
+    const sequenceId = req.params.id;
+    const sequence = await Sequence.findOne(userScope(req, { _id: sequenceId }));
+    if (!sequence) return res.status(404).json({ error: 'Sequence not found' });
+
+    const steps: any[] = sequence.steps || [];
+    const activeDays: number[] = (sequence as any).activeDays?.length ? (sequence as any).activeDays : [1, 2, 3, 4, 5];
+    const startStr: string = (sequence as any).sendTimeStart || '09:00';
+    const endStr: string = (sequence as any).sendTimeEnd || '18:00';
+    const maxPerDay: number = (sequence as any).maxPerDay ?? 50;
+    const minDelayMs: number = ((sequence as any).minDelayMinutes ?? 5) * 60 * 1000;
+
+    const [startH, startM] = startStr.split(':').map(Number);
+    const [endH, endM] = endStr.split(':').map(Number);
+    const startMinutes = startH * 60 + (startM || 0);
+    const endMinutes = endH * 60 + (endM || 0);
+
+    /**
+     * Advance a date into the next valid send window:
+     *  - inactive day   → next active day at sendTimeStart
+     *  - before window  → same day at sendTimeStart
+     *  - after window   → next active day at sendTimeStart
+     *  - inside window  → keep as-is
+     */
+    function alignToWindow(date: Date): Date {
+      const d = new Date(date.getTime());
+      for (let i = 0; i < 30; i++) {
+        const day = d.getDay();
+        if (!activeDays.includes(day)) {
+          d.setDate(d.getDate() + 1);
+          d.setHours(startH, startM || 0, 0, 0);
+          continue;
+        }
+        const minutesOfDay = d.getHours() * 60 + d.getMinutes();
+        if (minutesOfDay < startMinutes) {
+          d.setHours(startH, startM || 0, 0, 0);
+          break;
+        }
+        if (minutesOfDay >= endMinutes) {
+          d.setDate(d.getDate() + 1);
+          d.setHours(startH, startM || 0, 0, 0);
+          continue;
+        }
+        break; // inside window
+      }
+      return d;
+    }
+
+    /** Advance the queue pointer by minDelayMs then re-align. */
+    function advanceQueue(current: Date): Date {
+      return alignToWindow(new Date(current.getTime() + minDelayMs));
+    }
+
+    // Track scheduled message count per calendar day for maxPerDay enforcement
+    const dailyCounts: Record<string, number> = {};
+    const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+
+    function respectDailyLimit(d: Date): Date {
+      let date = new Date(d.getTime());
+      for (let i = 0; i < 60; i++) {
+        if ((dailyCounts[dayKey(date)] || 0) < maxPerDay) break;
+        date.setDate(date.getDate() + 1);
+        date.setHours(startH, startM || 0, 0, 0);
+        date = alignToWindow(date);
+      }
+      return date;
+    }
+
+    // Fetch ALL non-completed states — including FAILED ones which need re-scheduling
+    const targetStates = await SequenceState.find(
+      userScope(req, {
+        sequenceId,
+        status: { $in: ['PENDING', 'ACTIVE', 'PAUSED', 'IN_PROGRESS', 'FAILED'] }
+      })
+    );
+
+    // Build entries with the "earliest allowed" time for each state
+    const stateEntries: { state: any; earliestAllowed: Date; wasFailed: boolean }[] = [];
+
+    for (const state of targetStates) {
+      const stepIndex = (state as any).currentStepIndex ?? 0;
+
+      // Find the first SEND_MESSAGE step at or after currentStepIndex
+      let effectiveStep = steps[stepIndex];
+      if (!effectiveStep) continue;
+
+      const wasFailed = (state as any).status === 'FAILED';
+      const delayHours: number = effectiveStep.delayHours ?? 0;
+      const waitType: string = effectiveStep.waitType || 'duration';
+
+      // For FAILED states: use lastSentAt if available (they sent the previous step),
+      // otherwise use createdAt. This means they're ready to retry from now.
+      const baseTime: Date = (state as any).lastSentAt || (state as any).createdAt || new Date();
+
+      let earliest = new Date(baseTime.getTime() + delayHours * 3600_000);
+
+      if (waitType === 'until_time' && effectiveStep.untilTime) {
+        const [h, m] = (effectiveStep.untilTime as string).split(':').map(Number);
+        const candidate = new Date(earliest.getTime());
+        candidate.setHours(h, m || 0, 0, 0);
+        if (candidate.getTime() < earliest.getTime()) {
+          candidate.setDate(candidate.getDate() + 1);
+        }
+        earliest = candidate;
+      } else if (waitType === 'weekdays') {
+        const day = earliest.getDay();
+        if (day === 0) { earliest.setDate(earliest.getDate() + 1); earliest.setHours(startH, startM || 0, 0, 0); }
+        else if (day === 6) { earliest.setDate(earliest.getDate() + 2); earliest.setHours(startH, startM || 0, 0, 0); }
+      }
+
+      // Never in the past — schedule from now at minimum
+      if (earliest.getTime() < Date.now()) {
+        earliest = new Date();
+      }
+
+      earliest = alignToWindow(earliest);
+      stateEntries.push({ state, earliestAllowed: earliest, wasFailed });
+    }
+
+    // Sort: states ready sooner go first in the queue
+    stateEntries.sort((a, b) => a.earliestAllowed.getTime() - b.earliestAllowed.getTime());
+
+    // Running queue pointer starts at now-aligned-to-window
+    let queuePointer = alignToWindow(new Date());
+
+    let updatedCount = 0;
+    const bulkOps: any[] = [];
+
+    for (const { state, earliestAllowed, wasFailed } of stateEntries) {
+      // Slot = max(earliest based on step delay, current queue position)
+      let slot = new Date(Math.max(earliestAllowed.getTime(), queuePointer.getTime()));
+      slot = alignToWindow(slot);
+      slot = respectDailyLimit(slot);
+
+      const key = dayKey(slot);
+      dailyCounts[key] = (dailyCounts[key] || 0) + 1;
+
+      const updateFields: any = { nextRunAt: slot };
+      // Reset FAILED states back to PENDING so the worker picks them up again
+      if (wasFailed) {
+        updateFields.status = 'PENDING';
+        updateFields.lastError = null;
+      }
+
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: (state as any)._id },
+          update: { $set: updateFields }
+        }
+      });
+
+      updatedCount++;
+      queuePointer = advanceQueue(slot);
+    }
+
+    if (bulkOps.length > 0) {
+      await SequenceState.bulkWrite(bulkOps);
+    }
+
+    const failedCount = stateEntries.filter(e => e.wasFailed).length;
+    res.json({
+      success: true,
+      updatedCount,
+      failedReset: failedCount,
+      message: `${updatedCount} kayıt yeniden zamanlandı${failedCount > 0 ? ` (${failedCount} hatalı kayıt sıfırlandı)` : ''}`
+    });
+  } catch (error) {
+    console.error('Recalculate error:', error);
+    res.status(500).json({ error: 'Failed to recalculate sequence schedule' });
   }
 });
 

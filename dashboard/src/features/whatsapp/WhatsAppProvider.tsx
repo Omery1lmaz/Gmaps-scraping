@@ -18,6 +18,7 @@ interface WhatsAppContextType {
   setSelectedSessionId: (id: string | null) => void;
   connectMutation: any;
   disconnectMutation: any;
+  socket: Socket | null;
 }
 
 const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined);
@@ -90,19 +91,33 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
 
     console.log('[WhatsApp-Provider] Initializing global socket connection...');
     const newSocket = io(WA_ENGINE_URL, {
-      reconnectionAttempts: 5,
-      reconnectionDelay: 3000,
+      reconnection: true,
+      reconnectionAttempts: Infinity,  // Keep trying forever
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 30000,     // Max 30s between attempts
     });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
       console.log('[WhatsApp-Socket] Connected to engine');
       setIsConnected(true);
+      // Always re-join user room on connect/reconnect so events are received
       newSocket.emit('join', { userId, token, sessionId: selectedSessionId });
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('[WhatsApp-Socket] Disconnected');
+    newSocket.on('reconnect', (attempt: number) => {
+      console.log(`[WhatsApp-Socket] Reconnected to engine after ${attempt} attempts`);
+      // Re-join room after reconnect (socket.io auto-reconnects but rooms need re-joining)
+      newSocket.emit('join', { userId, token, sessionId: selectedSessionId });
+    });
+
+    newSocket.on('reconnect_attempt', (attempt: number) => {
+      console.log(`[WhatsApp-Socket] Reconnection attempt ${attempt}...`);
+      setIsConnected(false);
+    });
+
+    newSocket.on('disconnect', (reason: string) => {
+      console.log(`[WhatsApp-Socket] Disconnected: ${reason}`);
       setIsConnected(false);
     });
 
@@ -216,6 +231,27 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
       setStatus('ERROR');
     });
 
+    newSocket.on('session_status', (data: { sessionId?: string; status: string }) => {
+      // Update global status for the selected/primary session
+      if (!data.sessionId || data.sessionId === selectedSessionId) {
+        setStatus(data.status);
+        if (data.status === 'RECONNECTING') {
+          setQrCode(null);
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
+    });
+
+    newSocket.on('disconnected', (data: any) => {
+      // Update global status when WA session disconnects
+      const sId = data?.sessionId;
+      if (!sId || sId === selectedSessionId) {
+        setStatus('DISCONNECTED');
+        setQrCode(null);
+      }
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
+    });
+
     return () => {
       newSocket.close();
     };
@@ -233,7 +269,8 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
       selectedSessionId,
       setSelectedSessionId,
       connectMutation,
-      disconnectMutation
+      disconnectMutation,
+      socket
     }}>
       {children}
     </WhatsAppContext.Provider>

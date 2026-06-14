@@ -27,7 +27,7 @@ import { SyncProgressBar } from '../../features/whatsapp/components/Chat/SyncPro
 import { ChatHeader } from '../../features/whatsapp/components/ChatHeader';
 import { WhatsAppConnector } from '../../features/whatsapp/components/WhatsAppConnector';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '../../components/ui/sheet';
-import { Settings2, Sparkles } from 'lucide-react';
+import { Settings2, Sparkles, X, Smartphone, Clock } from 'lucide-react';
 
 // Utils
 import { displayName, fileToDataUrl } from '../../features/whatsapp/whatsapp-utils';
@@ -63,6 +63,7 @@ export function ChatViewPage() {
   const [sessionQrs, setSessionQrs] = useState<Record<string, string | null>>({});
   const [sessionInfos, setSessionInfos] = useState<Record<string, any>>({});
   const [sessionErrors, setSessionErrors] = useState<Record<string, string | null>>({});
+  const [isConnectorModalOpen, setIsConnectorModalOpen] = useState(false);
   
   // Computed states for the CURRENTLY selected session
   const status = useMemo(() => {
@@ -95,6 +96,15 @@ export function ChatViewPage() {
     refetchInterval: 12000,
   });
 
+  // Automatically open connection modal when QR code is generated/waiting
+  useEffect(() => {
+    if (status === 'QR_READY') {
+      setIsConnectorModalOpen(true);
+    } else if (status === 'CONNECTED' || status === 'AUTHENTICATED') {
+      setIsConnectorModalOpen(false);
+    }
+  }, [status]);
+
   // Keep tracking initial session values when sessions list is fetched
   useEffect(() => {
     if (sessions && sessions.length > 0) {
@@ -118,9 +128,7 @@ export function ChatViewPage() {
       setSessionStatuses(prev => {
         const next = { ...prev };
         sessions.forEach((s: any) => {
-          if (next[s._id] === undefined) {
-            next[s._id] = s.status || 'DISCONNECTED';
-          }
+          next[s._id] = s.status || 'DISCONNECTED';
         });
         return next;
       });
@@ -128,12 +136,14 @@ export function ChatViewPage() {
       setSessionInfos(prev => {
         const next = { ...prev };
         sessions.forEach((s: any) => {
-          if (next[s._id] === undefined && (s.status === 'CONNECTED' || s.status === 'AUTHENTICATED')) {
+          if (s.status === 'CONNECTED' || s.status === 'AUTHENTICATED') {
             next[s._id] = {
               phoneNumber: s.phoneNumber,
               pushName: s.pushName,
               lastConnected: s.lastConnected,
             };
+          } else {
+            delete next[s._id];
           }
         });
         return next;
@@ -142,9 +152,7 @@ export function ChatViewPage() {
       setSessionErrors(prev => {
         const next = { ...prev };
         sessions.forEach((s: any) => {
-          if (next[s._id] === undefined) {
-            next[s._id] = s.lastErrorMessage || null;
-          }
+          next[s._id] = s.lastErrorMessage || null;
         });
         return next;
       });
@@ -384,6 +392,22 @@ export function ChatViewPage() {
       });
       setSessionQrs((prev) => ({ ...prev, [sId]: null }));
       refetchSessions();
+      toast.warning('WhatsApp bağlantısı kesildi. Yeniden bağlanılıyor...');
+    };
+
+    const onSessionStatus = (data: { sessionId?: string; status: string; attempt?: number; error?: string }) => {
+      const sId = data.sessionId || selectedSessionId || userId;
+      const status = data.status;
+      setSessionStatuses((prev) => ({ ...prev, [sId]: status }));
+      if (status === 'RECONNECTING') {
+        setSessionQrs((prev) => ({ ...prev, [sId]: null }));
+      } else if (status === 'CONNECTED') {
+        setSessionErrors((prev) => ({ ...prev, [sId]: null }));
+        queryClient.invalidateQueries({ queryKey: ['wa-chats'] });
+        refetchSessions();
+      } else if (status === 'ERROR' && data.error) {
+        setSessionErrors((prev) => ({ ...prev, [sId]: data.error || null }));
+      }
     };
 
     const onWaError = (data: any) => {
@@ -419,6 +443,7 @@ export function ChatViewPage() {
     socket.on('ready', onReady);
     socket.on('disconnected', onDisconnected);
     socket.on('wa_error', onWaError);
+    socket.on('session_status', onSessionStatus);
     socket.on('whatsapp_message', onWhatsappMessage);
     socket.on('message_status', onMessageStatus);
     socket.on('sync_status', onSyncStatus);
@@ -429,6 +454,7 @@ export function ChatViewPage() {
       socket.off('ready', onReady);
       socket.off('disconnected', onDisconnected);
       socket.off('wa_error', onWaError);
+      socket.off('session_status', onSessionStatus);
       socket.off('whatsapp_message', onWhatsappMessage);
       socket.off('message_status', onMessageStatus);
       socket.off('sync_status', onSyncStatus);
@@ -811,10 +837,14 @@ export function ChatViewPage() {
                 Live
               </span>
             ) : (
-              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-[9px] font-black text-rose-400 uppercase tracking-widest">
-                <span className="size-1 rounded-full bg-rose-500" />
+              <button
+                onClick={() => setIsConnectorModalOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-[9px] font-black text-rose-400 hover:bg-rose-500/20 transition-all uppercase tracking-widest cursor-pointer"
+                title="Karekodu Göster ve Bağlan"
+              >
+                <span className="size-1 rounded-full bg-rose-500 animate-pulse" />
                 Offline
-              </span>
+              </button>
             )}
           </span>
         </div>
@@ -956,6 +986,7 @@ export function ChatViewPage() {
                 sendPending={sendMutation.isPending}
                 fileInputRef={fileInputRef}
                 connected={connected}
+                onShowConnector={() => setIsConnectorModalOpen(true)}
               />
             </>
           ) : !connected ? (
@@ -979,6 +1010,38 @@ export function ChatViewPage() {
           )}
         </section>
       </div>
+
+      {/* WhatsApp Connection Modal Overlay */}
+      {isConnectorModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="relative w-full max-w-md bg-[#0c1220]/90 backdrop-blur-xl border border-white/10 rounded-[28px] p-6 shadow-2xl overflow-y-auto max-h-[90vh] animate-in zoom-in-95 duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-500/15 to-transparent rounded-bl-[80px] pointer-events-none" />
+            
+            <div className="flex items-center justify-between pb-4 border-b border-white/5">
+              <h3 className="text-lg font-black text-white flex items-center gap-2">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                  <Smartphone size={16} />
+                </span>
+                <span>WhatsApp Bağlantısı</span>
+              </h3>
+              <button 
+                onClick={() => setIsConnectorModalOpen(false)}
+                className="text-slate-400 hover:text-white transition p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <WhatsAppConnector
+              status={status}
+              qrCode={qrCode}
+              connectMutation={connectMutation}
+              selectedSessionId={selectedSessionId}
+              lastErrorMessage={lastErrorMessage}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2467,19 +2467,19 @@ function Flow() {
                            <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-500 tracking-widest">
                               <span>Bekleme Süresi</span>
                               <span className="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                                 {Math.floor((node.data?.delayHours || 24))} Saat {Math.round(((node.data?.delayHours || 24) % 1) * 60)} Dakika
+                                 {Math.floor((node.data?.delayHours || 0))} Saat {Math.round(((node.data?.delayHours || 0) % 1) * 60)} Dakika
                               </span>
                            </div>
                            <Slider 
-                              value={[node.data?.delayHours || 24]}
-                              min={0.25}
+                              value={[node.data?.delayHours || 0]}
+                              min={1/60}
                               max={72}
-                              step={0.25}
+                              step={1/60}
                               onValueChange={([val]) => updateNodeData(node.id, { delayHours: val })}
                               className="py-2"
                            />
                            <div className="flex justify-between text-[9px] font-bold text-slate-600 uppercase">
-                              <span>15 dk</span>
+                              <span>1 dk</span>
                               <span>72 saat</span>
                            </div>
                         </div>

@@ -21,6 +21,7 @@ export class WhatsAppSessionManager {
     this.io = io;
     this.initialize();
     this.startBackgroundSync();
+    this.startSessionHealer();
   }
 
   private startBackgroundSync() {
@@ -39,6 +40,49 @@ export class WhatsAppSessionManager {
         }
       }
     }, 15 * 60 * 1000);
+  }
+
+  private startSessionHealer() {
+    // Run every 2 minutes to check and auto-restore disconnected or crashed sessions
+    setInterval(async () => {
+      logger.info('[Session-Healer] Checking health of all sessions...');
+      try {
+        const sessions = await db.whatsAppSession.findMany({});
+        for (const session of sessions) {
+          const client = this.clients.get(session.id);
+          
+          // Check if client is missing but session has been authenticated before (has phone number or lastConnected)
+          const isAuthSession = !!session.phoneNumber || !!session.lastConnected;
+          const isMissing = !client;
+          
+          if (isMissing && isAuthSession) {
+            logger.info({ sessionId: session.id }, '[Session-Healer] Stale or missing client found for authenticated session. Restoring...');
+            this.createClient(session.id, session.userId).catch(err => {
+              logger.error({ err, sessionId: session.id }, '[Session-Healer] Failed to restore session');
+            });
+            continue;
+          }
+          
+          // If client exists, check its state
+          if (client) {
+            try {
+              const state = await client.getState().catch(() => null);
+              logger.debug({ sessionId: session.id, state }, '[Session-Healer] Session state');
+              
+              // If client state is DISCONNECTED, but it's supposed to be connected
+              if (state === 'DISCONNECTED') {
+                logger.warn({ sessionId: session.id }, '[Session-Healer] Client reports DISCONNECTED. Triggering reconnection...');
+                this.reconnectClient(session.id).catch(() => {});
+              }
+            } catch (e) {
+              logger.error({ err: e, sessionId: session.id }, '[Session-Healer] Failed to verify client state');
+            }
+          }
+        }
+      } catch (error) {
+        logger.error(error, '[Session-Healer] Error in healer loop');
+      }
+    }, 2 * 60 * 1000);
   }
 
   private cleanupSingletonLocks(sessionPath: string) {
@@ -71,21 +115,13 @@ export class WhatsAppSessionManager {
     if (!client || typeof client[method] !== 'function') return;
 
     try {
-      await client[method]();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error(`${method} timeout`)), 10000)
+      );
+      await Promise.race([client[method](), timeoutPromise]);
     } catch (err: any) {
       const message = err?.message ? String(err.message) : String(err);
-      const isAlreadyClosed =
-        message.includes("Cannot read properties of null") ||
-        message.includes('Target closed') ||
-        message.includes('Session closed') ||
-        message.includes('Protocol error');
-
-      if (isAlreadyClosed) {
-        console.warn(`WhatsApp client ${method} skipped for session ${sessionId}; browser session was already closed: ${message}`);
-        return;
-      }
-
-      throw err;
+      console.warn(`WhatsApp client ${method} for session ${sessionId} failed or timed out: ${message}`);
     }
   }
 
@@ -387,16 +423,23 @@ export class WhatsAppSessionManager {
   private async initialize() {
     logger.info('Initializing WhatsApp Session Manager...');
     
-    // Restore existing connected sessions from DB.
+    // Restore existing connected/authenticated sessions from DB.
     try {
       // Small delay to ensure DB is ready, but keep it minimal
       await new Promise(r => setTimeout(r, 500));
       const sessions = await db.whatsAppSession.findMany({});
-      logger.info(`Found ${sessions.length} sessions in database. Checking for active ones...`);
+      logger.info(`Found ${sessions.length} sessions in database. Checking for active/authenticated ones...`);
       
       for (const session of sessions) {
-        if (session.status === 'CONNECTED' || session.status === 'AUTHENTICATED' || session.status === 'QR_READY') {
-          logger.info({ sessionId: session.id, userId: session.userId, status: session.status }, 'Restoring active session');
+        const shouldRestore = 
+          session.status === 'CONNECTED' || 
+          session.status === 'AUTHENTICATED' || 
+          session.status === 'QR_READY' || 
+          !!session.phoneNumber || 
+          !!session.lastConnected;
+
+        if (shouldRestore) {
+          logger.info({ sessionId: session.id, userId: session.userId, status: session.status }, 'Restoring active/authenticated session');
           this.createClient(session.id, session.userId).catch(err => {
             logger.error({ err, sessionId: session.id }, 'Failed to restore session');
           });
@@ -407,10 +450,19 @@ export class WhatsAppSessionManager {
     }
   }
 
-  public async createClient(sessionId: string, userId?: string) {
-    if (this.clients.has(sessionId)) {
-      console.log(`Client for session ${sessionId} already exists.`);
-      return this.clients.get(sessionId);
+  public async createClient(sessionId: string, userId?: string, force: boolean = false) {
+    if (this.clients.has(sessionId) && !force) {
+      // Check if the client is actually connected or initializing
+      const sessionRecord = await db.whatsAppSession.findUnique({ where: { id: sessionId } });
+      const status = sessionRecord?.status || 'DISCONNECTED';
+      if (status !== 'ERROR' && status !== 'DISCONNECTED') {
+        console.log(`Client for session ${sessionId} already exists with status ${status}.`);
+        return this.clients.get(sessionId);
+      }
+      console.log(`Client for session ${sessionId} exists but is in ${status} status. Re-creating...`);
+      const existing = this.clients.get(sessionId);
+      this.clients.delete(sessionId);
+      try { await existing.destroy(); } catch (_) {}
     }
 
     let resolvedUserId = userId;
@@ -441,6 +493,10 @@ export class WhatsAppSessionManager {
         clientId: sessionId,
         dataPath: path.join(process.cwd(), '.wwebjs_auth')
       }),
+      webVersionRemote: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1037238710-alpha.html',
+      webVersionStrategy: 'remote',
+      authTimeoutMs: 60000,
+      qrMaxRetries: 10,
       puppeteer: {
         headless: true,
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
@@ -451,17 +507,16 @@ export class WhatsAppSessionManager {
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--allow-running-insecure-content',
+          '--disable-web-security',
+          '--disable-client-side-phishing-detection',
+          '--disable-notifications',
+          '--hide-scrollbars',
+          '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         ],
       }
-    });
-
-    client.on('error', (err: any) => {
-      const message = err?.message ? String(err.message) : String(err);
-      console.error(`WhatsApp client error for session ${sessionId}:`, message);
-      this.io.to(resolvedUserId!).emit('wa_error', { sessionId, message });
-      this.io.to(resolvedUserId!).emit('error', { sessionId, message });
-      this.updateSessionStatus(sessionId, 'ERROR', resolvedUserId!, message).catch(() => { });
     });
 
     this.setupEventListeners(sessionId, client, resolvedUserId!);
@@ -471,6 +526,17 @@ export class WhatsAppSessionManager {
       this.io.to(resolvedUserId!).emit('wa_error', { sessionId, message });
       this.io.to(resolvedUserId!).emit('error', { sessionId, message });
       this.updateSessionStatus(sessionId, 'ERROR', resolvedUserId!, message).catch(() => { });
+
+      // Auto-recovery retry for failed initialization
+      const attempts = this.reconnectionAttempts.get(sessionId) || 0;
+      if (attempts < this.MAX_RECONNECT_ATTEMPTS) {
+        const delay = Math.min(30000, 2000 * Math.pow(1.5, attempts));
+        console.log(`[Auto-Recovery] Initialization failed. Scheduling retry for session ${sessionId} in ${delay}ms (attempt ${attempts + 1}/${this.MAX_RECONNECT_ATTEMPTS})`);
+        this.reconnectionAttempts.set(sessionId, attempts + 1);
+        setTimeout(() => {
+          this.reconnectClient(sessionId).catch(() => {});
+        }, delay);
+      }
     });
 
     this.clients.set(sessionId, client);
@@ -482,10 +548,23 @@ export class WhatsAppSessionManager {
   }
 
   private setupEventListeners(sessionId: string, client: any, userId: string) {
+    client.on('loading_screen', (percent: string, message: string) => {
+      console.log(`[Session: ${sessionId}] Loading: ${percent}% - ${message}`);
+    });
+
     client.on('qr', (qr: any) => {
       logger.info({ sessionId, userId }, 'QR Code generated');
+      console.log(`[Session: ${sessionId}] QR Code generated successfully`);
       this.io.to(userId).emit('qr', { sessionId, qr });
       this.updateSessionStatus(sessionId, 'QR_READY', userId);
+    });
+
+    client.on('error', (err: any) => {
+      const message = err?.message ? String(err.message) : String(err);
+      console.error(`WhatsApp client error for session ${sessionId}:`, message);
+      this.io.to(userId).emit('wa_error', { sessionId, message });
+      this.io.to(userId).emit('error', { sessionId, message });
+      this.updateSessionStatus(sessionId, 'ERROR', userId, message).catch(() => { });
     });
 
     client.on('authenticated', () => {
@@ -538,26 +617,38 @@ export class WhatsAppSessionManager {
 
     client.on('disconnected', async (reason: any) => {
       console.log(`User ${userId} session ${sessionId} disconnected: ${reason}`);
+      
+      // Remove stale client from map immediately so reconnection creates a fresh one
+      this.clients.delete(sessionId);
+      
       await this.updateSessionStatus(sessionId, 'DISCONNECTED', userId);
       this.io.to(userId).emit('disconnected', { sessionId, reason });
       
+      // NAVIGATION means user navigated away — destroy fully, no reconnect
+      if (reason === 'NAVIGATION') {
+        try { await client.destroy(); } catch (_) {}
+        return;
+      }
+
       const attempts = this.reconnectionAttempts.get(sessionId) || 0;
       if (attempts < this.MAX_RECONNECT_ATTEMPTS) {
         const delay = Math.min(30000, 2000 * Math.pow(1.5, attempts)); // Exponential backoff
         console.log(`Scheduling reconnection for session ${sessionId} in ${delay}ms (attempt ${attempts + 1}/${this.MAX_RECONNECT_ATTEMPTS})`);
+        this.reconnectionAttempts.set(sessionId, attempts + 1);
+        
+        // Emit reconnecting status so UI shows progress
+        this.io.to(userId).emit('session_status', { sessionId, status: 'RECONNECTING', attempt: attempts + 1 });
         
         setTimeout(() => {
-          this.reconnectClient(sessionId).catch(() => { });
+          this.reconnectClient(sessionId).catch((err) => {
+            console.error(`[Auto-Reconnect] Reconnect attempt failed for ${sessionId}:`, err);
+          });
         }, delay);
       } else {
         this.io.to(userId).emit('wa_error', { 
           sessionId, 
           message: 'WhatsApp bağlantısı koptu ve maksimum yeniden bağlanma denemesi aşıldı. Lütfen sayfayı yenileyin veya manuel olarak tekrar bağlayın.' 
         });
-      }
-
-      if (reason === 'NAVIGATION') {
-        this.destroyClient(sessionId);
       }
     });
 
@@ -654,16 +745,43 @@ export class WhatsAppSessionManager {
               }
             });
 
+            // Check ACTIVE sequences AND REPLIED sequences (already waiting for condition evaluation)
             const activeSequences = await db.sequenceState.findMany({
-              where: { userId, leadId: lead.id, status: 'ACTIVE' }
+              where: { userId, leadId: lead.id, status: { in: ['ACTIVE', 'REPLIED'] } }
             });
 
             if (activeSequences.length > 0) {
+              // Lazily import queue to avoid circular deps
+              const { Queue } = await import('bullmq');
+              const IORedis = (await import('ioredis')).default;
+              const redisConn = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', { maxRetriesPerRequest: null });
+              const sequenceQueue = new Queue('sequence-messages', { connection: redisConn });
+
               for (const state of activeSequences) {
                 const sequence = await db.sequence.findUnique({ where: { id: state.sequenceId } });
                 if (!sequence) continue;
 
-                // TRIGGER AI INTENT ANALYSIS
+                // ─── Determine if a CONDITION step is the next step to run ───────────
+                const steps = (sequence.steps || []) as any[];
+                const currentStepId = state.currentStepId;
+                const currentStepIndex = state.currentStepIndex ?? 0;
+                const currentStep = currentStepId
+                  ? steps.find((s: any) => s.id === currentStepId)
+                  : steps[currentStepIndex];
+
+                // Find what comes after the current step (same logic as Worker findNextStep)
+                const findNext = (step: any): any => {
+                  if (!step) return null;
+                  if (step.nextStepId) return steps.find((s: any) => s.id === step.nextStepId);
+                  const idx = steps.findIndex((s: any) => s.id === step.id);
+                  if (idx >= 0) return steps[idx + 1] || null;
+                  return null;
+                };
+
+                const nextStep = findNext(currentStep);
+                const conditionIsNext = nextStep?.type === 'CONDITION' || currentStep?.type === 'CONDITION';
+
+                // ─── TRIGGER AI INTENT ANALYSIS ──────────────────────────────────────
                 let detectedIntent = 'other';
                 try {
                   const axios = (await import('axios')).default;
@@ -683,14 +801,7 @@ export class WhatsAppSessionManager {
                   logger.error({ err: intentErr, leadId: lead.id }, '[AI-Intent] Error analyzing intent');
                 }
 
-                // Check for AI Intent Branching in sequence
-                const steps = sequence.steps || [];
-                const currentStepId = state.currentStepId;
-                const currentStepIndex = state.currentStepIndex;
-                let currentStep = currentStepId ? steps.find((s: any) => s.id === currentStepId) : steps[currentStepIndex];
-
-                // If current step points to an AI_INTENT node, or IS an AI_INTENT node
-                // (Usually, after SEND_MESSAGE, the next node could be AI_INTENT)
+                // ─── AI INTENT BRANCHING ─────────────────────────────────────────────
                 let intentNode = null;
                 if (currentStep?.nextStepId) {
                   const next = steps.find((s: any) => s.id === currentStep.nextStepId);
@@ -701,25 +812,51 @@ export class WhatsAppSessionManager {
 
                 if (intentNode && intentNode.branches) {
                   logger.debug({ sequenceId: sequence.id, detectedIntent }, '[AI-Intent] Sequence has AI Intent node. Branching...');
-                  const branch = intentNode.branches.find((b: any) => b.intent === detectedIntent) || 
+                  const branch = intentNode.branches.find((b: any) => b.intent === detectedIntent) ||
                                  intentNode.branches.find((b: any) => b.intent === 'other');
-                  
+
                   if (branch) {
-                    const nextStep = steps.find((s: any) => s.id === branch.nextStepId);
+                    const nextBranchStep = steps.find((s: any) => s.id === branch.nextStepId);
                     await db.sequenceState.update({
                       where: { id: state.id },
                       data: {
-                        currentStepId: nextStep?.id,
-                        status: nextStep ? 'ACTIVE' : 'COMPLETED',
-                        nextRunAt: new Date(), // Continue immediately
+                        currentStepId: nextBranchStep?.id,
+                        status: nextBranchStep ? 'ACTIVE' : 'COMPLETED',
+                        nextRunAt: new Date(),
                         isForced: true
                       }
                     });
-                    logger.info({ nextStepType: nextStep?.type, sequenceId: sequence.id }, '[AI-Intent] Sequence updated to next step');
+                    logger.info({ nextStepType: nextBranchStep?.type, sequenceId: sequence.id }, '[AI-Intent] Sequence updated to next step');
                     continue; // Handled by branching
                   }
                 }
 
+                // ─── CONDITION NODE: mark as REPLIED and fire immediately ────────────
+                if (conditionIsNext) {
+                  logger.info({
+                    sequenceId: sequence.id,
+                    stateId: state.id,
+                    leadId: lead.id
+                  }, '[Reply] CONDITION step is next — marking REPLIED and queuing condition check');
+
+                  await db.sequenceState.update({
+                    where: { id: state.id },
+                    data: {
+                      status: 'REPLIED',
+                      nextRunAt: new Date(), // evaluate condition immediately
+                      isForced: true
+                    }
+                  });
+
+                  // Queue the condition step immediately
+                  await sequenceQueue.add('process-sequence-step', {
+                    leadSequenceStateId: state.id
+                  }, { delay: 1000 }); // 1s delay so DB write settles
+
+                  continue;
+                }
+
+                // ─── NO CONDITION NODE: AI reply or stop ─────────────────────────────
                 if (sequence.aiReplyEnabled) {
                   logger.info({ sequenceId: sequence.id, leadId: lead.id }, '[AI-Reply] AI reply enabled. Generating response...');
                   try {
@@ -768,7 +905,8 @@ export class WhatsAppSessionManager {
                 }
               });
             }
-            
+
+
             this.io.to(userId).emit('incoming_message', {
               sessionId,
               leadId: lead.id,
@@ -834,7 +972,7 @@ export class WhatsAppSessionManager {
     const createData: Record<string, any> = {
       userId,
       status,
-      lastConnected: status === 'CONNECTED' || status === 'QR_READY' ? new Date() : null,
+      lastConnected: status === 'CONNECTED' ? new Date() : null, // Only CONNECTED sets lastConnected
     };
 
     if (status === 'ERROR') {
@@ -842,11 +980,6 @@ export class WhatsAppSessionManager {
       updateData.lastErrorAt = new Date();
       createData.lastErrorMessage = errorMessage || 'Unknown error';
       createData.lastErrorAt = new Date();
-    } else if (status === 'QR_READY' || status === 'CONNECTED') {
-      updateData.lastErrorMessage = null;
-      updateData.lastErrorAt = null;
-      createData.lastErrorMessage = null;
-      createData.lastErrorAt = null;
     } else {
       updateData.lastErrorMessage = null;
       updateData.lastErrorAt = null;
@@ -854,7 +987,8 @@ export class WhatsAppSessionManager {
       createData.lastErrorAt = null;
     }
 
-    if (status === 'CONNECTED' || status === 'QR_READY') {
+    // Only update lastConnected in existing records when status becomes CONNECTED
+    if (status === 'CONNECTED') {
       updateData.lastConnected = new Date();
     }
 
@@ -862,6 +996,13 @@ export class WhatsAppSessionManager {
       where: { id: sessionId },
       update: updateData,
       create: { ...createData, id: sessionId },
+    });
+
+    // Always broadcast status change via socket so UI stays in sync
+    this.io.to(userId).emit('session_status', {
+      sessionId,
+      status,
+      ...(errorMessage ? { error: errorMessage } : {})
     });
   }
 
@@ -991,19 +1132,28 @@ export class WhatsAppSessionManager {
       return false;
     }
 
-    this.reconnectionAttempts.set(sessionId, attempts + 1);
-    console.log(`Attempting to reconnect session ${sessionId} (attempt ${attempts + 1})`);
+    console.log(`[Reconnect] Attempting to reconnect session ${sessionId} (attempt ${attempts + 1}/${this.MAX_RECONNECT_ATTEMPTS})`);
 
     try {
-      await this.destroyClient(sessionId);
-      await new Promise(resolve => setTimeout(resolve, 2000));
       const sessionRecord = await db.whatsAppSession.findUnique({ where: { id: sessionId } });
       const userId = sessionRecord ? sessionRecord.userId : sessionId;
+
+      // Notify frontend of reconnecting state
+      this.io.to(userId).emit('session_status', { sessionId, status: 'RECONNECTING', attempt: attempts + 1 });
+      await this.updateSessionStatus(sessionId, 'INITIALIZING', userId).catch(() => {});
+
+      // Remove any stale client (it may already be removed by disconnected handler)
+      if (this.clients.has(sessionId)) {
+        const stale = this.clients.get(sessionId);
+        this.clients.delete(sessionId);
+        try { await stale.destroy(); } catch (_) {}
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
       await this.createClient(sessionId, userId);
-      this.reconnectionAttempts.delete(sessionId);
       return true;
     } catch (error) {
-      logger.error(error, `Reconnection failed for session ${sessionId}`);
+      logger.error(error, `[Reconnect] Reconnection failed for session ${sessionId}`);
       return false;
     }
   }

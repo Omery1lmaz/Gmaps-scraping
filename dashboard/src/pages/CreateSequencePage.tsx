@@ -172,7 +172,7 @@ export function CreateSequencePage() {
                           min="0"
                           className="rounded-xl font-bold text-sm bg-white dark:bg-zinc-950 border-white/5 text-slate-100 h-10 pr-12 focus:border-emerald-500 focus:ring-emerald-500/20 focus-visible:ring-emerald-500/20"
                           value={step.delayHours}
-                          onChange={e => setSteps(s => s.map((st, i) => i === idx ? { ...st, delayHours: parseInt(e.target.value) || 0 } : st))}
+                          onChange={e => setSteps(s => s.map((st, i) => i === idx ? { ...st, delayHours: parseFloat(e.target.value) || 0 } : st))}
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 uppercase">{t('cs_hour_unit')}</span>
                       </div>

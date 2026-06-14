@@ -7,6 +7,7 @@ export interface ISequenceState extends Document {
   currentStepId?: string;    // The unique ID of the current step in the sequence
   status: 'PENDING' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'REPLIED' | 'STOPPED_BY_REPLY';
   nextRunAt?: Date; // Scheduled time for the next step
+  lastSentAt?: Date; // Time when the last step message was sent
   lastError?: string;
   isForced?: boolean;
   userId: string;
@@ -18,8 +19,10 @@ const SequenceStateSchema: Schema = new Schema({
   sequenceId: { type: Schema.Types.ObjectId, ref: 'Sequence', required: true },
   leadId: { type: Schema.Types.ObjectId, ref: 'Lead', required: true },
   currentStepIndex: { type: Number, default: 0 },
-  status: { type: String, enum: ['PENDING', 'IN_PROGRESS', 'PAUSED', 'COMPLETED', 'FAILED', 'REPLIED'], default: 'PENDING' },
+  currentStepId: { type: String },
+  status: { type: String, enum: ['PENDING', 'IN_PROGRESS', 'PAUSED', 'COMPLETED', 'FAILED', 'REPLIED', 'STOPPED_BY_REPLY'], default: 'PENDING' },
   nextRunAt: { type: Date },
+  lastSentAt: { type: Date },
   lastError: { type: String },
   isForced: { type: Boolean, default: false },
   userId: { type: String, required: true, index: true },

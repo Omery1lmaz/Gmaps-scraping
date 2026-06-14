@@ -27,6 +27,7 @@ interface MessageInputProps {
   sendPending: boolean;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   connected?: boolean;
+  onShowConnector?: () => void;
 }
 
 export function MessageInput({
@@ -49,15 +50,19 @@ export function MessageInput({
   handleSend,
   sendPending,
   fileInputRef,
-  connected = false
+  connected = false,
+  onShowConnector
 }: MessageInputProps) {
   return (
     <div className="border-t border-white/5 p-5 bg-[#0c1220]/60 backdrop-blur-xl relative">
       {!connected && (
         <div className="absolute inset-x-0 -top-10 flex justify-center z-20">
-          <div className="bg-amber-500 text-black text-[10px] font-black px-4 py-1.5 rounded-t-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-bottom-2 uppercase tracking-widest">
-            <Clock size={12} className="animate-pulse" /> Mesaj Gönderimi İçin Bağlantı Bekleniyor
-          </div>
+          <button
+            onClick={onShowConnector}
+            className="bg-amber-500 hover:bg-amber-600 text-black text-[10px] font-black px-4 py-1.5 rounded-t-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-bottom-2 uppercase tracking-widest cursor-pointer"
+          >
+            <Clock size={12} className="animate-pulse" /> Mesaj Gönderimi İçin Bağlantı Bekleniyor (Karekodu Göster)
+          </button>
         </div>
       )}
       {/* Scheduled Message Inline Form */}

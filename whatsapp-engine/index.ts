@@ -26,6 +26,13 @@ const io = new Server(httpServer, {
 
 app.use(cors());
 app.use(express.json());
+
+// Global Request Logger
+app.use((req, res, next) => {
+  console.log(`[HTTP] ${new Date().toISOString()} ${req.method} ${req.url}`);
+  next();
+});
+
 const sessionManager = new WhatsAppSessionManager(io);
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-change-me';
 
@@ -46,27 +53,38 @@ function userFromReq(req: express.Request) {
 
 async function requireSessionAccess(req: express.Request, res: express.Response, next: express.NextFunction) {
   const userId = userFromReq(req);
-  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+  if (!userId) {
+    console.warn(`[Auth] Authentication failed for ${req.url}`);
+    return res.status(401).json({ error: 'Authentication required' });
+  }
   (req as any).userId = userId;
 
   const sessionId = req.params.sessionId;
-  if (!sessionId) return res.status(400).json({ error: 'Session ID is required' });
+  if (!sessionId) {
+    console.warn(`[Auth] Session ID missing for ${req.url}`);
+    return res.status(400).json({ error: 'Session ID is required' });
+  }
 
   // If sessionId is the userId itself (legacy single-session fallback)
   if (sessionId === userId) {
+    console.log(`[Auth] Legacy session access granted for user ${userId}`);
     return next();
   }
 
   // Check if session exists and belongs to this user
+  console.log(`[Auth] Checking access for user ${userId} to session ${sessionId}`);
   const session = await db.whatsAppSession.findUnique({ where: { id: sessionId } });
   if (!session) {
+    console.warn(`[Auth] Session ${sessionId} not found in DB`);
     return res.status(404).json({ error: 'WhatsApp session not found' });
   }
 
   if (session.userId !== userId) {
+    console.warn(`[Auth] Access denied: User ${userId} does not own session ${sessionId}`);
     return res.status(403).json({ error: 'Forbidden' });
   }
 
+  console.log(`[Auth] Access granted for session ${sessionId}`);
   next();
 }
 
@@ -120,11 +138,21 @@ app.post('/connect/:sessionId', requireSessionAccess, async (req, res) => {
     req.query.force === 'true' ||
     (typeof req.body?.force === 'boolean' && req.body.force === true);
 
+  console.log(`[Route] POST /connect/${sessionId} (userId: ${userId}, force: ${force})`);
+
   if (force) {
+    console.log(`[Route] Force connecting... destroying existing client for ${sessionId}`);
     await sessionManager.destroyClient(sessionId);
   }
-  await sessionManager.createClient(sessionId, userId);
-  res.json({ success: true, message: force ? 'Force restart started' : 'Initialization started' });
+  
+  try {
+    console.log(`[Route] Triggering sessionManager.createClient for ${sessionId}`);
+    await sessionManager.createClient(sessionId, userId);
+    res.json({ success: true, message: force ? 'Force restart started' : 'Initialization started' });
+  } catch (error: any) {
+    console.error(`[Route] Failed to create client for ${sessionId}:`, error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/logout/:sessionId', requireSessionAccess, async (req, res) => {

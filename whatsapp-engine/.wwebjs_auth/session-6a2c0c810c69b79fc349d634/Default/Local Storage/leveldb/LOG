@@ -1,0 +1,5 @@
+2026/06/14-11:47:58.441 a6 Reusing MANIFEST /app/.wwebjs_auth/session-6a2c0c810c69b79fc349d634/Default/Local Storage/leveldb/MANIFEST-000001
+2026/06/14-11:47:58.445 a6 Recovering log #6
+2026/06/14-11:47:58.445 a6 Level-0 table #9: started
+2026/06/14-11:47:58.447 a6 Level-0 table #9: 15957 bytes OK
+2026/06/14-11:47:58.449 a6 Delete type=0 #6

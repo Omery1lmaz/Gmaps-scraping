@@ -57,7 +57,8 @@ const SequenceStepSchema: Schema = new Schema({
     intent: { type: String },
     nextStepId: { type: String }
   }],
-  tagId: { type: String }
+  tagId: { type: String },
+  nextStepId: { type: String },  // Links this step to the next in the visual graph
 });
 
 const SequenceSchema: Schema = new Schema({

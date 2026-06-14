@@ -148,6 +148,7 @@ export const pauseSequence = (id: string) => api.post(`/sequences/${id}/pause`).
 export const resumeSequence = (id: string) => api.post(`/sequences/${id}/resume`).then(res => res.data);
 export const restartSequence = (id: string) => api.post(`/sequences/${id}/restart`).then(res => res.data);
 export const clearSequence = (id: string) => api.post(`/sequences/${id}/clear`).then(res => res.data);
+export const recalculateSequence = (id: string) => api.post(`/sequences/${id}/recalculate`).then(res => res.data);
 
 // Meetings
 export const getMeetings = () => api.get('/meetings').then(res => res.data);

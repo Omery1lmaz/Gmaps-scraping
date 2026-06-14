@@ -14,13 +14,14 @@ import {
   pauseSequence,
   resumeSequence,
   restartSequence,
-  clearSequence
+  clearSequence,
+  recalculateSequence
 } from '../lib/api';
 import { useNavigate, useParams } from '../lib/router';
 import {
   ArrowLeft, Clock, Target, UserPlus, Play, Pause, CheckCircle2, AlertCircle,
   MessageSquare, Settings, Calendar, Shield, Search, Filter, X, ChevronDown, Plus,
-  MapPin, Tag, Globe, Phone, Star, Loader2, ShieldAlert, Trash2, RefreshCw, ExternalLink, Zap, Edit2, Check
+  MapPin, Tag, Globe, Phone, Star, Loader2, ShieldAlert, Trash2, RefreshCw, ExternalLink, Zap, Edit2, Check, RefreshCcw
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -72,6 +73,7 @@ export function SequenceDetailsPage() {
   const [minDelayMinutes, setMinDelayMinutes] = useState(5);
   const [skipReplied, setSkipReplied] = useState(true);
   const [autoStopOnReply, setAutoStopOnReply] = useState(true);
+  const [whatsappSessionId, setWhatsappSessionId] = useState<string>('');
 
   const { data: sequence, isLoading } = useQuery({
     queryKey: ['sequence', id],
@@ -84,6 +86,11 @@ export function SequenceDetailsPage() {
     queryFn: getTemplates
   });
 
+  const { data: whatsappSessions = [] } = useQuery({
+    queryKey: ['whatsappSessions'],
+    queryFn: async () => (await api.get('/whatsapp/sessions')).data
+  });
+
   useEffect(() => {
     if (sequence) {
       setSendTimeStart(sequence.sendTimeStart || '09:00');
@@ -94,6 +101,7 @@ export function SequenceDetailsPage() {
       setSkipReplied(sequence.skipReplied ?? true);
       setAutoStopOnReply(sequence.autoStopOnReply ?? true);
       setNewName(sequence.name || '');
+      setWhatsappSessionId(sequence.whatsappSessionId || '');
     }
   }, [sequence]);
 
@@ -132,8 +140,8 @@ export function SequenceDetailsPage() {
       queryClient.invalidateQueries({ queryKey: ['sequence', id] });
       toast.success('İşlem başarılı');
     },
-    onError: () => {
-      toast.error('İşlem sırasında hata oluştu');
+    onError: (err: any) => {
+      toast.error('İşlem sırasında hata oluştu: ' + (err.response?.data?.message || err.message));
     }
   });
 
@@ -143,8 +151,8 @@ export function SequenceDetailsPage() {
       queryClient.invalidateQueries({ queryKey: ['sequence', id] });
       toast.success('İşletme diziden başarıyla çıkarıldı');
     },
-    onError: () => {
-      toast.error('İşletme diziden çıkarılırken hata oluştu');
+    onError: (err: any) => {
+      toast.error('İşletme diziden çıkarılırken hata oluştu: ' + (err.response?.data?.message || err.message));
     }
   });
 
@@ -194,6 +202,20 @@ export function SequenceDetailsPage() {
     }
   });
 
+  const recalculateMutation = useMutation({
+    mutationFn: () => recalculateSequence(id as string),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['sequence', id] });
+      const msg = data.failedReset > 0
+        ? `${data.updatedCount} kayıt yeniden zamanlandı (${data.failedReset} hatalı kayıt sıfırlandı)`
+        : `${data.updatedCount ?? 0} kayıt yeniden zamanlandı`;
+      toast.success(msg);
+    },
+    onError: (err: any) => {
+      toast.error('Zamanlama hesaplanırken hata oluştu: ' + (err.response?.data?.error || err.message));
+    }
+  });
+
   const handleSaveName = () => {
     if (!newName.trim()) {
       toast.error('Dizi adı boş olamaz');
@@ -216,7 +238,15 @@ export function SequenceDetailsPage() {
   };
 
   const handleSaveSettings = () => {
-    updateMutation.mutate({ sendTimeStart, sendTimeEnd, activeDays, maxPerDay, minDelayMinutes, skipReplied, autoStopOnReply });
+    updateMutation.mutate(
+      { sendTimeStart, sendTimeEnd, activeDays, maxPerDay, minDelayMinutes, skipReplied, autoStopOnReply, whatsappSessionId },
+      {
+        onSuccess: () => {
+          // After saving settings, auto-recalculate scheduled times
+          recalculateMutation.mutate();
+        }
+      }
+    );
   };
 
   const toggleDay = (day: number) => {
@@ -349,6 +379,23 @@ export function SequenceDetailsPage() {
           <Button
             variant="outline"
             size="sm"
+            title="Tüm aktif kayıtların gönderim zamanlarını mevcut ayarlara göre yeniden hesapla"
+            onClick={() => {
+              recalculateMutation.mutate();
+            }}
+            disabled={recalculateMutation.isPending}
+            className="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/25 font-bold gap-1.5 rounded-xl h-10 px-3.5 transition-all hover:scale-[1.02]"
+          >
+            {recalculateMutation.isPending
+              ? <Loader2 size={14} className="animate-spin" />
+              : <RefreshCcw size={14} />
+            }
+            Zamanlamayı Yenile
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               if (window.confirm('Dizideki tüm işletme kayıtlarını tamamen temizlemek istediğinize emin misiniz? Bu işlem geri alınamaz.')) {
                 clearSeqMutation.mutate();
@@ -386,6 +433,61 @@ export function SequenceDetailsPage() {
           </div>
         ))}
       </div>
+
+      {/* WhatsApp Connection Warning Banner */}
+      {(() => {
+        const activeSession = whatsappSessions.find((s: any) => s._id === whatsappSessionId);
+        const isSessionConnected = activeSession && activeSession.status === 'CONNECTED';
+        
+        // If they select a session and it's not connected, show the banner
+        if (whatsappSessionId && !isSessionConnected) {
+          return (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-red-400">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="size-5 shrink-0" />
+                <div>
+                  <p className="text-sm font-bold">WhatsApp Gönderici Hesabı Çevrimdışı!</p>
+                  <p className="text-xs text-slate-400 font-medium">
+                    Bu otomasyon dizisi için seçilen "{activeSession?.sessionName || 'WhatsApp Hesabı'}" şu an bağlı değil. Mesaj gönderimi yapılamaz.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => navigate('/whatsapp/accounts')}
+                className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs h-9 px-4 rounded-xl shrink-0 shadow-lg shadow-red-500/20 border border-red-600/30"
+              >
+                Hemen Bağlan 🔌
+              </Button>
+            </div>
+          );
+        }
+        
+        // If they didn't select a session, check if there's at least one connected session in their account
+        const hasAnyConnectedSession = whatsappSessions.some((s: any) => s.status === 'CONNECTED');
+        if (!whatsappSessionId && !hasAnyConnectedSession) {
+          return (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-amber-400">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="size-5 shrink-0 text-amber-400" />
+                <div>
+                  <p className="text-sm font-bold">Aktif WhatsApp Bağlantısı Bulunamadı!</p>
+                  <p className="text-xs text-slate-400 font-medium">
+                    Hesabınıza bağlı aktif bir WhatsApp hattı bulunmuyor. Mesajların gönderilebilmesi için lütfen bir hat bağlayın.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => navigate('/whatsapp/accounts')}
+                className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs h-9 px-4 rounded-xl shrink-0 shadow-lg shadow-amber-500/20 border border-amber-600/30"
+              >
+                WhatsApp Hesabı Ekle 🔌
+              </Button>
+            </div>
+          );
+        }
+        
+        return null;
+      })()}
 
       {/* Tabs Layout */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6 flex flex-col">
@@ -483,7 +585,17 @@ export function SequenceDetailsPage() {
                             {state.status === 'COMPLETED' ? (
                               <span className="text-xs font-bold text-emerald-400 bg-emerald-950/30 px-2 py-1 rounded-md border border-emerald-900/40">Seri Tamamlandı</span>
                             ) : state.status === 'FAILED' ? (
-                              <span className="text-xs font-bold text-red-400">Hata Oluştu</span>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-xs font-bold text-red-400">Hata Oluştu</span>
+                                {state.lastError && (
+                                  <span 
+                                    className="text-[10px] font-medium text-red-400/80 bg-red-500/5 px-2 py-1 rounded border border-red-500/10 max-w-[200px] whitespace-normal break-words leading-tight" 
+                                    title={state.lastError}
+                                  >
+                                    {state.lastError}
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <div className="flex flex-col gap-0.5">
                                 <span className="text-[11px] font-bold text-slate-100 truncate max-w-[150px]" title={sequence.steps[state.currentStepIndex]?.templateId?.name || 'Bilinmeyen Şablon'}>
@@ -654,7 +766,7 @@ export function SequenceDetailsPage() {
                             value={step.delayHours}
                             onChange={(e) => {
                               const newSteps = [...sequence.steps];
-                              newSteps[idx].delayHours = parseInt(e.target.value) || 0;
+                              newSteps[idx].delayHours = parseFloat(e.target.value) || 0;
                               updateMutation.mutate({ steps: newSteps });
                             }}
                           />

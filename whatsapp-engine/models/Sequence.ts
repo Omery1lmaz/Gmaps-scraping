@@ -35,7 +35,12 @@ export interface ISequence extends Document {
 }
 
 const SequenceStepSchema: Schema = new Schema({
-  type: { type: String, enum: ['SEND_MESSAGE', 'BOOK_MEETING'], default: 'SEND_MESSAGE' },
+  id: { type: String },  // React Flow node ID — used for graph navigation
+  type: {
+    type: String,
+    enum: ['TRIGGER', 'SEND_MESSAGE', 'BOOK_MEETING', 'CONDITION', 'AI_INTENT', 'TAG'],
+    default: 'SEND_MESSAGE'
+  },
   templateId: { type: Schema.Types.ObjectId, ref: 'Template', required: false },
   templates: [{
     templateId: { type: Schema.Types.ObjectId, ref: 'Template' },
@@ -46,6 +51,12 @@ const SequenceStepSchema: Schema = new Schema({
   untilTime: { type: String, default: '09:00' },
   meetingTitle: { type: String },
   meetingDuration: { type: Number, default: 60 },
+  branches: [{
+    intent: { type: String },
+    nextStepId: { type: String }
+  }],
+  tagId: { type: String },
+  nextStepId: { type: String },  // Links this step to the next in the visual graph
 });
 
 const SequenceSchema: Schema = new Schema({

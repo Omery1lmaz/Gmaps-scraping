@@ -31,11 +31,25 @@ import { PlanGuard } from '../components/PlanGuard';
 
 function formatDelay(hours: number, t: any): string {
   if (hours === 0) return t('sp_immediately');
-  if (hours < 24) return `${hours}${t('sp_hours')} ${t('sp_delay')}`;
-  const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
-  if (remainingHours === 0) return `${days} ${t('sp_days')}`;
-  return `${days}${t('sp_days')} ${remainingHours}${t('sp_hours')}`;
+  
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  const d = Math.floor(h / 24);
+  const hRem = h % 24;
+
+  if (d > 0) {
+    if (hRem === 0 && m === 0) return `${d} ${t('sp_days') || 'Gün'}`;
+    if (m === 0) return `${d}${t('sp_days') || 'Gün'} ${hRem}${t('sp_hours')}`;
+    return `${d}${t('sp_days') || 'Gün'} ${hRem}${t('sp_hours')} ${m}dk`;
+  }
+
+  if (h > 0) {
+    if (m === 0) return `${h}${t('sp_hours')} ${t('sp_delay')}`;
+    return `${h}${t('sp_hours')} ${m}dk ${t('sp_delay')}`;
+  }
+
+  return `${m}dk ${t('sp_delay')}`;
 }
 
 export function SequencesPage() {
@@ -238,9 +252,9 @@ export function SequencesPage() {
                           className="flex items-center gap-1 text-[9px] font-black text-muted-foreground uppercase bg-muted px-2 py-0.5 rounded-full border border-border/50 cursor-pointer hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 dark:hover:bg-amber-950/20 dark:hover:text-amber-400 transition-all shrink-0"
                           onClick={() => {
                             const newDelay = window.prompt(t('sp_delay_prompt'), step.delayHours.toString());
-                            if (newDelay !== null && !isNaN(parseInt(newDelay))) {
+                            if (newDelay !== null && !isNaN(parseFloat(newDelay))) {
                               const newSteps = [...seq.steps];
-                              newSteps[idx].delayHours = parseInt(newDelay);
+                              newSteps[idx].delayHours = parseFloat(newDelay);
                               updateMutation.mutate({ id: seq._id, data: { steps: newSteps } });
                             }
                           }}

@@ -43,9 +43,15 @@ export const TimeDelayNode = React.memo(({ data, id }: any) => {
     if (waitType === 'until_time') return `Saat: ${data.untilTime || '09:00'}`;
     if (waitType === 'weekdays') return 'Hafta İçi';
     
-    if (hours < 1) return `${Math.round(hours * 60)} Dakika`;
-    if (hours >= 24 && hours % 24 === 0) return `${Math.round(hours / 24)} Gün`;
-    return `${hours} Saat`;
+    const h = Math.floor(hours);
+    const m = Math.round((hours % 1) * 60);
+
+    if (h === 0) return `${m} Dakika`;
+    if (m === 0) {
+      if (h >= 24 && h % 24 === 0) return `${Math.round(h / 24)} Gün`;
+      return `${h} Saat`;
+    }
+    return `${h} Saat ${m} Dakika`;
   };
 
   // Dynamic customization
