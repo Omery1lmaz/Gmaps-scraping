@@ -22,6 +22,7 @@ chrome.runtime.onMessage.addListener((message: any) => {
   if (message.type === "START_SCRAPING_CMD") {
     startScraping(
       message.scrapeDetails ?? false,
+      message.skipDetailIfWebsite ?? false,
       message.customCategory,
       message.defaultCity,
       message.defaultCountry,
@@ -43,6 +44,7 @@ chrome.runtime.onMessage.addListener((message: any) => {
 
 async function startScraping(
   scrapeDetails: boolean,
+  skipDetailIfWebsite: boolean = false,
   customCategory?: string,
   defaultCity?: string,
   defaultCountry?: string,
@@ -53,7 +55,7 @@ async function startScraping(
   seenIds.clear();
 
   try {
-    await scrapeLoop(scrapeDetails, customCategory, defaultCity, defaultCountry, plan);
+    await scrapeLoop(scrapeDetails, skipDetailIfWebsite, customCategory, defaultCity, defaultCountry, plan);
   } catch (error) {
     chrome.runtime.sendMessage({
       type: "SCRAPING_FAILED",
@@ -64,6 +66,7 @@ async function startScraping(
 
 async function scrapeLoop(
   scrapeDetails: boolean,
+  skipDetailIfWebsite: boolean = false,
   customCategory?: string,
   defaultCity?: string,
   defaultCountry?: string,
@@ -151,6 +154,25 @@ async function scrapeLoop(
       }
 
       const lead = allLeads[i];
+
+      // ── Skip detail if lead already has a website from list view ──────────
+      if (skipDetailIfWebsite && lead.website) {
+        chrome.runtime.sendMessage({
+          type: "DETAIL_LOG_ENTRY",
+          payload: {
+            businessName: lead.name,
+            timestamp: Date.now(),
+            fields: ['website'],
+            success: true,
+            skipped: true,
+          },
+        });
+        chrome.runtime.sendMessage({
+          type: "DETAIL_PROGRESS",
+          payload: { current: i + 1, total: allLeads.length },
+        });
+        continue;
+      }
       chrome.runtime.sendMessage({
         type: "UPDATE_ACTIVITY",
         payload: `Detail: ${i + 1}/${allLeads.length} — ${lead.name}`,

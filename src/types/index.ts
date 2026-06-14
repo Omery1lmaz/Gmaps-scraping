@@ -37,10 +37,12 @@ export interface DetailLogEntry {
   timestamp: number;
   fields: string[]; // Extracted field names, e.g. ["phone", "website", "address"]
   success: boolean;
+  skipped?: boolean; // true if detail was skipped because website already existed
 }
 
 export interface ScraperSettings {
   scrapeDetails: boolean; // Detay panelinden ek bilgi çeksin mi?
+  skipDetailIfWebsite?: boolean; // Web sitesi varsa detay taramayı atla
   customCategory?: string; // Kullanıcının girdiği özel kategori
   searchKeyword?: string;
   searchCity?: string;

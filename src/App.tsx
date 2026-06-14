@@ -53,16 +53,23 @@ function DetailLogRow({ entry }: { entry: DetailLogEntry }) {
   const time = new Date(entry.timestamp)
   const timeStr = `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`
   return (
-    <div className="flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50">
-      <div className={`mt-0.5 shrink-0 ${entry.success ? 'text-green-500' : 'text-red-500'}`}>
-        {entry.success ? <CheckCircle2 className="size-3.5" /> : <AlertCircle className="size-3.5" />}
+    <div className={`flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50 ${entry.skipped ? 'opacity-60' : ''}`}>
+      <div className={`mt-0.5 shrink-0 ${entry.skipped ? 'text-slate-400' : entry.success ? 'text-green-500' : 'text-red-500'}`}>
+        {entry.skipped
+          ? <Globe className="size-3.5" />
+          : entry.success
+            ? <CheckCircle2 className="size-3.5" />
+            : <AlertCircle className="size-3.5" />
+        }
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-xs font-semibold truncate">{entry.businessName}</div>
         <div className="flex flex-wrap items-center gap-1 mt-1">
-          {entry.fields.length > 0
-            ? entry.fields.map(f => <FieldBadge key={f} field={f} />)
-            : <span className="text-[10px] text-muted-foreground italic">Veri bulunamadı</span>
+          {entry.skipped
+            ? <span className="text-[10px] text-slate-400 italic bg-slate-50 px-1.5 py-0.5 rounded-md">Web sitesi var — atlandı</span>
+            : entry.fields.length > 0
+              ? entry.fields.map(f => <FieldBadge key={f} field={f} />)
+              : <span className="text-[10px] text-muted-foreground italic">Veri bulunamadı</span>
           }
         </div>
       </div>
@@ -80,6 +87,7 @@ function App() {
     activity: 'Başlatılmaya hazır'
   })
   const [scrapeDetails, setScrapeDetails] = useState(true)
+  const [skipDetailIfWebsite, setSkipDetailIfWebsite] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState('')
   const [defaultCategory, setDefaultCategory] = useState('Halı Yıkama')
   const [defaultCity, setDefaultCity] = useState('Antalya')
@@ -162,6 +170,7 @@ function App() {
       type: 'START_SCRAPING',
       settings: { 
         scrapeDetails, 
+        skipDetailIfWebsite: scrapeDetails ? skipDetailIfWebsite : false,
         searchKeyword: searchKeyword.trim(),
         defaultCategory: defaultCategory.trim(),
         defaultCity: defaultCity.trim(),
@@ -502,21 +511,42 @@ function App() {
           </div>
         )}
         {!isScraping && status.state !== 'completed' && (
-          <div className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="bg-slate-50 p-2 rounded-lg text-slate-600">
-                <Info className="size-5" />
+          <div className="space-y-2">
+            {/* Detaylı Bilgiler ana toggle */}
+            <div className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="bg-slate-50 p-2 rounded-lg text-slate-600">
+                  <Info className="size-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <label className="text-sm font-bold text-slate-700">Detaylı Bilgiler</label>
+                  <p className="text-[11px] text-slate-400 font-medium">Telefon, web sitesi, saatler</p>
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <label className="text-sm font-bold text-slate-700">Detaylı Bilgiler</label>
-                <p className="text-[11px] text-slate-400 font-medium">Telefon, web sitesi, saatler</p>
-              </div>
+              <Switch
+                checked={scrapeDetails}
+                onCheckedChange={(checked) => {
+                  setScrapeDetails(checked)
+                  if (!checked) setSkipDetailIfWebsite(false)
+                }}
+                className="data-[state=checked]:bg-blue-600"
+              />
             </div>
-            <Switch
-              checked={scrapeDetails}
-              onCheckedChange={(checked) => setScrapeDetails(checked)}
-              className="data-[state=checked]:bg-blue-600"
-            />
+
+            {/* Alt seçenek: web sitesi varsa detaylı aramayı atla */}
+            {scrapeDetails && (
+              <div className="flex items-center justify-between pl-10 pr-4 py-3 bg-blue-50/60 rounded-xl border border-blue-100/80 transition-all">
+                <div className="space-y-0.5">
+                  <label className="text-xs font-bold text-blue-800">Web sitesi varsa atla</label>
+                  <p className="text-[10px] text-blue-500 font-medium leading-tight">Listeden zaten web sitesi alınmışsa detay sayfasını açma</p>
+                </div>
+                <Switch
+                  checked={skipDetailIfWebsite}
+                  onCheckedChange={setSkipDetailIfWebsite}
+                  className="data-[state=checked]:bg-blue-500 scale-90"
+                />
+              </div>
+            )}
           </div>
         )}
 

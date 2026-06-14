@@ -114,6 +114,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
                     chrome.tabs.sendMessage(targetTabId, { 
                       type: "START_SCRAPING_CMD", 
                       scrapeDetails: currentSettings.scrapeDetails,
+                      skipDetailIfWebsite: currentSettings.skipDetailIfWebsite ?? false,
                       customCategory: currentSettings.customCategory,
                       defaultCity: currentSettings.defaultCity,
                       defaultCountry: currentSettings.defaultCountry,
@@ -142,6 +143,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
               chrome.tabs.sendMessage(targetTabId, { 
                 type: "START_SCRAPING_CMD", 
                 scrapeDetails: currentSettings.scrapeDetails,
+                skipDetailIfWebsite: currentSettings.skipDetailIfWebsite ?? false,
                 customCategory: currentSettings.customCategory,
                 defaultCity: currentSettings.defaultCity,
                 defaultCountry: currentSettings.defaultCountry,
