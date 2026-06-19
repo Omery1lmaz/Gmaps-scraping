@@ -3,3 +3,38 @@
 2026/06/14-11:47:58.445 a6 Level-0 table #9: started
 2026/06/14-11:47:58.447 a6 Level-0 table #9: 15957 bytes OK
 2026/06/14-11:47:58.449 a6 Delete type=0 #6
+2026/06/15-16:08:52.276 a8 Level-0 table #12: started
+2026/06/15-16:08:52.286 a8 Level-0 table #12: 15363 bytes OK
+2026/06/15-16:08:52.292 a8 Delete type=0 #10
+2026/06/15-16:08:52.293 a8 Compacting 4@0 + 0@1 files
+2026/06/15-16:08:52.298 a8 Generated table #13@0: 78 keys, 5667 bytes
+2026/06/15-16:08:52.298 a8 Compacted 4@0 + 0@1 files => 5667 bytes
+2026/06/15-16:08:52.299 a8 compacted to: files[ 0 1 0 0 0 0 0 ]
+2026/06/15-16:08:52.301 a8 Delete type=2 #3
+2026/06/15-16:08:52.301 a8 Delete type=2 #7
+2026/06/15-16:08:52.301 a8 Delete type=2 #12
+2026/06/15-16:08:52.301 a8 Delete type=2 #9
+2026/06/16-07:27:49.339 a8 Level-0 table #15: started
+2026/06/16-07:27:49.348 a8 Level-0 table #15: 15457 bytes OK
+2026/06/16-07:27:49.353 a8 Delete type=0 #11
+2026/06/16-16:18:53.642 a8 Level-0 table #17: started
+2026/06/16-16:18:53.659 a8 Level-0 table #17: 15520 bytes OK
+2026/06/16-16:18:53.664 a8 Delete type=0 #14
+2026/06/16-23:59:20.936 a8 Level-0 table #19: started
+2026/06/16-23:59:20.948 a8 Level-0 table #19: 16462 bytes OK
+2026/06/16-23:59:20.953 a8 Delete type=0 #16
+2026/06/17-09:40:55.544 a8 Level-0 table #21: started
+2026/06/17-09:40:55.554 a8 Level-0 table #21: 14157 bytes OK
+2026/06/17-09:40:55.560 a8 Delete type=0 #18
+2026/06/17-09:40:55.561 a8 Compacting 4@0 + 1@1 files
+2026/06/17-09:40:55.568 a8 Generated table #22@0: 78 keys, 5611 bytes
+2026/06/17-09:40:55.568 a8 Compacted 4@0 + 1@1 files => 5611 bytes
+2026/06/17-09:40:55.569 a8 compacted to: files[ 0 1 0 0 0 0 0 ]
+2026/06/17-09:40:55.572 a8 Delete type=2 #15
+2026/06/17-09:40:55.573 a8 Delete type=2 #17
+2026/06/17-09:40:55.573 a8 Delete type=2 #13
+2026/06/17-09:40:55.573 a8 Delete type=2 #21
+2026/06/17-09:40:55.573 a8 Delete type=2 #19
+2026/06/17-16:34:30.389 a8 Level-0 table #24: started
+2026/06/17-16:34:30.402 a8 Level-0 table #24: 14267 bytes OK
+2026/06/17-16:34:30.406 a8 Delete type=0 #20

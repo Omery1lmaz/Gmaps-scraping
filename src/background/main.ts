@@ -115,7 +115,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
                       type: "START_SCRAPING_CMD", 
                       scrapeDetails: currentSettings.scrapeDetails,
                       skipDetailIfWebsite: currentSettings.skipDetailIfWebsite ?? false,
-                      customCategory: currentSettings.customCategory,
+                      customCategory: currentSettings.customCategory || currentSettings.defaultCategory,
                       defaultCity: currentSettings.defaultCity,
                       defaultCountry: currentSettings.defaultCountry,
                       existingIds: leadsDbIds,
@@ -129,7 +129,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
                   }, 3000);
                 }
               };
-
+ 
               chrome.tabs.onUpdated.addListener(onTabUpdated);
             });
           } else {
@@ -139,12 +139,12 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
                 globalStateMachine.transition("failed", { error: "Open Google Maps results first or enter search criteria." });
                 return;
               }
-
+ 
               chrome.tabs.sendMessage(targetTabId, { 
                 type: "START_SCRAPING_CMD", 
                 scrapeDetails: currentSettings.scrapeDetails,
                 skipDetailIfWebsite: currentSettings.skipDetailIfWebsite ?? false,
-                customCategory: currentSettings.customCategory,
+                customCategory: currentSettings.customCategory || currentSettings.defaultCategory,
                 defaultCity: currentSettings.defaultCity,
                 defaultCountry: currentSettings.defaultCountry,
                 existingIds: leadsDbIds,

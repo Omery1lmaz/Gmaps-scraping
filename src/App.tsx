@@ -533,12 +533,12 @@ function App() {
               />
             </div>
 
-            {/* Alt seçenek: web sitesi varsa detaylı aramayı atla */}
+            {/* Alt seçenek: listede web sitesi olanları atla */}
             {scrapeDetails && (
               <div className="flex items-center justify-between pl-10 pr-4 py-3 bg-blue-50/60 rounded-xl border border-blue-100/80 transition-all">
                 <div className="space-y-0.5">
-                  <label className="text-xs font-bold text-blue-800">Web sitesi varsa atla</label>
-                  <p className="text-[10px] text-blue-500 font-medium leading-tight">Listeden zaten web sitesi alınmışsa detay sayfasını açma</p>
+                  <label className="text-xs font-bold text-blue-800">Listede web sitesi olanları atla</label>
+                  <p className="text-[10px] text-blue-500 font-medium leading-tight">Sol sonuç listesinde web sitesi olanları atlar, sadece web sitesi olmayanlar için detaylı arama yapar.</p>
                 </div>
                 <Switch
                   checked={skipDetailIfWebsite}

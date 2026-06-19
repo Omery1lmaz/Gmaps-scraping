@@ -307,10 +307,14 @@ function extractLeads(customCategory?: string, defaultCity?: string, defaultCoun
     }
 
     // Website
-    const websiteElement = item.querySelector('a[data-value*="Web"], a[aria-label*="web"], a[aria-label*="internet"]');
-    const website = websiteElement
-      ? (websiteElement as HTMLAnchorElement).href
-      : undefined;
+    const websiteElement = item.querySelector('a[data-value*="Web"], a[aria-label*="web"], a[aria-label*="internet"], a[aria-label*="Web sitesi"]') as HTMLAnchorElement;
+    let website: string | undefined = undefined;
+    if (websiteElement) {
+      const href = websiteElement.href || "";
+      if (href && !href.includes("google.com") && !href.includes("google.co") && !href.includes("maps.app.goo.gl") && href.startsWith("http")) {
+        website = href;
+      }
+    }
 
     // Category and Address (usually in .W4Efsd containers)
     const infoContainers = item.querySelectorAll(".W4Efsd");
@@ -503,7 +507,7 @@ async function extractDetailForLead(
 async function waitForDetailPanel(): Promise<boolean> {
   const maxWait = 6000;
   const interval = 200; // Faster polling
-  let waited = 0;
+  const startTime = performance.now();
 
   const dataSelectors = [
     'button[data-item-id^="phone"]',
@@ -519,19 +523,49 @@ async function waitForDetailPanel(): Promise<boolean> {
     'div[jsaction]', // React-rooted panel
   ];
 
-  while (waited < maxWait) {
+  while (performance.now() - startTime < maxWait) {
     const detailHeader = document.querySelector('h1.DUwDvf');
     const hasAnyData = dataSelectors.some(sel => document.querySelector(sel));
     
     if (detailHeader && detailHeader.textContent?.trim()) {
         // If we have a header AND either some data OR we've waited long enough
-        if (hasAnyData || waited > 3000) return true;
+        if (hasAnyData || (performance.now() - startTime) > 3000) return true;
     }
     
     await sleep(interval);
-    waited += interval;
   }
   return false;
+}
+
+function isElementInFeed(el: Element | null): boolean {
+  if (!el) return false;
+  return !!el.closest('div[role="feed"], div.Nv2Ybe, div[role="article"]');
+}
+
+function getDetailPanelText(scope: Element): string {
+  const detailHeader = document.querySelector('h1.DUwDvf');
+  const detailPanel = detailHeader?.closest('div[role="main"], div.m6QErb, div.bJz1W') || document.querySelector('div[role="main"]');
+  const target = detailPanel || scope;
+  
+  let text = "";
+  const traverse = (node: Node) => {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as Element;
+      if (isElementInFeed(el)) {
+        return; // skip feed items
+      }
+    }
+    if (node.nodeType === Node.TEXT_NODE) {
+      text += " " + node.textContent;
+    } else {
+      for (let i = 0; i < node.childNodes.length; i++) {
+        traverse(node.childNodes[i]);
+      }
+    }
+  };
+  
+  traverse(target);
+  return text.trim();
 }
 
 function scrapeDetailPanel(onFieldsFound?: (fields: string[]) => void): Partial<Lead> {
@@ -545,11 +579,14 @@ function scrapeDetailPanel(onFieldsFound?: (fields: string[]) => void): Partial<
     }
   };
 
-  // Use document.body as base scope — Google Maps renders detail content at document level
-  const scope: HTMLElement | Document = document;
+  // Scope elements specifically within the detail panel layout to prevent leakage from the list view or other panels
+  const detailHeader = document.querySelector('h1.DUwDvf');
+  const scope: Element = detailHeader?.closest('div[role="main"], div.m6QErb, div.bJz1W') || 
+                         document.querySelector('div[role="main"], div.bJz1W, div.b3cbd5f4b5d2030f') || 
+                         document.body;
 
   // ── Opening Hours ──
-  details.openingHours = extractOpeningHours();
+  details.openingHours = extractOpeningHours(scope);
   if (details.openingHours && Object.keys(details.openingHours).length > 0) notify('hours');
 
   // ── Is Open Now ──
@@ -561,7 +598,8 @@ function scrapeDetailPanel(onFieldsFound?: (fields: string[]) => void): Partial<
     '[style*="color: rgb(217, 48, 37)"]'  // Red text usually means closed
   ];
   for (const selector of openNowSelectors) {
-    const el = scope.querySelector(selector);
+    const elements = Array.from(scope.querySelectorAll(selector)) as HTMLElement[];
+    const el = elements.find(item => !isElementInFeed(item));
     if (el) {
       const text = el.textContent?.trim().toLowerCase() || "";
       if (text.includes("açık") || text.includes("open")) {
@@ -595,7 +633,8 @@ function scrapeDetailPanel(onFieldsFound?: (fields: string[]) => void): Partial<
   ];
 
   for (const selector of phoneSelectors) {
-    const el = scope.querySelector(selector) as HTMLElement;
+    const elements = Array.from(scope.querySelectorAll(selector)) as HTMLElement[];
+    const el = elements.find(item => !isElementInFeed(item));
     if (el) {
       const target = el.hasAttribute('data-item-id') ? el : el.closest('[data-item-id]');
       const itemId = target?.getAttribute('data-item-id');
@@ -630,9 +669,8 @@ function scrapeDetailPanel(onFieldsFound?: (fields: string[]) => void): Partial<
 
   // Aggressive text-based phone fallback — scan detail panel text
   if (!details.phone) {
-    const mainElement = scope.querySelector('[role="main"]') || (scope instanceof Document ? scope.body : scope);
-    if (mainElement) {
-      const allText = mainElement.textContent || "";
+    const allText = getDetailPanelText(scope);
+    if (allText) {
       // Look for Turkish phone patterns and international formats
       const phonePatterns = [
         /(\+?\d{2}[-. ]?\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{2,4})/,
@@ -663,27 +701,24 @@ function scrapeDetailPanel(onFieldsFound?: (fields: string[]) => void): Partial<
     'a[data-value*="Web"]',
     'a[aria-label*="web"]',
     'a[aria-label*="internet"]',
+    'a[aria-label*="Web sitesi"]',
     'a[jsaction*="authority"]',
-    'button[aria-label*="Web sitesi"]',
     '[data-item-id="authority"] a',
     '.IT5zAf',
-    // New Google Maps selectors
-    'a[href*="http"]:not([href*="google.com"])',
-    'button[jsaction*="authority"]',
-    'div.fontBodyMedium a[href]',
-    'a[aria-label*="site"]',
+    'a[href*="http"]:not([href*="google.com"]):not([href*="maps.app.goo.gl"])',
   ];
   for (const selector of websiteSelectors) {
-    const el = scope.querySelector(selector) as HTMLElement;
+    const elements = Array.from(scope.querySelectorAll(selector)) as HTMLElement[];
+    const el = elements.find(item => !isElementInFeed(item));
     if (el) {
       const href = (el as any).href || el.getAttribute('href') || el.closest('a')?.href;
-      if (href && !href.includes("google.com/maps") && !href.includes("google.com/search") && href.startsWith('http')) {
+      if (href && !href.includes("google.com") && !href.includes("google.co") && !href.includes("maps.app.goo.gl") && href.startsWith('http')) {
         details.website = href;
         notify('website');
         break;
       }
       const text = el.textContent?.trim();
-      if (text && (text.includes('.com') || text.includes('.net') || text.includes('.org') || text.includes('.tr') || text.includes('.co'))) {
+      if (text && !text.includes('google.com') && (text.includes('.com') || text.includes('.net') || text.includes('.org') || text.includes('.tr') || text.includes('.co'))) {
         details.website = text.startsWith('http') ? text : `http://${text}`;
         notify('website');
         break;
@@ -691,14 +726,13 @@ function scrapeDetailPanel(onFieldsFound?: (fields: string[]) => void): Partial<
     }
   }
 
-  // Text-based website fallback
+  // Text-based website fallback - strictly matches common TLD patterns without match noise
   if (!details.website) {
-    const mainElement = scope.querySelector('[role="main"]') || (scope instanceof Document ? scope.body : scope);
-    if (mainElement) {
-      const allText = mainElement.textContent || "";
-      const urlPattern = /(https?:\/\/[^\s]+(?:\.com|\.net|\.org|\.tr|\.co)[^\s]*)/i;
+    const allText = getDetailPanelText(scope);
+    if (allText) {
+      const urlPattern = /(https?:\/\/(?:www\.)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}\.(?:com|net|org|com\.tr|com\.tr|gov|edu|info|biz|co|org\.tr|net\.tr)(?:\/[^\s]*)?)/i;
       const urlMatch = allText.match(urlPattern);
-      if (urlMatch && !urlMatch[0].includes("google.com/maps")) {
+      if (urlMatch && !urlMatch[0].includes("google.com") && !urlMatch[0].includes("google.co") && !urlMatch[0].includes("maps.app.goo.gl")) {
         details.website = urlMatch[0];
         notify('website');
       }
@@ -717,7 +751,8 @@ function scrapeDetailPanel(onFieldsFound?: (fields: string[]) => void): Partial<
     'button[data-item-id="address"]'
   ];
   for (const selector of addressSelectors) {
-    const el = scope.querySelector(selector);
+    const elements = Array.from(scope.querySelectorAll(selector)) as HTMLElement[];
+    const el = elements.find(item => !isElementInFeed(item));
     if (el && el.textContent?.trim()) {
       const text = el.textContent.trim().replace(/\s+/g, ' ');
       if (text.length > 5 && /\d/.test(text)) {
@@ -729,7 +764,8 @@ function scrapeDetailPanel(onFieldsFound?: (fields: string[]) => void): Partial<
   }
 
   if (!details.address) {
-    const addrBtn = scope.querySelector('button[data-item-id="address"]');
+    const addrBtns = Array.from(scope.querySelectorAll('button[data-item-id="address"]')) as HTMLElement[];
+    const addrBtn = addrBtns.find(item => !isElementInFeed(item));
     const ariaLabel = addrBtn?.getAttribute('aria-label');
     if (ariaLabel && ariaLabel.includes(':')) {
         details.address = ariaLabel.split(':')[1].trim().replace(/\s+/g, ' ');
@@ -746,7 +782,8 @@ function scrapeDetailPanel(onFieldsFound?: (fields: string[]) => void): Partial<
     'span.u609uc'
   ];
   for (const selector of categorySelectors) {
-    const el = scope.querySelector(selector);
+    const elements = Array.from(scope.querySelectorAll(selector)) as HTMLElement[];
+    const el = elements.find(item => !isElementInFeed(item));
     if (el && el.textContent?.trim() && !el.textContent.includes('·')) {
       details.category = el.textContent.trim().replace(/\s+/g, ' ');
       // Optional: notify('category');
@@ -755,17 +792,18 @@ function scrapeDetailPanel(onFieldsFound?: (fields: string[]) => void): Partial<
   }
 
   // ── Service Options ──
-  details.serviceOptions = extractServiceOptions();
+  details.serviceOptions = extractServiceOptions(scope);
   if (details.serviceOptions && details.serviceOptions.length > 0) notify('services');
 
   return details;
 }
 
-function extractOpeningHours(): OpeningHours | undefined {
+function extractOpeningHours(scope: Element): OpeningHours | undefined {
   const hours: OpeningHours = {};
 
   // Method 1: Look for the hours table (expanded)
-  const hoursTable = document.querySelector("table.eK4R0e, table.WgFkxc, .y07Mff, .t390nd");
+  const hoursTables = Array.from(scope.querySelectorAll("table.eK4R0e, table.WgFkxc, .y07Mff, .t390nd")) as HTMLElement[];
+  const hoursTable = hoursTables.find(item => !isElementInFeed(item));
   if (hoursTable) {
     const rows = hoursTable.querySelectorAll("tr");
     rows.forEach((row) => {
@@ -782,9 +820,10 @@ function extractOpeningHours(): OpeningHours | undefined {
   }
 
   // Method 2: Try clicking "hours" button to expand, then read
-  const hoursButton = document.querySelector(
+  const hoursButtons = Array.from(scope.querySelectorAll(
     'button[data-item-id="oh"], button[aria-label*="saat"], button[aria-label*="hour"], .OqCZI'
-  );
+  )) as HTMLElement[];
+  const hoursButton = hoursButtons.find(item => !isElementInFeed(item));
   if (hoursButton) {
     // Try to read the aria-label which sometimes contains hours info
     const ariaLabel = hoursButton.getAttribute("aria-label") || "";
@@ -806,10 +845,11 @@ function extractOpeningHours(): OpeningHours | undefined {
   }
 
   // Method 3: Look for individual day rows in the detail panel
-  const dayRows = document.querySelectorAll(
+  const dayRows = Array.from(scope.querySelectorAll(
     '.OqCZI tr, div[aria-label*="Çalışma saatleri"] tr, .t390nd tr'
-  );
+  )) as HTMLElement[];
   dayRows.forEach((row) => {
+    if (isElementInFeed(row)) return;
     const dayEl = row.querySelector(".ylH6lf, .y07Mff");
     const timeEl = row.querySelector(".mxowUb, .mxowUb");
     if (dayEl && timeEl) {
@@ -824,14 +864,15 @@ function extractOpeningHours(): OpeningHours | undefined {
   return Object.keys(hours).length > 0 ? hours : undefined;
 }
 
-function extractServiceOptions(): string[] {
+function extractServiceOptions(scope: Element): string[] {
   const options: string[] = [];
 
   // Service options are usually in a section with icons and labels
-  const serviceItems = document.querySelectorAll(
+  const serviceItems = Array.from(scope.querySelectorAll(
     'div.LTs0Rc div.E0DTEd, li.hpLkke span, .Yf6Ybe'
-  );
+  )) as HTMLElement[];
   serviceItems.forEach((item) => {
+    if (isElementInFeed(item)) return;
     const text = item.textContent?.trim();
     if (text && text.length < 50 && text.length > 2) {
       options.push(text);
@@ -840,10 +881,11 @@ function extractServiceOptions(): string[] {
 
   // Also check for the service options grid (Paket servis, İç mekan yemek, etc.)
   if (options.length === 0) {
-    const optionCards = document.querySelectorAll(
+    const optionCards = Array.from(scope.querySelectorAll(
       'div[class*="m6QErb"] div.P2UJoe, .HBy37b'
-    );
+    )) as HTMLElement[];
     optionCards.forEach((card) => {
+      if (isElementInFeed(card)) return;
       const label = card.querySelector("span")?.textContent?.trim();
       if (label) options.push(label);
     });
@@ -889,13 +931,12 @@ async function goBackToList(): Promise<void> {
 async function tryWaitForFeed(): Promise<boolean> {
   const maxWait = 5000;
   const interval = 200; // Faster polling
-  let waited = 0;
+  const startTime = performance.now();
 
-  while (waited < maxWait) {
+  while (performance.now() - startTime < maxWait) {
     const feed = document.querySelector('div[role="feed"]');
     if (feed && feed.children.length > 1) return true; // length > 1 because 1 child might be a header
     await sleep(interval);
-    waited += interval;
   }
   return false;
 }
@@ -933,13 +974,12 @@ async function performScroll(scrollContainer: HTMLElement): Promise<boolean> {
   scrollContainer.scrollBy(0, 1200);
 
   // Dynamic wait for height change
-  let waited = 0;
+  const startTime = performance.now();
   const pollInterval = 400;
   const maxPoll = 3000;
 
-  while (waited < maxPoll) {
+  while (performance.now() - startTime < maxPoll) {
     await sleep(pollInterval);
-    waited += pollInterval;
     if (scrollContainer.scrollHeight > previousHeight) return true;
   }
 

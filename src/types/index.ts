@@ -42,11 +42,12 @@ export interface DetailLogEntry {
 
 export interface ScraperSettings {
   scrapeDetails: boolean; // Detay panelinden ek bilgi çeksin mi?
-  skipDetailIfWebsite?: boolean; // Web sitesi varsa detay taramayı atla
+  skipDetailIfWebsite?: boolean; // Listede web sitesi olanları atla, olmayanlar için detay ara
   customCategory?: string; // Kullanıcının girdiği özel kategori
   searchKeyword?: string;
   searchCity?: string;
   searchCountry?: string;
+  defaultCategory?: string;
   defaultCity?: string;
   defaultCountry?: string;
 }
